@@ -15,10 +15,7 @@ export function SbcCatalogCard({
 }: {
     locale: 'ar' | 'en';
     product: CatalogProduct;
-    translations: Pick<
-        CatalogTranslations,
-        'included' | 'platform_prices' | 'unavailable_price'
-    >;
+    translations: Pick<CatalogTranslations, 'included' | 'unavailable_price'>;
 }) {
     const [isPressed, setIsPressed] = useState(false);
     const activePen = useRef<{
@@ -99,7 +96,6 @@ export function SbcCatalogCard({
             onTouchStart={() => setIsPressed(true)}
         >
             <a
-                aria-label={product.name}
                 className="store-catalog-card__target"
                 href={product.url ?? undefined}
             >
@@ -114,11 +110,15 @@ export function SbcCatalogCard({
                     />
                     <span className="store-catalog-card__image">
                         <img
-                            alt={
-                                product.image === null
-                                    ? ''
-                                    : product.image.alt || product.name
-                            }
+                            // Decorative: the artwork repeats the product name
+                            // that already sits in the heading below it inside
+                            // the same link, so describing it here announced
+                            // the name twice. The link's own `aria-label` used
+                            // to squash the whole card down to the name, which
+                            // hid the platform prices — the one thing a
+                            // shopping link has to expose — from screen
+                            // readers entirely.
+                            alt=""
                             height="288"
                             draggable={false}
                             loading="lazy"
@@ -139,11 +139,18 @@ export function SbcCatalogCard({
                             {product.promotionBadge}
                         </span>
                     ) : null}
-                    <h2>{product.name}</h2>
-                    <ul
-                        aria-label={translations.platform_prices}
-                        className="store-catalog-card__prices"
-                    >
+                    {/* A card title is a child of its section, not a peer of
+                        it: as an h2 it sat at the same level as "Order
+                        summary", "Suggestions" and the page's other sections. */}
+                    <h3>{product.name}</h3>
+                    {/* Deliberately unlabelled. The whole card is one link, and
+                        an authored name on this list replaces its contents when
+                        the link's own name is computed — so
+                        `aria-label={translations.platform_prices}` announced
+                        "Platform prices" to a screen reader and swallowed every
+                        amount inside it. As a plain list the items contribute
+                        their platform and price to the link's name. */}
+                    <ul className="store-catalog-card__prices">
                         {product.variants.map((variant) => (
                             <li key={variant.id}>
                                 <PlatformMark

@@ -4071,8 +4071,7 @@ html.admin-document {
         margin: 0 0 0.35rem;
         color: var(--arabut-gold-bright);
         font-size: 0.82rem;
-        font-weight: 900;
-        text-transform: uppercase;
+        font-weight: 800;
     }
 
     .store-cart-suggestions__title {
@@ -4082,11 +4081,28 @@ html.admin-document {
         line-height: 1.25;
     }
 
+    /* The related-products block on the manual-service pages sets its own
+       "see all" to 2.75rem so it clears the 44px touch minimum and carries a
+       direction arrow. This one was a bare 24px-tall text link. */
     .store-cart-suggestions__see-all {
+        display: inline-flex;
+        min-height: 2.75rem;
         flex-shrink: 0;
+        align-items: center;
+        gap: 0.35rem;
         color: var(--arabut-gold-bright);
+        font-size: 0.875rem;
         font-weight: 800;
         text-decoration: none;
+    }
+
+    .store-cart-suggestions__see-all svg {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    [dir='rtl'] .store-cart-suggestions__see-all svg {
+        transform: scaleX(-1);
     }
 
     .store-cart-suggestions__see-all:hover {
@@ -4094,7 +4110,7 @@ html.admin-document {
     }
 
     .store-cart-suggestions__see-all:focus-visible,
-    .store-cart-suggestions__service-target:focus-visible {
+    .store-cart-suggestions__service:focus-visible {
         outline: 2px solid var(--arabut-gold-bright);
         outline-offset: 2px;
     }
@@ -4106,11 +4122,19 @@ html.admin-document {
        the fold were easy to miss.
        The track is a fixed card width, not `1fr`: with only two or three
        suggestions, a fractional track stretches each card across a third of a
-       desktop and the card artwork balloons with it. */
+       desktop and the card artwork balloons with it.
+       15rem (240px) was too narrow for this card: its price grid is two
+       columns inside the card's own padding, which left each price cell about
+       86px — less than "100.00 SAR" needs — and the compact card's
+       `overflow-wrap: anywhere` then broke the currency code into "SA" / "R".
+       The ceiling is 17rem rather than the related-products rail's 18.25rem, so
+       that the four cards the suggestions cap allows still fit the 1216px
+       content column without a scrollbar; at 18.25rem they overflowed it by
+       58px. */
     .store-cart-suggestions__rail {
         display: grid;
         grid-auto-flow: column;
-        grid-auto-columns: 15rem;
+        grid-auto-columns: clamp(16.5rem, 27vw, 17rem);
         grid-template-columns: none;
         align-items: start;
         gap: 1rem;
@@ -4133,59 +4157,108 @@ html.admin-document {
         scroll-snap-align: start;
     }
 
-    .store-cart-suggestions__service {
-        position: relative;
-        min-width: 0;
-        overflow: hidden;
-        border: 1px solid var(--arabut-line);
-        border-radius: 1.25rem;
-        background: linear-gradient(
-            145deg,
-            rgb(34 31 27 / 98%),
-            rgb(17 16 14 / 98%)
-        );
+    /* The rail's price overrides sit outside this layer, next to the
+       `.store-catalog-card--compact` declarations they compete with. */
+
+    /* Services sit under the rail as their own cards, the way the
+       manual-service pages already present them, instead of sharing the row
+       with the product cards. */
+    .store-cart-suggestions__services {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+        gap: 1rem;
+        margin-block-start: 0.75rem;
     }
 
-    .store-cart-suggestions__service-target {
+    /* Same recipe as `.manual-service-other__card` on the manual-service
+       pages — one service card design in two places rather than two. */
+    .store-cart-suggestions__service {
         display: grid;
-        color: inherit;
+        grid-template-columns: minmax(10rem, 40%) minmax(0, 1fr);
+        overflow: hidden;
+        border: var(--manual-glass-border);
+        border-radius: 1rem;
+        background: var(--manual-glass-bg);
+        box-shadow: var(--manual-glass-highlight);
+        -webkit-backdrop-filter: var(--manual-glass-blur);
+        backdrop-filter: var(--manual-glass-blur);
+        color: var(--arabut-ink);
         text-decoration: none;
+        transition:
+            border-color 180ms var(--store-ease-out),
+            background-color 180ms var(--store-ease-out),
+            transform 180ms var(--store-ease-out);
+    }
+
+    .store-cart-suggestions__service:hover {
+        border-color: rgb(212 168 67 / 60%);
+        background: rgb(212 168 67 / 8%);
+        transform: translateY(-0.15rem);
+    }
+
+    .store-cart-suggestions__service-media {
+        position: relative;
+        display: block;
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
     }
 
     .store-cart-suggestions__service-media img {
         display: block;
         width: 100%;
-        height: auto;
-        aspect-ratio: 16 / 9;
+        height: 100%;
         object-fit: cover;
     }
 
     .store-cart-suggestions__service-body {
-        display: grid;
-        gap: 0.45rem;
-        padding: 0.85rem 1rem 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.25rem 1.5rem;
     }
 
-    .store-cart-suggestions__service-body strong {
-        font-size: 1.05rem;
-        line-height: 1.35;
+    .store-cart-suggestions__service-title {
+        color: var(--arabut-ink);
+        font-size: 1.25rem;
+        font-weight: 850;
     }
 
-    .store-cart-suggestions__service-body span {
+    .store-cart-suggestions__service-description {
         color: var(--arabut-muted);
+        font-size: 0.9rem;
         line-height: 1.55;
     }
 
-    .store-cart-suggestions__service-body .store-cart-suggestions__open {
+    .store-cart-suggestions__service-open {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        gap: 0.35rem;
         color: var(--arabut-gold-bright);
-        font-weight: 800;
+        font-size: 0.875rem;
+    }
+
+    .store-cart-suggestions__service-open svg {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    [dir='rtl'] .store-cart-suggestions__service-open svg {
+        transform: scaleX(-1);
     }
 
     /* On a phone the cards are wider than a thumbnail so the artwork stays
        readable; the row still scrolls rather than wrapping. */
     @media (max-width: 40rem) {
-        .store-cart-suggestions__rail {
-            grid-auto-columns: 78%;
+        .store-cart-suggestions__service {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .store-cart-suggestions__service-body {
+            padding: 1rem 1.15rem;
         }
     }
 
@@ -5398,13 +5471,16 @@ html.admin-document {
             order: 1;
         }
 
-        /* On phones the dock carries the action, so the summary can sit last,
-           after the suggestions row. */
-        .store-cart-suggestions {
+        /* The suggestions used to sit between the items and the summary, so a
+           block taller than the cart items themselves (574px against 411px on
+           a 390px screen) stood between the customer and the totals, the
+           coupon field and the terms they have to accept before paying. The
+           summary comes first now; the suggestions follow it. */
+        .store-cart-page__layout > .store-cart-checkout {
             order: 2;
         }
 
-        .store-cart-page__layout > .store-cart-checkout {
+        .store-cart-suggestions {
             order: 3;
         }
 
@@ -10396,7 +10472,7 @@ html.admin-document {
     padding: 1.2rem;
 }
 
-.store-catalog-card h2 {
+.store-catalog-card h3 {
     font-family: 'Thmanyah Serif Display', 'Thmanyah Sans', sans-serif;
     font-size: 1.45rem;
     line-height: 1.25;
@@ -10855,7 +10931,7 @@ html.admin-document {
     padding: 0.65rem 0.85rem 0.8rem;
 }
 
-.store-catalog-card--sbc h2 {
+.store-catalog-card--sbc h3 {
     display: -webkit-box;
     min-height: 2.8rem;
     overflow: hidden;
@@ -10973,7 +11049,7 @@ html.admin-document {
 }
 
 .store-shell[lang='ar'] .store-catalog-hero h1,
-.store-shell[lang='ar'] .store-catalog-card--sbc h2,
+.store-shell[lang='ar'] .store-catalog-card--sbc h3,
 .store-shell[lang='ar'] .store-catalog-toolbar__title {
     font-optical-sizing: auto;
     font-kerning: normal;
@@ -11366,13 +11442,20 @@ html.admin-document {
 
 .store-catalog-card--compact .store-catalog-card__body {
     height: auto;
-    grid-template-rows: auto minmax(4.35rem, auto) auto;
+    /* The body holds four children (included notice, optional promo badge,
+       title, price grid) but this template declared three rows, so the fixed
+       4.35rem minimum landed on whichever child sat second — with no promo
+       badge that is the title, and a 26px heading was forced into a 70px row.
+       That is ~44px of dead space in every compact card. Rows are sized by
+       their content now; the price grid keeps its own minimum through the
+       `li` min-heights below. */
+    grid-template-rows: none;
     align-content: start;
     gap: 0.55rem;
     padding: 0.55rem 0.75rem 0.8rem;
 }
 
-.store-catalog-card--compact h2 {
+.store-catalog-card--compact h3 {
     display: block;
     min-height: 0;
     overflow: visible;
@@ -11381,7 +11464,7 @@ html.admin-document {
     -webkit-line-clamp: unset;
 }
 
-.store-shell[lang='ar'] .store-catalog-card--compact h2 {
+.store-shell[lang='ar'] .store-catalog-card--compact h3 {
     font-size: clamp(1.05rem, 1.7vw, 1.25rem);
     line-height: 1.38;
 }
@@ -11423,6 +11506,30 @@ html.admin-document {
     overflow-wrap: anywhere;
     font-size: 1rem;
     line-height: 1.1;
+}
+
+/* Inside the cart's suggestions rail the card is 264-272px wide, not the 292px
+   the SBC catalog grid gives it, and each price cell loses about 14px with it.
+   Two adjustments follow from that, and both have to sit here rather than in the
+   `.store-cart-suggestions` block above: those rules live in
+   `@layer components`, and a layered rule loses to these unlayered ones no
+   matter how specific it is. */
+.store-cart-suggestions__rail .store-catalog-card__prices li {
+    padding-inline: 0.25rem;
+}
+
+/* The amount is one unbreakable unit. `anywhere` above split the currency code
+   itself into "SA" / "R" once the cell got narrow — the amount and the code are
+   joined by a non-breaking space, so with `anywhere` removed the pair cannot
+   break at all. The type is a step down from 1rem so a four-digit amount still
+   clears the cell: measured at 105px of cell against 86px for "100.00 SAR",
+   98px for "1,250.00 SAR" and 99px for "1,900.00 EGP", which is what this
+   catalog reaches in its widest display currency (6-146 SAR, about 13 EGP to
+   the riyal). A five-digit amount needs 108px and would not fit. */
+.store-cart-suggestions__rail .store-catalog-card__prices li > span:last-child {
+    overflow-wrap: normal;
+    font-size: 0.9rem;
+    white-space: nowrap;
 }
 
 .store-catalog-skeleton {

@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import {
+    ArrowUpRight,
     CheckCircle2,
     ChevronDown,
     CreditCard,
@@ -1348,7 +1349,6 @@ function CartSuggestions({
 
     const cardTranslations = {
         included: translations.included,
-        platform_prices: translations.platform_prices,
         unavailable_price: translations.unavailable_price,
     };
 
@@ -1369,30 +1369,43 @@ function CartSuggestions({
                         {translations.title}
                     </h2>
                 </div>
-                <a
-                    className="store-cart-suggestions__see-all"
-                    href={suggestions.sbcUrl}
-                >
-                    {translations.see_all}
-                </a>
-            </header>
-            <ul className="store-cart-suggestions__rail">
-                {suggestions.products.map((product) => (
-                    <SbcCatalogCard
-                        key={product.id}
-                        locale={locale}
-                        product={product}
-                        translations={cardTranslations}
-                    />
-                ))}
-                {suggestions.services.map((service) => (
-                    <li
-                        className="store-cart-suggestions__service"
-                        key={service.key}
+                {suggestions.products.length > 0 ? (
+                    <a
+                        className="store-cart-suggestions__see-all"
+                        href={suggestions.sbcUrl}
                     >
+                        {translations.see_all}
+                        <ArrowUpRight aria-hidden="true" />
+                    </a>
+                ) : null}
+            </header>
+            {/* Products and manual services are different card species: the
+                product card is cool-toned SBC artwork over a two-column price
+                grid, the service card is a warm 16:9 banner. Sharing one rail
+                put the two side by side at different heights (426px against
+                252px) and the top-level "all challenges" link then described
+                only half of what the row contained. The manual-service pages
+                already resolve this the same way: products in the rail,
+                services as their own cards beneath it. */}
+            {suggestions.products.length > 0 ? (
+                <ul className="store-cart-suggestions__rail">
+                    {suggestions.products.map((product) => (
+                        <SbcCatalogCard
+                            key={product.id}
+                            locale={locale}
+                            product={product}
+                            translations={cardTranslations}
+                        />
+                    ))}
+                </ul>
+            ) : null}
+            {suggestions.services.length > 0 ? (
+                <div className="store-cart-suggestions__services">
+                    {suggestions.services.map((service) => (
                         <a
-                            className="store-cart-suggestions__service-target"
+                            className="store-cart-suggestions__service"
                             href={service.href}
+                            key={service.key}
                         >
                             <span className="store-cart-suggestions__service-media">
                                 <img
@@ -1404,16 +1417,21 @@ function CartSuggestions({
                                 />
                             </span>
                             <span className="store-cart-suggestions__service-body">
-                                <strong>{service.title}</strong>
-                                <span>{service.description}</span>
-                                <span className="store-cart-suggestions__open">
+                                <strong className="store-cart-suggestions__service-title">
+                                    {service.title}
+                                </strong>
+                                <span className="store-cart-suggestions__service-description">
+                                    {service.description}
+                                </span>
+                                <span className="store-cart-suggestions__service-open">
                                     {translations.open}
+                                    <ArrowUpRight aria-hidden="true" />
                                 </span>
                             </span>
                         </a>
-                    </li>
-                ))}
-            </ul>
+                    ))}
+                </div>
+            ) : null}
         </section>
     );
 }

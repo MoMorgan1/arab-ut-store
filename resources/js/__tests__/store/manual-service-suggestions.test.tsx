@@ -21,7 +21,6 @@ const mockTranslations: ManualServiceSuggestionTranslations = {
     open: 'Open service',
     sbc: {
         included: 'Coins and completion included',
-        platform_prices: 'Platform prices',
         unavailable_price: 'Price unavailable',
     },
 };
@@ -83,13 +82,21 @@ it('renders the SBC catalog cards the product page uses, a see-all link, and the
         screen.getByRole('heading', { name: 'Continue with Arab UT' }),
     ).toBeVisible();
 
-    const firstCard = screen.getByRole('link', { name: 'Player Moments SBC' });
+    // The card's accessible name is its whole content, so the platform prices
+    // are reachable. `aria-label={product.name}` used to collapse the link down
+    // to the name alone and hide the one thing a shopping link must expose.
+    const firstCard = screen.getByRole('link', { name: /Player Moments SBC/ });
     expect(firstCard).toHaveAttribute('href', '/en/sbc/player-moments');
     expect(firstCard).toHaveTextContent('SAR 150.00');
     expect(firstCard).toHaveTextContent('Coins and completion included');
-    expect(screen.getByRole('link', { name: 'Icon SBC' })).toHaveTextContent(
+    expect(firstCard).toHaveAccessibleName(/150\.00/);
+    expect(screen.getByRole('link', { name: /Icon SBC/ })).toHaveTextContent(
         'SAR 350.00',
     );
+    // A card title is a child of the section, not a peer of it.
+    expect(
+        screen.getByRole('heading', { level: 3, name: 'Player Moments SBC' }),
+    ).toBeVisible();
     expect(
         screen.getByRole('link', { name: /All SBC challenges/ }),
     ).toHaveAttribute('href', '/en/sbc');

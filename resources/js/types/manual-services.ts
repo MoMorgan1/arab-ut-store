@@ -31,10 +31,7 @@ export type ManualServiceSuggestionTranslations = {
     eyebrow: string;
     title: string;
     open: string;
-    sbc: Pick<
-        CatalogTranslations,
-        'included' | 'platform_prices' | 'unavailable_price'
-    >;
+    sbc: Pick<CatalogTranslations, 'included' | 'unavailable_price'>;
 };
 
 export type ManualCredentialsDraft = {

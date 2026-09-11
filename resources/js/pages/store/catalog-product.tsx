@@ -240,9 +240,6 @@ export default function StoreCatalogProduct() {
                                         included:
                                             props.productPage.sbc
                                                 .included_compact,
-                                        platform_prices:
-                                            props.productPage.sbc
-                                                .platform_prices,
                                         unavailable_price:
                                             props.productPage.unavailable_price,
                                     }}
