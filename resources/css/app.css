@@ -14123,16 +14123,11 @@ html.admin-document {
     word-break: break-word;
 }
 
-/* Actions never share a line with the value: the badge and its button keep
-   their own full-width row, right-aligned, so the value above is never
-   squeezed and the row's height is stable. */
-/* A row that fits on one line: icon, then a line holding the value and its
-   action at opposite ends. Rows that need the full width for a long value (an
-   email address) keep the stacked shape and their action underneath. */
-.account-profile-row--compact {
-    align-items: center;
-}
-
+/* One shape for every field row: the label on one side, the action on the other,
+   both on the icon's line; the value then takes the line beneath. The action no
+   longer sits below the value, which is what made it read as detached from the
+   field it acts on. Long values — an email address — still get the full width
+   they need because they own their own line. */
 .account-profile-row__line {
     display: flex;
     grid-column: 2;
@@ -14140,6 +14135,19 @@ html.admin-document {
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+}
+
+/* The value under the label/action line, spanning under both columns so it is
+   never narrowed by the action above it. */
+.account-profile-row__value--under {
+    grid-column: 1 / -1;
+    margin-block-start: 0.45rem;
+}
+
+/* The action inside a `__line`, so it needs no column of its own. */
+.account-profile-row__line .account-profile-row__end {
+    grid-column: auto;
+    flex: 0 0 auto;
 }
 
 .account-profile-row__end {
@@ -14708,7 +14716,7 @@ html.admin-document {
        last control on the page never ends up under the glass. */
     html {
         scroll-padding-bottom: calc(
-            var(--bar-height) + var(--bar-offset) + 2rem +
+            var(--bar-height) + var(--bar-offset) + 3.5rem +
                 env(safe-area-inset-bottom)
         );
     }
@@ -14721,7 +14729,7 @@ html.admin-document {
 
     .account-shell__content {
         padding-bottom: calc(
-            var(--bar-height) + var(--bar-offset) + 2rem +
+            var(--bar-height) + var(--bar-offset) + 3.5rem +
                 env(safe-area-inset-bottom)
         );
     }
