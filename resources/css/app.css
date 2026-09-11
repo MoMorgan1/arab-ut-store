@@ -13750,6 +13750,35 @@ html.admin-document {
     height: 1.35rem;
 }
 
+/* Metal per rung. These are the only non-brand colours in the account area, and
+   they earn it: the tier chip's whole job is to say "this is a different rank",
+   and one hue cannot say that. They stay tinted rather than neutral so they sit
+   on the warm surface instead of looking like borrowed system icons — the
+   "silver" is a pale warm grey, not a cool grey, and platinum is warm white
+   rather than blue-white. Colour is now what carries rank, so the opacity
+   ladder that used to do that job is gone. */
+.account-wallet-loyalty__chip-icon[data-tier='bronze'] {
+    color: #c88a52;
+}
+
+.account-wallet-loyalty__chip-icon[data-tier='silver'] {
+    color: #d9d3c6;
+}
+
+.account-wallet-loyalty__chip-icon[data-tier='gold'] {
+    color: var(--arabut-gold-bright);
+}
+
+.account-wallet-loyalty__chip-icon[data-tier='diamond'] {
+    color: #f2ecdc;
+}
+
+/* No glow on the current tier's mark. It was tried and rejected: a halo in the
+   mark's own colour smears a dark metal like bronze into an orange blob and eats
+   the very shape doing the telling. The chip's gold border, its brighter name and
+   the `aria-current` it carries already say "you are here", so the metal is left
+   to be its own colour. */
+
 .account-wallet-loyalty__chip-name {
     color: var(--arabut-ink);
     font-size: 0.8rem;
@@ -14097,6 +14126,22 @@ html.admin-document {
 /* Actions never share a line with the value: the badge and its button keep
    their own full-width row, right-aligned, so the value above is never
    squeezed and the row's height is stable. */
+/* A row that fits on one line: icon, then a line holding the value and its
+   action at opposite ends. Rows that need the full width for a long value (an
+   email address) keep the stacked shape and their action underneath. */
+.account-profile-row--compact {
+    align-items: center;
+}
+
+.account-profile-row__line {
+    display: flex;
+    grid-column: 2;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
 .account-profile-row__end {
     display: flex;
     grid-column: 2;

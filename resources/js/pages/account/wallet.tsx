@@ -22,27 +22,18 @@ import type { AccountWalletPageProps } from '@/types/account';
  * five, and it does not depend on the tier's name being a metal.
  */
 const TIER_ICONS = [
-    'tier-bronze',
-    'tier-silver',
-    'tier-gold',
-    'tier-diamond',
-] as const satisfies readonly AppIconName[];
+    { name: 'tier-bronze', metal: 'bronze' },
+    { name: 'tier-silver', metal: 'silver' },
+    { name: 'tier-gold', metal: 'gold' },
+    { name: 'tier-diamond', metal: 'diamond' },
+] as const satisfies readonly { name: AppIconName; metal: string }[];
 
-function tierIconName(index: number, total: number): AppIconName {
+function tierMark(index: number, total: number): (typeof TIER_ICONS)[number] {
     if (index >= total - 1) {
-        return TIER_ICONS[TIER_ICONS.length - 1];
+        return TIER_ICONS[TIER_ICONS.length - 1]!;
     }
 
-    return TIER_ICONS[Math.min(index, TIER_ICONS.length - 2)] ?? 'tier-bronze';
-}
-
-/** Weight per rung, so the ladder is visible even in a single colour. */
-function tierOpacity(index: number, total: number): number {
-    if (total <= 1) {
-        return 1;
-    }
-
-    return 0.55 + (index / (total - 1)) * 0.45;
+    return TIER_ICONS[Math.min(index, TIER_ICONS.length - 2)]!;
 }
 
 export default function AccountWallet() {
@@ -193,7 +184,7 @@ export default function AccountWallet() {
                             {loyalty.tiers.map((tier, index) => {
                                 const isCurrent =
                                     loyalty.currentTier?.key === tier.key;
-                                const iconName = tierIconName(
+                                const mark = tierMark(
                                     index,
                                     loyalty.tiers.length,
                                 );
@@ -226,14 +217,9 @@ export default function AccountWallet() {
                                         <span
                                             aria-hidden="true"
                                             className="account-wallet-loyalty__chip-icon"
-                                            style={{
-                                                opacity: tierOpacity(
-                                                    index,
-                                                    loyalty.tiers.length,
-                                                ),
-                                            }}
+                                            data-tier={mark.metal}
                                         >
-                                            <AppIcon name={iconName} />
+                                            <AppIcon name={mark.name} />
                                         </span>
                                         <strong className="account-wallet-loyalty__chip-name">
                                             {tier.name}
