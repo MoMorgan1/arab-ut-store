@@ -29,6 +29,11 @@ enum OrderHoldReason: string
     case TransferListFull = 'transfer_list_full';
     case Captcha = 'captcha';
     case Unassigned = 'unassigned';
+    // Nothing reports a genuine EA suspension. Every code that resolves here is a device
+    // ban or a locked web app - LoginFailedDeviceBan, FailWebAppCustomerLocked,
+    // FailedReceiverDeviceBan - each of which the customer may be able to clear themselves,
+    // which is why the text hedges and offers both buttons rather than sending them to us.
+    // Owner decision, 2026-09-13. The case name is now narrower than what reaches it.
     case AccountBanned = 'account_banned';
     case StoreStock = 'store_stock';
     case Connection = 'connection';

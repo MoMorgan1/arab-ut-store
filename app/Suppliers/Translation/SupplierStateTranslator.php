@@ -404,18 +404,45 @@ final class SupplierStateTranslator
         'LoginFailed495',
         'LoginFailedDeviceBan',
         'noPriceFound',
+        // Added with the owner's 2026-09-13 decision: every login failure offers a retry,
+        // so the tracker's two unretryable spellings of one failure stop disagreeing.
+        'loginFailed',
+        'loginLoop',
+        'needEmailConfirm',
     ];
 
     /**
-     * SBC statuses that allow credential editing in the tracker (assets/js/ui.js:1070
-     * and includes/api-handlers.php:2106). Exactly two statuses.
-     * Maps to SupplierAction::EditCredentials.
+     * SBC statuses that offer credential editing.
+     *
+     * The tracker allows exactly two, WrongUserPass and WrongBA (assets/js/ui.js:1070),
+     * and its own API enforces that gate (includes/api-handlers.php:2106). That gate is
+     * the tracker's product choice rather than a supplier constraint: the comment beside
+     * it says retrySBCAPI "does not reliably gate on status upstream", so FFT accepts a
+     * credential correction whatever the status.
+     *
+     * Owner decision, 2026-09-13, widening it to the login-failure family: a failed login
+     * "could be a problem with the account or it could be the servers", so the customer
+     * gets both a retry and a way to correct the email they may have typed wrong. His
+     * words: "خليه فيه اوبشن انه يعمل اعادة تشغيل او انه يغير الايميل لو حط ايميل غلط".
+     * The order stays InProgress meanwhile, because it may well be EA's side.
+     *
+     * needEmailConfirm is mine rather than his, extended on the same reasoning: it is an
+     * email problem and correcting the email is the only thing that can resolve it.
      *
      * @var list<string>
      */
     private const array SBC_EDITABLE_STATUSES = [
         'WrongUserPass',
         'WrongBA',
+        // The login-failure family, per the owner's 2026-09-13 decision above.
+        'LoginFailed',
+        'loginFailed',
+        'LoginFailed401',
+        'LoginFailed495',
+        'LoginError',
+        'loginLoop',
+        'LoginFailedDeviceBan',
+        'needEmailConfirm',
     ];
 
     public function translate(

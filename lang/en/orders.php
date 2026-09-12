@@ -28,7 +28,7 @@ return [
         'transfer_list_full' => 'Your transfer list is full and has no room for the delivery. Clear it, then let us know.',
         'captcha' => 'EA is asking for a captcha on the account. Open the Web App, solve it, then let us know.',
         'unassigned' => 'There are unassigned items on the account blocking the delivery. Open them or move them to your club, then let us know.',
-        'account_banned' => 'EA has suspended the account. That decision is EA\'s alone and has nothing to do with the store or your order. Message us to go through your options.',
+        'account_banned' => 'We could not sign in to the account, and it may be blocked. Press resume to try again, or check your details and update them.',
         'store_stock' => 'The requested amount is not in stock with us right now. We are restocking and will resume your order shortly.',
         'connection' => 'The connection to the game servers dropped during delivery. We are retrying and will update you.',
         'no_player' => 'We could not find a suitable player on the market to complete the delivery right now. We are watching the market and will resume shortly.',

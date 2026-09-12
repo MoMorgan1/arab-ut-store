@@ -103,6 +103,33 @@ did not name them:
   press resume to try again. A fresh sentence was drafted and discarded - the tracker has copy real
   customers have already read, and that outranks an invention.
 
+Decided 2026-09-13, on the two mappings the tracker contradicts itself about:
+
+- **`noFunds` is our float, not the customer's coins.** The owner: "`No funds يعني حسابي مفهوش رصيد
+  عشان يشحن زي insufficient funds في fft`". So `StoreStock` is right, and the customer's own shortage
+  keeps its separate status (`OutOfCoins` → `InsufficientCoins`). He asked for the retry button to
+  stay, which it already does — the tracker offers it and `store_stock` is the reason he ruled on
+  earlier for exactly this reason: a press costs nothing and may be the moment the float was topped up.
+- **Every login failure offers a retry *and* a credential correction.** His words: "`Login failed دي
+  الحساب ممكن فيه مشكلة او سيرفرات ف خليه فيه اوبشن انه يعمل اعادة تشغيل او انه يغير الايميل لو حط
+  ايميل غلط مثلا`". This **widens the tracker's boundary**, which allows credential editing on
+  `WrongUserPass` and `WrongBA` only and enforces that in its own API
+  (`includes/api-handlers.php:2106`). That gate is the tracker's product choice rather than a supplier
+  constraint: the comment beside it says `retrySBCAPI` "does not reliably gate on status upstream", so
+  FFT accepts a credential correction whatever the status. The family is `LoginFailed`,
+  `loginFailed`, `LoginFailed401`, `LoginFailed495`, `LoginError`, `loginLoop` and
+  `LoginFailedDeviceBan`; `needEmailConfirm` is my extension on his reasoning, since correcting the
+  email is the only thing that resolves it. The order stays `InProgress` throughout, because it may
+  well be EA's side; the reason stays `EaServers`, which means C2's copy revision has to cover it —
+  the text currently says we will retry and tells the customer nothing about the two buttons under it.
+- `sessionExpired` keeps retry alone. It is not a login-data problem: the tracker's help text says
+  the connection renews itself, which is why it moved to `EaServers` rather than `ActiveSession`.
+
+**Still open for him:** `LoginFailedDeviceBan` maps to `AccountBanned`, whose text says EA stopped
+the account and to message us. A device ban is not an account ban, and the tracker's own action string
+for it says to enter a correct backup code. It now carries both buttons, which softens the
+mismatch, but the text is still wrong for it.
+
 ## Objectives is not sellable, and that is accepted for now
 
 Owner decision, 2026-09-12: Objectives is not needed at the moment, so this stays as it is.

@@ -483,20 +483,44 @@ test('WrongUserPass offers edit and retry; WrongBA the same', function (string $
     'WrongBA' => ['WrongBA', OrderHoldReason::BackupCodes],
 ]);
 
-test('LoginFailed401 offers retry only and EditCredentials is strictly absent', function (): void {
+test('a login failure offers both a retry and a credential correction, and keeps the order moving', function (string $status): void {
+    // Owner decision, 2026-09-13: a failed login "could be a problem with the account or
+    // it could be the servers", so the customer gets a retry and a way to fix an email
+    // they may have typed wrong. The tracker offers editing on two statuses only and its
+    // own API enforces that, but that gate is the tracker's product choice: FFT accepts a
+    // credential correction whatever the status, which the gate's own comment says.
+    // The order stays InProgress because it may well be EA's side.
     $translator = new SupplierStateTranslator;
 
     $translated = $translator->translateChallenge(
         Supplier::Fft,
         ['chal-1'],
-        ['chal-1' => ['sbcStatus' => 'LoginFailed401']],
+        ['chal-1' => ['sbcStatus' => $status]],
         OrderStatus::InProgress,
     );
 
     expect($translated->allowedActions)->toContain(SupplierAction::RetryChallenge)
-        ->and($translated->allowedActions)->not->toContain(SupplierAction::EditCredentials)
-        ->and($translated->status)->toBe(OrderStatus::InProgress)
-        ->and($translated->holdReason)->toBe(OrderHoldReason::EaServers);
+        ->and($translated->allowedActions)->toContain(SupplierAction::EditCredentials)
+        ->and($translated->status)->toBe(OrderStatus::InProgress);
+})->with([
+    'LoginFailed', 'loginFailed', 'LoginFailed401', 'LoginFailed495', 'LoginError', 'loginLoop',
+]);
+
+test('a status outside the editable set offers no credential correction', function (): void {
+    // The strictly-absent guard the widened boundary must not quietly lose: a solver
+    // failure is not a credentials problem, and offering the sheet there would send the
+    // customer to fix data that is already correct.
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        ['chal-1'],
+        ['chal-1' => ['sbcStatus' => 'tooExpensive']],
+        OrderStatus::InProgress,
+    );
+
+    expect($translated->allowedActions)->toContain(SupplierAction::RetryChallenge)
+        ->and($translated->allowedActions)->not->toContain(SupplierAction::EditCredentials);
 });
 
 test('a status in neither the retryable set nor the edit pair offers no actions', function (string $status, OrderHoldReason $expectedHold, OrderStatus $expectedStatus): void {
@@ -514,7 +538,6 @@ test('a status in neither the retryable set nor the edit pair offers no actions'
         ->and($translated->status)->toBe($expectedStatus)
         ->and($translated->supported)->toBeTrue();
 })->with([
-    'needEmailConfirm' => ['needEmailConfirm', OrderHoldReason::Credentials, OrderStatus::WaitingForCustomer],
     '2FADisabled' => ['2FADisabled', OrderHoldReason::Credentials, OrderStatus::WaitingForCustomer],
     'failedNoClub' => ['failedNoClub', OrderHoldReason::NoClub, OrderStatus::WaitingForCustomer],
     'TMLocked' => ['TMLocked', OrderHoldReason::MarketLocked, OrderStatus::WaitingForCustomer],
@@ -625,17 +648,17 @@ test('every one of the fifty-one sbcStatus values maps to its canonical status, 
     'WrongUserPass' => ['WrongUserPass', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'WrongBA' => ['WrongBA', OrderStatus::WaitingForCustomer, OrderHoldReason::BackupCodes, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'sessionExpired' => ['sessionExpired', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::RetryChallenge]],
-    'needEmailConfirm' => ['needEmailConfirm', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
-    'LoginFailed495' => ['LoginFailed495', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::RetryChallenge]],
-    'LoginFailed401' => ['LoginFailed401', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::RetryChallenge]],
-    'LoginFailedDeviceBan' => ['LoginFailedDeviceBan', OrderStatus::WaitingForCustomer, OrderHoldReason::AccountBanned, [SupplierAction::RetryChallenge]],
-    'LoginError' => ['LoginError', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::RetryChallenge]],
-    'LoginFailed' => ['LoginFailed', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::RetryChallenge]],
-    'loginFailed' => ['loginFailed', OrderStatus::InProgress, OrderHoldReason::EaServers, []],
+    'needEmailConfirm' => ['needEmailConfirm', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'LoginFailed495' => ['LoginFailed495', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'LoginFailed401' => ['LoginFailed401', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'LoginFailedDeviceBan' => ['LoginFailedDeviceBan', OrderStatus::WaitingForCustomer, OrderHoldReason::AccountBanned, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'LoginError' => ['LoginError', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'LoginFailed' => ['LoginFailed', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'loginFailed' => ['loginFailed', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     '2FADisabled' => ['2FADisabled', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
     'no2fa' => ['no2fa', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
     'No2FA' => ['No2FA', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
-    'loginLoop' => ['loginLoop', OrderStatus::InProgress, OrderHoldReason::EaServers, []],
+    'loginLoop' => ['loginLoop', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
 
     // Proxy / connection errors (3)
     'FailProxyConn' => ['FailProxyConn', OrderStatus::InProgress, OrderHoldReason::Connection, [SupplierAction::RetryChallenge]],
