@@ -27,8 +27,10 @@ final readonly class TranslatedState
         public ?string $observedState,
         public ?int $coinsDelivered = null,
         public ?int $coinsOrdered = null,
-        public ?int $challengesSolved = null,
-        public ?int $challengesRequested = null,
+        public ?int $squadsDone = null,
+        public ?int $squadsTotal = null,
+        public ?int $solvesDone = null,
+        public ?int $solvesTotal = null,
     ) {}
 
     /**

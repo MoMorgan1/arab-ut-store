@@ -14,6 +14,7 @@ use App\Models\FulfillmentJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Suppliers\ChallengeIds;
 use App\Suppliers\Translation\TranslatedState;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -272,9 +273,23 @@ final class ApplySupplierObservation
         $job->observed_at = $observedAt;
         $job->observed_state = $state->observedState;
         $job->observation_supported = $state->supported;
+        // Rule 8: A later phase re-opens polling without un-completing the earlier phase
+        $isChallenge = $this->isChallengePhase($job, $state, $rawPayload);
+
+        if ($isChallenge) {
+            $job->delivery_phase = DeliveryPhase::Challenge;
+
+            if ($job->completed_at !== null && $state->status !== OrderStatus::Completed) {
+                $job->completed_at = null;
+                $job->next_poll_at = now();
+                if ($job->status === FulfillmentStatus::Completed) {
+                    $job->status = FulfillmentStatus::InProgress;
+                }
+            }
+        }
 
         // Rule 7: Mask sensitive customer data before storing in the JSON column
-        $maskedObservation = $this->maskRawPayload($rawPayload);
+        $maskedObservation = $this->maskRawPayload($rawPayload, $isChallenge);
         if ($withheldDueToAdmin) {
             $maskedObservation['_service'] = [
                 'withheld' => true,
@@ -298,11 +313,17 @@ final class ApplySupplierObservation
         if ($state->coinsOrdered !== null) {
             $job->coins_ordered = $state->coinsOrdered;
         }
-        if ($state->challengesSolved !== null) {
-            $job->challenges_solved = $state->challengesSolved;
+        if ($state->squadsDone !== null) {
+            $job->squads_done = $state->squadsDone;
         }
-        if ($state->challengesRequested !== null) {
-            $job->challenges_requested = $state->challengesRequested;
+        if ($state->squadsTotal !== null) {
+            $job->squads_total = $state->squadsTotal;
+        }
+        if ($state->solvesDone !== null) {
+            $job->solves_done = $state->solvesDone;
+        }
+        if ($state->solvesTotal !== null) {
+            $job->solves_total = $state->solvesTotal;
         }
 
         if ($orderIsTerminal) {
@@ -314,21 +335,6 @@ final class ApplySupplierObservation
             $job->save();
 
             return;
-        }
-
-        // Rule 8: A later phase re-opens polling without un-completing the earlier phase
-        $isChallenge = $this->isChallengePhase($job, $state, $rawPayload);
-
-        if ($isChallenge) {
-            $job->delivery_phase = DeliveryPhase::Challenge;
-
-            if ($job->completed_at !== null && $state->status !== OrderStatus::Completed) {
-                $job->completed_at = null;
-                $job->next_poll_at = now();
-                if ($job->status === FulfillmentStatus::Completed) {
-                    $job->status = FulfillmentStatus::InProgress;
-                }
-            }
         }
 
         // Job lifecycle transitions based on translated status
@@ -359,7 +365,7 @@ final class ApplySupplierObservation
             return true;
         }
 
-        if ($state->challengesRequested !== null || $state->challengesSolved !== null) {
+        if ($state->squadsTotal !== null || $state->squadsDone !== null || $state->solvesTotal !== null || $state->solvesDone !== null) {
             return true;
         }
 
@@ -433,14 +439,45 @@ final class ApplySupplierObservation
      * Reduces a supplier payload to the keys we are willing to keep, then masks
      * any address embedded in the free-text values that survive.
      *
-     * `accountCheckLong` and `economyStateLong` are the supplier's own prose and
-     * can mention the account, so the email sweep stays as a second layer over
-     * the allowlist rather than instead of it.
+     * When the job's delivery phase is Challenge, the payload is a map of challenge id
+     * to that challenge's fields, and each inner object is filtered through the allowlist.
+     * Challenge ids are validated with ChallengeIds before being used as storage keys.
+     * A coins-phase payload remains flat and cannot reach the nested branch.
      *
+     * @param  array<array-key, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function maskRawPayload(array $payload, bool $isChallengePhase): array
+    {
+        if ($isChallengePhase) {
+            $stored = [];
+
+            foreach ($payload as $key => $value) {
+                if (! is_string($key) || ! is_array($value)) {
+                    continue;
+                }
+
+                $normalized = ChallengeIds::normalize([$key]);
+
+                if ($normalized === []) {
+                    continue;
+                }
+
+                $validKey = $normalized[0];
+                $stored[$validKey] = $this->maskAllowlistedFields($value);
+            }
+
+            return $stored;
+        }
+
+        return $this->maskAllowlistedFields($payload);
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function maskRawPayload(array $payload): array
+    private function maskAllowlistedFields(array $payload): array
     {
         $stored = [];
 
@@ -450,7 +487,7 @@ final class ApplySupplierObservation
             }
 
             if (is_array($value)) {
-                $stored[$key] = $this->maskRawPayload($value);
+                $stored[$key] = $this->maskAllowlistedFields($value);
             } elseif (is_string($value)) {
                 $stored[$key] = $this->maskStringEmails($value);
             } else {

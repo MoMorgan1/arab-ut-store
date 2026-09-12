@@ -273,6 +273,150 @@ final class SupplierStateTranslator
         'belowMinTransfer',
     ];
 
+    /**
+     * SBC statuses that mean the challenge is complete, matching track/assets/js/ui.js:967-970, 999.
+     * Matching is exact on purpose; substring matching would incorrectly match 'unfinished'.
+     *
+     * @var list<string>
+     */
+    private const array SBC_FINISHED_STATUSES = [
+        'finished',
+        'alreadyCompleted',
+    ];
+
+    /**
+     * SBC statuses describing active healthy progress (track/assets/js/ui.js:1030).
+     *
+     * @var list<string>
+     */
+    private const array SBC_SAFE_STATUSES = [
+        'entered',
+        'waitingForOtherSolve',
+        'started',
+        'fetchSBCInfo',
+        'fetchChallengeInfo',
+        'solvingChallenge',
+    ];
+
+    /**
+     * SBC failure statuses mapped to their canonical hold reasons.
+     * Failure statuses in CUSTOMER_ACTION_REASONS transition the order to WaitingForCustomer;
+     * failure statuses in AUTOMATIC_RECOVERY_REASONS keep the order InProgress.
+     * If a status has no honest match in OrderHoldReason, it maps to null and stays InProgress.
+     *
+     * @var array<string, OrderHoldReason|null>
+     */
+    private const array SBC_STATUS_HOLDS = [
+        // Auth / session errors
+        'WrongUserPass' => OrderHoldReason::Credentials,
+        'WrongBA' => OrderHoldReason::BackupCodes,
+        'sessionExpired' => OrderHoldReason::ActiveSession,
+        'needEmailConfirm' => OrderHoldReason::Credentials,
+        'LoginFailed495' => OrderHoldReason::EaServers,
+        'LoginFailed401' => OrderHoldReason::EaServers,
+        'LoginFailedDeviceBan' => OrderHoldReason::AccountBanned,
+        'LoginError' => OrderHoldReason::EaServers,
+        'LoginFailed' => OrderHoldReason::EaServers,
+        'loginFailed' => OrderHoldReason::EaServers,
+        '2FADisabled' => OrderHoldReason::Credentials,
+        'no2fa' => OrderHoldReason::Credentials,
+        'No2FA' => OrderHoldReason::Credentials,
+        'loginLoop' => OrderHoldReason::EaServers,
+
+        // Proxy / connection errors
+        'FailProxyConn' => OrderHoldReason::Connection,
+        'FailedProxyConnectionError' => OrderHoldReason::Connection,
+        'FailProxy' => OrderHoldReason::Connection,
+
+        // Account / setup errors
+        'failedNoClub' => OrderHoldReason::NoClub,
+        'consoleLoggedIn' => OrderHoldReason::ActiveSession,
+        'FailedPersonaSwitch' => OrderHoldReason::Credentials,
+        'TMLocked' => OrderHoldReason::MarketLocked,
+
+        // SBC-specific errors (null when no honest enum match exists)
+        'setNotFound' => null,
+        'foundationNotSolved' => null,
+        'challengeDataMissing' => null,
+        'noSolutionFound' => OrderHoldReason::NoPlayer,
+        'tooExpensive' => null,
+        'clickFailed' => null,
+        'submitFailed' => OrderHoldReason::EaServers,
+        'squadCreateFailed' => null,
+
+        // Player / market errors
+        'playerBuyFailed' => null,
+        'playerNotFound' => OrderHoldReason::NoPlayer,
+        'playerNotMoved' => null,
+        'clubQueryFailed' => OrderHoldReason::EaServers,
+        'tooManyExchanges' => OrderHoldReason::Paused,
+        'noPriceFound' => OrderHoldReason::NoPlayer,
+
+        // Financial / Cooldown errors
+        'noFunds' => OrderHoldReason::StoreStock,
+        'OutOfCoins' => OrderHoldReason::InsufficientCoins,
+        'tempban' => OrderHoldReason::Paused,
+        'TempbanCooldown' => OrderHoldReason::Paused,
+        'dailyReceiverLimit' => OrderHoldReason::Paused,
+
+        // System errors
+        'aborted' => OrderHoldReason::Paused,
+        'failed' => null,
+        'FailUnassignedFound' => OrderHoldReason::Unassigned,
+    ];
+
+    /**
+     * SBC statuses that offer retry in the tracker (assets/js/ui.js:1012-1020).
+     * Maps to SupplierAction::RetryChallenge.
+     *
+     * @var list<string>
+     */
+    private const array SBC_RETRYABLE_STATUSES = [
+        'noSolutionFound',
+        'tooExpensive',
+        'clickFailed',
+        'submitFailed',
+        'squadCreateFailed',
+        'playerBuyFailed',
+        'playerNotFound',
+        'playerNotMoved',
+        'clubQueryFailed',
+        'tooManyExchanges',
+        'noFunds',
+        'OutOfCoins',
+        'failed',
+        'aborted',
+        'FailUnassignedFound',
+        'setNotFound',
+        'foundationNotSolved',
+        'challengeDataMissing',
+        'tempban',
+        'TempbanCooldown',
+        'WrongUserPass',
+        'WrongBA',
+        'consoleLoggedIn',
+        'sessionExpired',
+        'FailProxyConn',
+        'LoginError',
+        'LoginFailed',
+        'LoginFailed401',
+        'LoginFailed495',
+        'LoginFailedDeviceBan',
+        'noPriceFound',
+    ];
+
+    /**
+     * SBC statuses that allow credential editing in the tracker (assets/js/ui.js:1070
+     * and includes/api-handlers.php:2106). Exactly two statuses.
+     * Maps to SupplierAction::EditCredentials.
+     *
+     * @var list<string>
+     */
+    private const array SBC_EDITABLE_STATUSES = [
+        'WrongUserPass',
+        'WrongBA',
+    ];
+
     public function translate(
         RawSupplierObservation $observation,
         OrderStatus $current,
@@ -321,6 +465,118 @@ final class SupplierStateTranslator
             $resolved->supported,
             $resolved->observedState,
             $progress,
+        );
+    }
+
+    /**
+     * Translates an SBC / challenge status observation into canonical domain state.
+     *
+     * A challenge observation uses an entirely separate vocabulary from coins tracking;
+     * keeping its own entry point prevents either path from accepting the other's codes.
+     *
+     * @param  array<string, mixed>  $counters
+     */
+    public function translateChallenge(
+        Supplier $supplier,
+        string $sbcStatus,
+        array $counters,
+        OrderStatus $current,
+    ): TranslatedState {
+        $status = trim($sbcStatus);
+
+        $squadsDone = $this->count($counters['challengesDone'] ?? $counters['squadsDone'] ?? null);
+        $squadsTotal = $this->count($counters['totalChallenges'] ?? $counters['squadsTotal'] ?? null);
+        $solvesDone = $this->count($counters['timesSolved'] ?? $counters['solvesDone'] ?? null);
+        $solvesTotal = $this->count($counters['timesToSolve'] ?? $counters['solvesTotal'] ?? null);
+
+        // Validation comes first: an unknown challenge status fails closed immediately,
+        // leaving the current status untouched with supported=false and no allowed actions.
+        if ($status === '' || ! $this->isKnownSbcStatus($status)) {
+            return new TranslatedState(
+                status: $current,
+                holdReason: null,
+                allowedActions: [],
+                supported: false,
+                observedState: $status === '' ? null : $status,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: $squadsDone,
+                squadsTotal: $squadsTotal,
+                solvesDone: $solvesDone,
+                solvesTotal: $solvesTotal,
+            );
+        }
+
+        if ($this->isTerminal($current)) {
+            return new TranslatedState(
+                status: $current,
+                holdReason: null,
+                allowedActions: [],
+                supported: true,
+                observedState: $status,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: $squadsDone,
+                squadsTotal: $squadsTotal,
+                solvesDone: $solvesDone,
+                solvesTotal: $solvesTotal,
+            );
+        }
+
+        if ($this->isSbcFinished($status)) {
+            return new TranslatedState(
+                status: OrderStatus::Completed,
+                holdReason: null,
+                allowedActions: [],
+                supported: true,
+                observedState: $status,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: $squadsDone,
+                squadsTotal: $squadsTotal,
+                solvesDone: $solvesDone,
+                solvesTotal: $solvesTotal,
+            );
+        }
+
+        if ($this->isSbcSafe($status)) {
+            return new TranslatedState(
+                status: OrderStatus::InProgress,
+                holdReason: null,
+                allowedActions: [],
+                supported: true,
+                observedState: $status,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: $squadsDone,
+                squadsTotal: $squadsTotal,
+                solvesDone: $solvesDone,
+                solvesTotal: $solvesTotal,
+            );
+        }
+
+        // Failure status: customer action reasons move order to WaitingForCustomer;
+        // automatic recovery reasons keep it InProgress. If no honest match exists,
+        // the reason stays null and the order stays InProgress.
+        $holdReason = self::SBC_STATUS_HOLDS[$status] ?? null;
+        $orderStatus = ($holdReason !== null && $this->isCustomerAction($holdReason))
+            ? OrderStatus::WaitingForCustomer
+            : OrderStatus::InProgress;
+
+        $actions = $this->sbcActions($supplier, $status);
+
+        return new TranslatedState(
+            status: $orderStatus,
+            holdReason: $holdReason,
+            allowedActions: $actions,
+            supported: true,
+            observedState: $status,
+            coinsDelivered: null,
+            coinsOrdered: null,
+            squadsDone: $squadsDone,
+            squadsTotal: $squadsTotal,
+            solvesDone: $solvesDone,
+            solvesTotal: $solvesTotal,
         );
     }
 
@@ -547,6 +803,45 @@ final class SupplierStateTranslator
         };
     }
 
+    /**
+     * @return list<SupplierAction>
+     */
+    private function sbcActions(Supplier $supplier, string $sbcStatus): array
+    {
+        if (! $supplier->handlesChallenges()) {
+            return [];
+        }
+
+        $actions = [];
+
+        if (in_array($sbcStatus, self::SBC_EDITABLE_STATUSES, true)) {
+            $actions[] = SupplierAction::EditCredentials;
+        }
+
+        if (in_array($sbcStatus, self::SBC_RETRYABLE_STATUSES, true)) {
+            $actions[] = SupplierAction::RetryChallenge;
+        }
+
+        return $actions;
+    }
+
+    private function isKnownSbcStatus(string $status): bool
+    {
+        return $this->isSbcFinished($status)
+            || $this->isSbcSafe($status)
+            || array_key_exists($status, self::SBC_STATUS_HOLDS);
+    }
+
+    private function isSbcFinished(string $status): bool
+    {
+        return in_array($status, self::SBC_FINISHED_STATUSES, true);
+    }
+
+    private function isSbcSafe(string $status): bool
+    {
+        return in_array($status, self::SBC_SAFE_STATUSES, true);
+    }
+
     private function observedCode(string $status, string $accountCheck, string $economyState): ?string
     {
         if ($accountCheck !== '') {
@@ -561,7 +856,7 @@ final class SupplierStateTranslator
     }
 
     /**
-     * @param  array{coinsDelivered: ?int, coinsOrdered: ?int, challengesSolved: ?int, challengesRequested: ?int}  $progress
+     * @param  array{coinsDelivered: ?int, coinsOrdered: ?int, squadsDone: ?int, squadsTotal: ?int, solvesDone: ?int, solvesTotal: ?int}  $progress
      */
     private function unsupported(OrderStatus $current, ?string $observed, array $progress): TranslatedState
     {
@@ -570,7 +865,7 @@ final class SupplierStateTranslator
 
     /**
      * @param  list<SupplierAction>  $actions
-     * @param  array{coinsDelivered: ?int, coinsOrdered: ?int, challengesSolved: ?int, challengesRequested: ?int}  $progress
+     * @param  array{coinsDelivered: ?int, coinsOrdered: ?int, squadsDone: ?int, squadsTotal: ?int, solvesDone: ?int, solvesTotal: ?int}  $progress
      */
     private function state(
         OrderStatus $status,
@@ -588,25 +883,30 @@ final class SupplierStateTranslator
             $observedState,
             $progress['coinsDelivered'],
             $progress['coinsOrdered'],
-            $progress['challengesSolved'],
-            $progress['challengesRequested'],
+            $progress['squadsDone'],
+            $progress['squadsTotal'],
+            $progress['solvesDone'],
+            $progress['solvesTotal'],
         );
     }
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{coinsDelivered: ?int, coinsOrdered: ?int, challengesSolved: ?int, challengesRequested: ?int}
+     * @return array{coinsDelivered: ?int, coinsOrdered: ?int, squadsDone: ?int, squadsTotal: ?int, solvesDone: ?int, solvesTotal: ?int}
      */
     private function progress(array $payload): array
     {
         // Real tracker field names: each SBC job carries challengesDone and
         // totalChallenges (track/assets/js/ui.js:1024-1025, allowlisted in
-        // track/includes/api-handlers.php:117-118). No other spelling exists.
+        // track/includes/api-handlers.php:117-118) for squads in the current solve,
+        // and timesSolved / timesToSolve for the solve track.
         return [
             'coinsDelivered' => $this->thousands($payload['amount'] ?? null),
             'coinsOrdered' => $this->thousands($payload['amountOrdered'] ?? null),
-            'challengesSolved' => $this->count($payload['challengesDone'] ?? null),
-            'challengesRequested' => $this->count($payload['totalChallenges'] ?? null),
+            'squadsDone' => $this->count($payload['challengesDone'] ?? null),
+            'squadsTotal' => $this->count($payload['totalChallenges'] ?? null),
+            'solvesDone' => $this->count($payload['timesSolved'] ?? null),
+            'solvesTotal' => $this->count($payload['timesToSolve'] ?? null),
         ];
     }
 

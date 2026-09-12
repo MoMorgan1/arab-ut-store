@@ -17,8 +17,10 @@ it('adds every supplier observation column to fulfillment jobs', function (): vo
         'observation_supported',
         'coins_delivered',
         'coins_ordered',
-        'challenges_solved',
-        'challenges_requested',
+        'squads_done',
+        'squads_total',
+        'solves_done',
+        'solves_total',
         'hold_reason',
         'allowed_actions',
         'last_viewed_at',
@@ -51,8 +53,10 @@ it('round trips a full supplier observation through the database', function (): 
         'allowed_actions' => [SupplierAction::EditCredentials->value, SupplierAction::Resume->value],
         'coins_delivered' => 250_000,
         'coins_ordered' => 250_000,
-        'challenges_solved' => 3,
-        'challenges_requested' => 10,
+        'squads_done' => 3,
+        'squads_total' => 10,
+        'solves_done' => 1,
+        'solves_total' => 2,
     ]);
 
     $fresh = FulfillmentJob::query()->findOrFail($job->id);
@@ -67,8 +71,10 @@ it('round trips a full supplier observation through the database', function (): 
         ->and($fresh->allowed_actions)->toBe([SupplierAction::EditCredentials->value, SupplierAction::Resume->value])
         ->and($fresh->coins_delivered)->toBe(250_000)
         ->and($fresh->coins_ordered)->toBe(250_000)
-        ->and($fresh->challenges_solved)->toBe(3)
-        ->and($fresh->challenges_requested)->toBe(10);
+        ->and($fresh->squads_done)->toBe(3)
+        ->and($fresh->squads_total)->toBe(10)
+        ->and($fresh->solves_done)->toBe(1)
+        ->and($fresh->solves_total)->toBe(2);
 });
 
 it('maps stored allowed actions to enum cases and drops stale values', function (): void {

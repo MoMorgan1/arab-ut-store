@@ -32,8 +32,10 @@ final class ItemTracking
      *     progress: array{
      *         coinsDelivered: int|null,
      *         coinsOrdered: int|null,
-     *         challengesSolved: int|null,
-     *         challengesRequested: int|null,
+     *         squadsDone: int|null,
+     *         squadsTotal: int|null,
+     *         solvesDone: int|null,
+     *         solvesTotal: int|null,
      *     }|null,
      * }|null
      */
@@ -65,14 +67,18 @@ final class ItemTracking
         // misleading "0 of 0" counters before the supplier reports numbers.
         $hasProgress = $job->coins_delivered !== null
             || $job->coins_ordered !== null
-            || $job->challenges_solved !== null
-            || $job->challenges_requested !== null;
+            || $job->squads_done !== null
+            || $job->squads_total !== null
+            || $job->solves_done !== null
+            || $job->solves_total !== null;
 
         $progress = $hasProgress ? [
             'coinsDelivered' => $job->coins_delivered !== null ? (int) $job->coins_delivered : null,
             'coinsOrdered' => $job->coins_ordered !== null ? (int) $job->coins_ordered : null,
-            'challengesSolved' => $job->challenges_solved !== null ? (int) $job->challenges_solved : null,
-            'challengesRequested' => $job->challenges_requested !== null ? (int) $job->challenges_requested : null,
+            'squadsDone' => $job->squads_done !== null ? (int) $job->squads_done : null,
+            'squadsTotal' => $job->squads_total !== null ? (int) $job->squads_total : null,
+            'solvesDone' => $job->solves_done !== null ? (int) $job->solves_done : null,
+            'solvesTotal' => $job->solves_total !== null ? (int) $job->solves_total : null,
         ] : null;
 
         return [
@@ -108,8 +114,10 @@ final class ItemTracking
      *     progress: array{
      *         coinsDelivered: int|null,
      *         coinsOrdered: int|null,
-     *         challengesSolved: int|null,
-     *         challengesRequested: int|null,
+     *         squadsDone: int|null,
+     *         squadsTotal: int|null,
+     *         solvesDone: int|null,
+     *         solvesTotal: int|null,
      *     }|null,
      * }|null
      */

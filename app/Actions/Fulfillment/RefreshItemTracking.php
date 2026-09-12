@@ -3,8 +3,10 @@
 namespace App\Actions\Fulfillment;
 
 use App\Account\Presenters\ItemTracking;
+use App\Enums\DeliveryPhase;
 use App\Enums\OrderStatus;
 use App\Models\FulfillmentJob;
+use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Suppliers\Exceptions\SupplierUnavailable;
@@ -12,6 +14,7 @@ use App\Suppliers\SupplierRegistry;
 use App\Suppliers\Translation\SupplierStateTranslator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 final class RefreshItemTracking
 {
@@ -36,8 +39,10 @@ final class RefreshItemTracking
      *     progress: array{
      *         coinsDelivered: int|null,
      *         coinsOrdered: int|null,
-     *         challengesSolved: int|null,
-     *         challengesRequested: int|null,
+     *         squadsDone: int|null,
+     *         squadsTotal: int|null,
+     *         solvesDone: int|null,
+     *         solvesTotal: int|null,
      *     }|null,
      * }|null
      */
@@ -88,6 +93,56 @@ final class RefreshItemTracking
         }
 
         try {
+            if ($job->delivery_phase === DeliveryPhase::Challenge && $job->supplier->handlesChallenges()) {
+                /** @var FulfillmentPlacement|null $placement */
+                $placement = $job->placements()
+                    ->where('delivery_phase', DeliveryPhase::Challenge->value)
+                    ->latest('id')
+                    ->first();
+
+                $challengeIds = $placement?->challengeIds() ?? [];
+
+                if ($challengeIds === []) {
+                    Log::warning('No challenge IDs found for challenge placement on fulfillment job {job_id}', [
+                        'job_id' => $job->id,
+                        'order_item_id' => $item->id,
+                    ]);
+
+                    return ItemTracking::for($item, $locale);
+                }
+
+                try {
+                    $client = $this->registry->for($job->supplier);
+                    $bulk = $client->observeChallenges($challengeIds);
+                } catch (SupplierUnavailable) {
+                    return ItemTracking::for($item, $locale);
+                }
+
+                $job->forceFill(['last_viewed_at' => CarbonImmutable::now()])->save();
+
+                $activeChallenge = $this->findActiveChallenge($bulk);
+                $sbcStatus = (string) ($activeChallenge['sbcStatus'] ?? '');
+                $orderStatus = $order instanceof Order ? $order->status : OrderStatus::InProgress;
+
+                $translated = $this->translator->translateChallenge(
+                    $job->supplier,
+                    $sbcStatus,
+                    $activeChallenge ?? [],
+                    $orderStatus,
+                );
+
+                $this->applyObservation->execute(
+                    $job,
+                    $translated,
+                    CarbonImmutable::now(),
+                    $bulk,
+                );
+
+                $item->refresh()->load('fulfillmentJob');
+
+                return ItemTracking::for($item, $locale);
+            }
+
             // Rule 3: Use the POLLING timeout profile (3s connect / 5s total), not the action profile (5s / 12s).
             // A customer pressing refresh already has a value on screen, so a slow supplier should give up quickly
             // rather than hold their request open for twelve seconds. The longer profile is for actions that must land.
@@ -127,5 +182,33 @@ final class RefreshItemTracking
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * Finds the challenge being worked now: the first one in the map that is not
+     * finished, falling back to the last if all are.
+     *
+     * The columns are a summary for lists and sweeps, while the per-challenge detail
+     * lives in the observation for a reader that wants all of it.
+     *
+     * @param  array<string, array<string, mixed>>  $bulk
+     * @return array<string, mixed>|null
+     */
+    private function findActiveChallenge(array $bulk): ?array
+    {
+        $last = null;
+
+        // FftClient::observeChallenges() drops any non-array value before returning,
+        // so every entry here is a challenge object.
+        foreach ($bulk as $challenge) {
+            $last = $challenge;
+            $status = (string) ($challenge['sbcStatus'] ?? '');
+
+            if ($status !== 'finished' && $status !== 'alreadyCompleted') {
+                return $challenge;
+            }
+        }
+
+        return $last;
     }
 }

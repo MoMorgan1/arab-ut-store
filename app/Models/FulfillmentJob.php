@@ -28,8 +28,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $completed_at
  * @property int|null $coins_delivered
  * @property int|null $coins_ordered
- * @property int|null $challenges_solved
- * @property int|null $challenges_requested
+ * @property int|null $squads_done
+ * @property int|null $squads_total
+ * @property int|null $solves_done
+ * @property int|null $solves_total
  * @property int $poll_failure_count
  */
 class FulfillmentJob extends DomainModel
@@ -51,8 +53,10 @@ class FulfillmentJob extends DomainModel
             'attempt_count' => 'integer',
             'coins_delivered' => 'integer',
             'coins_ordered' => 'integer',
-            'challenges_solved' => 'integer',
-            'challenges_requested' => 'integer',
+            'squads_done' => 'integer',
+            'squads_total' => 'integer',
+            'solves_done' => 'integer',
+            'solves_total' => 'integer',
             'poll_failure_count' => 'integer',
             'actual_cost_halalah' => 'integer',
             'next_poll_at' => 'immutable_datetime',

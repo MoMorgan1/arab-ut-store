@@ -160,8 +160,10 @@ test('rule 4: progress is null when every counter is null', function (): void {
     trackingJob($item, [
         'coins_delivered' => null,
         'coins_ordered' => null,
-        'challenges_solved' => null,
-        'challenges_requested' => null,
+        'squads_done' => null,
+        'squads_total' => null,
+        'solves_done' => null,
+        'solves_total' => null,
     ]);
 
     $response = $this->actingAs($owner)
@@ -181,8 +183,10 @@ test('rule 4: progress is populated when counters are present', function (): voi
     trackingJob($item, [
         'coins_delivered' => 50_000,
         'coins_ordered' => 100_000,
-        'challenges_solved' => 2,
-        'challenges_requested' => 5,
+        'squads_done' => 2,
+        'squads_total' => 5,
+        'solves_done' => 1,
+        'solves_total' => 3,
     ]);
 
     $response = $this->actingAs($owner)
@@ -193,8 +197,10 @@ test('rule 4: progress is populated when counters are present', function (): voi
         ->where('order.items.0.tracking.progress', [
             'coinsDelivered' => 50_000,
             'coinsOrdered' => 100_000,
-            'challengesSolved' => 2,
-            'challengesRequested' => 5,
+            'squadsDone' => 2,
+            'squadsTotal' => 5,
+            'solvesDone' => 1,
+            'solvesTotal' => 3,
         ])
     );
 });
@@ -207,8 +213,10 @@ test('rule 4: progress is not null when a counter is zero', function (): void {
     trackingJob($item, [
         'coins_delivered' => 0,
         'coins_ordered' => 250_000,
-        'challenges_solved' => null,
-        'challenges_requested' => null,
+        'squads_done' => null,
+        'squads_total' => null,
+        'solves_done' => null,
+        'solves_total' => null,
     ]);
 
     $response = $this->actingAs($owner)
@@ -219,8 +227,10 @@ test('rule 4: progress is not null when a counter is zero', function (): void {
         ->where('order.items.0.tracking.progress', [
             'coinsDelivered' => 0,
             'coinsOrdered' => 250_000,
-            'challengesSolved' => null,
-            'challengesRequested' => null,
+            'squadsDone' => null,
+            'squadsTotal' => null,
+            'solvesDone' => null,
+            'solvesTotal' => null,
         ])
     );
 });
@@ -393,8 +403,10 @@ test('two items on one order: automated placed item carries tracking while manua
         ->where('order.items.0.tracking.progress', [
             'coinsDelivered' => 200_000,
             'coinsOrdered' => 500_000,
-            'challengesSolved' => null,
-            'challengesRequested' => null,
+            'squadsDone' => null,
+            'squadsTotal' => null,
+            'solvesDone' => null,
+            'solvesTotal' => null,
         ])
         ->where('order.items.1.id', $manualItem->public_id)
         ->where('order.items.1.tracking', null)
@@ -439,8 +451,10 @@ test('ItemTracking presenter direct invocation returns expected shape', function
         'observed_at' => CarbonImmutable::parse('2026-09-12 15:00:00', 'UTC'),
         'coins_delivered' => 100_000,
         'coins_ordered' => 200_000,
-        'challenges_solved' => 1,
-        'challenges_requested' => 1,
+        'squads_done' => 1,
+        'squads_total' => 1,
+        'solves_done' => null,
+        'solves_total' => null,
     ]);
 
     $tracking = ItemTracking::for($item, 'en');
@@ -456,8 +470,10 @@ test('ItemTracking presenter direct invocation returns expected shape', function
         'progress' => [
             'coinsDelivered' => 100_000,
             'coinsOrdered' => 200_000,
-            'challengesSolved' => 1,
-            'challengesRequested' => 1,
+            'squadsDone' => 1,
+            'squadsTotal' => 1,
+            'solvesDone' => null,
+            'solvesTotal' => null,
         ],
     ]);
 });

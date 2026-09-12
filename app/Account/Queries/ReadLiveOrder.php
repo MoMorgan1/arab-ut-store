@@ -89,8 +89,14 @@ final class ReadLiveOrder
                         'observed_at',
                         'coins_delivered',
                         'coins_ordered',
-                        'challenges_solved',
-                        'challenges_requested',
+                        // The same reason as supplier_order_id above: an unselected
+                        // counter reads as null, so the page renders "no progress" for
+                        // a challenge that is halfway through. The rename to squads/
+                        // solves had to reach this list.
+                        'squads_done',
+                        'squads_total',
+                        'solves_done',
+                        'solves_total',
                     ]),
                 ])
                 ->withExists('secret')

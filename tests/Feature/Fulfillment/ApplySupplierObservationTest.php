@@ -758,8 +758,10 @@ it('re-opens polling without un-completing earlier phase when challenge observat
         observedState: 'challenge_running',
         coinsDelivered: null, // Challenge payload does not carry coins
         coinsOrdered: null,
-        challengesSolved: 3,
-        challengesRequested: 10,
+        squadsDone: 3,
+        squadsTotal: 10,
+        solvesDone: null,
+        solvesTotal: null,
     );
 
     $now = CarbonImmutable::parse('2026-09-12 12:00:00');
@@ -787,8 +789,8 @@ it('re-opens polling without un-completing earlier phase when challenge observat
     // Coins progress counters from previous phase were NOT erased
     expect($freshJob->coins_delivered)->toBe(250_000)
         ->and($freshJob->coins_ordered)->toBe(250_000)
-        ->and($freshJob->challenges_solved)->toBe(3)
-        ->and($freshJob->challenges_requested)->toBe(10);
+        ->and($freshJob->squads_done)->toBe(3)
+        ->and($freshJob->squads_total)->toBe(10);
 });
 
 it('never moves a completed order backwards when a challenge observation arrives (Rule 2 + Rule 8)', function (): void {
@@ -825,8 +827,10 @@ it('never moves a completed order backwards when a challenge observation arrives
         allowedActions: [],
         supported: true,
         observedState: 'challenge_running',
-        challengesSolved: 2,
-        challengesRequested: 10,
+        squadsDone: 2,
+        squadsTotal: 10,
+        solvesDone: null,
+        solvesTotal: null,
     );
 
     app(ApplySupplierObservation::class)->execute(
@@ -845,24 +849,45 @@ it('never moves a completed order backwards when a challenge observation arrives
         ->and(OrderStatusHistory::query()->count())->toBe(0);
 });
 
-it('stores challenge observation allowlist keys and drops forbidden fields such as account (Rule 7)', function (): void {
-    [$order, $item, $job] = createObservationContext();
+it('test 9: challenge observations are stored as a map keyed by challenge id, each filtered by the allowlist', function (): void {
+    $challengeId1 = '1803b7a6-0000-0000-0000-00000064265f';
+    $challengeId2 = '2b8e38f6-1111-2222-3333-444455556666';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
 
     $rawPayload = [
-        'challengesDone' => 7,
-        'totalChallenges' => 7,
-        'challengesSubmitted' => 14,
-        'timesSolved' => 2,
-        'timesToSolve' => 2,
-        'sbcStatus' => 'finished',
-        'costCoins' => 546650,
-        'setId' => 702,
-        'sbcSolveID' => '1803b7a6-0000-0000-0000-00000064265f',
-        'account' => 'customer@example.com',
-        'created' => '2026-04-02 17:56:00',
-        'cached' => 0,
-        'sbcName' => 'Icon Challenge',
-        'sbcImageUrl' => 'https://example.test/icon.png',
+        $challengeId1 => [
+            'challengesDone' => 7,
+            'totalChallenges' => 7,
+            'challengesSubmitted' => 14,
+            'timesSolved' => 2,
+            'timesToSolve' => 2,
+            'sbcStatus' => 'finished',
+            'costCoins' => 546650,
+            'setId' => 702,
+            'sbcSolveID' => $challengeId1,
+            'account' => 'customer@example.com',
+            'created' => '2026-04-02 17:56:00',
+            'cached' => 0,
+            'sbcName' => 'Icon Challenge',
+            'sbcImageUrl' => 'https://example.test/icon.png',
+        ],
+        $challengeId2 => [
+            'challengesDone' => 3,
+            'totalChallenges' => 7,
+            'challengesSubmitted' => 6,
+            'timesSolved' => 1,
+            'timesToSolve' => 2,
+            'sbcStatus' => 'solvingChallenge',
+            'costCoins' => 250000,
+            'setId' => 702,
+            'sbcSolveID' => $challengeId2,
+            'cached' => 0,
+        ],
     ];
 
     $state = new TranslatedState(
@@ -870,9 +895,79 @@ it('stores challenge observation allowlist keys and drops forbidden fields such 
         holdReason: null,
         allowedActions: [],
         supported: true,
-        observedState: 'finished',
-        challengesSolved: 2,
-        challengesRequested: 2,
+        observedState: 'solvingChallenge',
+        squadsDone: 3,
+        squadsTotal: 7,
+        solvesDone: 1,
+        solvesTotal: 2,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $freshJob = $job->fresh();
+    $stored = $freshJob->observation;
+
+    expect($stored)->toHaveKeys([$challengeId1, $challengeId2])
+        ->and($stored[$challengeId1])->toHaveKey('sbcStatus', 'finished')
+        ->and($stored[$challengeId1])->toHaveKey('timesSolved', 2)
+        ->and($stored[$challengeId1])->toHaveKey('timesToSolve', 2)
+        ->and($stored[$challengeId1])->toHaveKey('setId', 702)
+        ->and($stored[$challengeId1])->toHaveKey('costCoins', 546650)
+        ->and($stored[$challengeId1])->toHaveKey('challengesDone', 7)
+        ->and($stored[$challengeId1])->toHaveKey('totalChallenges', 7)
+        ->and($stored[$challengeId1])->toHaveKey('challengesSubmitted', 14)
+        ->and($stored[$challengeId1])->toHaveKey('sbcSolveID', $challengeId1)
+        ->and($stored[$challengeId1])->toHaveKey('cached', 0)
+        ->and($stored[$challengeId1])->not->toHaveKey('sbcName')
+        ->and($stored[$challengeId1])->not->toHaveKey('sbcImageUrl')
+        ->and($stored[$challengeId1])->not->toHaveKey('created')
+        ->and($stored[$challengeId2])->toHaveKey('sbcStatus', 'solvingChallenge')
+        ->and($stored[$challengeId2])->toHaveKey('challengesDone', 3)
+        ->and($stored[$challengeId2])->toHaveKey('totalChallenges', 7)
+        ->and($stored[$challengeId2])->toHaveKey('timesSolved', 1)
+        ->and($stored[$challengeId2])->toHaveKey('timesToSolve', 2)
+        // Counters on fulfillment job populated from active (unfinished) challenge
+        ->and($freshJob->squads_done)->toBe(3)
+        ->and($freshJob->squads_total)->toBe(7)
+        ->and($freshJob->solves_done)->toBe(1)
+        ->and($freshJob->solves_total)->toBe(2);
+});
+
+it('test 10: account is absent from every stored inner object', function (): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        $challengeId => [
+            'sbcStatus' => 'solvingChallenge',
+            'account' => 'customer@example.com',
+            'challengesDone' => 1,
+            'totalChallenges' => 5,
+            'timesSolved' => 0,
+            'timesToSolve' => 1,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: 1,
+        squadsTotal: 5,
+        solvesDone: 0,
+        solvesTotal: 1,
     );
 
     app(ApplySupplierObservation::class)->execute(
@@ -884,19 +979,167 @@ it('stores challenge observation allowlist keys and drops forbidden fields such 
 
     $stored = $job->fresh()->observation;
 
-    expect($stored)->toHaveKey('sbcStatus', 'finished')
-        ->and($stored)->toHaveKey('timesSolved', 2)
-        ->and($stored)->toHaveKey('timesToSolve', 2)
-        ->and($stored)->toHaveKey('setId', 702)
-        ->and($stored)->toHaveKey('costCoins', 546650)
-        ->and($stored)->toHaveKey('challengesDone', 7)
-        ->and($stored)->toHaveKey('totalChallenges', 7)
-        ->and($stored)->toHaveKey('challengesSubmitted', 14)
-        ->and($stored)->toHaveKey('sbcSolveID', '1803b7a6-0000-0000-0000-00000064265f')
-        ->and($stored)->toHaveKey('cached', 0)
-        ->and($stored)->not->toHaveKey('account')
-        ->and($stored)->not->toHaveKey('sbcName')
-        ->and($stored)->not->toHaveKey('sbcImageUrl')
-        ->and($stored)->not->toHaveKey('created')
+    expect($stored)->toHaveKey($challengeId)
+        ->and($stored[$challengeId])->not->toHaveKey('account')
         ->and(json_encode($stored))->not->toContain('customer@example.com');
+});
+
+it('test 11: an unnamed inner key is dropped without error', function (): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        $challengeId => [
+            'sbcStatus' => 'solvingChallenge',
+            'unnamedCustomKey' => 'secret_val',
+            'sbcName' => 'Winter Wildcards',
+            'sbcImageUrl' => 'https://example.test/img.png',
+            'supplierInternalRef' => 9999,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: null,
+        squadsTotal: null,
+        solvesDone: null,
+        solvesTotal: null,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $stored = $job->fresh()->observation;
+
+    expect($stored)->toHaveKey($challengeId)
+        ->and($stored[$challengeId]['sbcStatus'])->toBe('solvingChallenge')
+        ->and($stored[$challengeId])->not->toHaveKey('unnamedCustomKey')
+        ->and($stored[$challengeId])->not->toHaveKey('sbcName')
+        ->and($stored[$challengeId])->not->toHaveKey('sbcImageUrl')
+        ->and($stored[$challengeId])->not->toHaveKey('supplierInternalRef');
+});
+
+it('test 12: a malformed challenge id in the response is not used as a storage key', function (): void {
+    $validUuid = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        'not-a-valid-uuid' => [
+            'sbcStatus' => 'started',
+        ],
+        '1803b7a6' => [
+            'sbcStatus' => 'started',
+        ],
+        '../malicious/path' => [
+            'sbcStatus' => 'started',
+        ],
+        $validUuid => [
+            'sbcStatus' => 'solvingChallenge',
+            'challengesDone' => 2,
+            'totalChallenges' => 4,
+            'timesSolved' => 0,
+            'timesToSolve' => 1,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: 2,
+        squadsTotal: 4,
+        solvesDone: 0,
+        solvesTotal: 1,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $stored = $job->fresh()->observation;
+
+    expect($stored)->toHaveKey($validUuid)
+        ->and($stored)->not->toHaveKey('not-a-valid-uuid')
+        ->and($stored)->not->toHaveKey('1803b7a6')
+        ->and($stored)->not->toHaveKey('../malicious/path')
+        ->and(count($stored))->toBe(1);
+});
+
+it('test 13: a coins-phase payload is still stored flat and is unaffected', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Coins,
+        ],
+    );
+
+    $rawPayload = [
+        'status' => 'entered',
+        'amount' => 250,
+        'amountOrdered' => 500,
+        'accountCheck' => 'none',
+        'economyState' => 'none',
+        'toPay' => 100, // forbidden key dropped
+        'passwordAccount' => 'secret-ea-pass', // forbidden key dropped
+        'emailAccount' => 'cust@example.com', // forbidden key dropped
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+        coinsDelivered: 250_000,
+        coinsOrdered: 500_000,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $freshJob = $job->fresh();
+    $stored = $freshJob->observation;
+
+    // Coins-phase payload must remain flat
+    expect($stored)->toHaveKey('status', 'entered')
+        ->and($stored)->toHaveKey('amount', 250)
+        ->and($stored)->toHaveKey('amountOrdered', 500)
+        ->and($stored)->toHaveKey('accountCheck', 'none')
+        ->and($stored)->toHaveKey('economyState', 'none')
+        ->and($stored)->not->toHaveKey('toPay')
+        ->and($stored)->not->toHaveKey('passwordAccount')
+        ->and($stored)->not->toHaveKey('emailAccount')
+        ->and($freshJob->coins_delivered)->toBe(250_000)
+        ->and($freshJob->coins_ordered)->toBe(500_000);
+
+    // Verify it is not nested under any keys
+    foreach ($stored as $value) {
+        expect(is_array($value))->toBeFalse();
+    }
 });

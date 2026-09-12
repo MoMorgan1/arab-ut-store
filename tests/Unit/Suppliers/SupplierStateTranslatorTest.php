@@ -219,14 +219,14 @@ test('progress is carried only when the payload carries it', function (): void {
 
     expect($translated->coinsDelivered)->toBe(1500)
         ->and($translated->coinsOrdered)->toBe(2000)
-        ->and($translated->challengesSolved)->toBe(3)
-        ->and($translated->challengesRequested)->toBe(4)
-        ->and($guessedNames->challengesSolved)->toBeNull()
-        ->and($guessedNames->challengesRequested)->toBeNull()
+        ->and($translated->squadsDone)->toBe(3)
+        ->and($translated->squadsTotal)->toBe(4)
+        ->and($guessedNames->squadsDone)->toBeNull()
+        ->and($guessedNames->squadsTotal)->toBeNull()
         ->and($missing->coinsDelivered)->toBeNull()
         ->and($missing->coinsOrdered)->toBeNull()
-        ->and($missing->challengesSolved)->toBeNull()
-        ->and($missing->challengesRequested)->toBeNull();
+        ->and($missing->squadsDone)->toBeNull()
+        ->and($missing->squadsTotal)->toBeNull();
 });
 
 test('unusable progress values become null', function (): void {
@@ -245,7 +245,7 @@ test('unusable progress values become null', function (): void {
 
     expect($translated->coinsDelivered)->toBeNull()
         ->and($translated->coinsOrdered)->toBeNull()
-        ->and($translated->challengesSolved)->toBeNull();
+        ->and($translated->squadsDone)->toBeNull();
 });
 
 test('translated strings stay ASCII', function (): void {
@@ -418,4 +418,146 @@ test('no supplier code is denied its tracker actions because its hold is automat
     }
 
     expect($silent)->toBe([]);
+});
+
+test('finished and alreadyCompleted each resolve to a completed state; a status containing but not equal to a finished word does not', function (): void {
+    $translator = new SupplierStateTranslator;
+
+    $finished = $translator->translateChallenge(Supplier::Fft, 'finished', [], OrderStatus::InProgress);
+    $alreadyCompleted = $translator->translateChallenge(Supplier::Fft, 'alreadyCompleted', [], OrderStatus::InProgress);
+    $unfinished = $translator->translateChallenge(Supplier::Fft, 'unfinished', [], OrderStatus::InProgress);
+
+    expect($finished->status)->toBe(OrderStatus::Completed)
+        ->and($finished->supported)->toBeTrue()
+        ->and($finished->holdReason)->toBeNull()
+        ->and($finished->allowedActions)->toBe([])
+        ->and($alreadyCompleted->status)->toBe(OrderStatus::Completed)
+        ->and($alreadyCompleted->supported)->toBeTrue()
+        ->and($alreadyCompleted->holdReason)->toBeNull()
+        ->and($alreadyCompleted->allowedActions)->toBe([])
+        ->and($unfinished->status)->toBe(OrderStatus::InProgress)
+        ->and($unfinished->supported)->toBeFalse()
+        ->and($unfinished->holdReason)->toBeNull()
+        ->and($unfinished->allowedActions)->toBe([]);
+});
+
+test('an active progress status is InProgress with no hold reason', function (string $activeStatus): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(Supplier::Fft, $activeStatus, [], OrderStatus::InProgress);
+
+    expect($translated->status)->toBe(OrderStatus::InProgress)
+        ->and($translated->supported)->toBeTrue()
+        ->and($translated->holdReason)->toBeNull()
+        ->and($translated->allowedActions)->toBe([]);
+})->with([
+    'entered' => ['entered'],
+    'waitingForOtherSolve' => ['waitingForOtherSolve'],
+    'started' => ['started'],
+    'fetchSBCInfo' => ['fetchSBCInfo'],
+    'fetchChallengeInfo' => ['fetchChallengeInfo'],
+    'solvingChallenge' => ['solvingChallenge'],
+]);
+
+test('WrongUserPass offers edit and retry; WrongBA the same', function (string $credentialError, OrderHoldReason $expectedHold): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(Supplier::Fft, $credentialError, [], OrderStatus::InProgress);
+
+    expect($translated->status)->toBe(OrderStatus::WaitingForCustomer)
+        ->and($translated->holdReason)->toBe($expectedHold)
+        ->and($translated->allowedActions)->toContain(SupplierAction::EditCredentials)
+        ->and($translated->allowedActions)->toContain(SupplierAction::RetryChallenge);
+})->with([
+    'WrongUserPass' => ['WrongUserPass', OrderHoldReason::Credentials],
+    'WrongBA' => ['WrongBA', OrderHoldReason::BackupCodes],
+]);
+
+test('LoginFailed401 offers retry only and EditCredentials is strictly absent', function (): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(Supplier::Fft, 'LoginFailed401', [], OrderStatus::InProgress);
+
+    expect($translated->allowedActions)->toContain(SupplierAction::RetryChallenge)
+        ->and($translated->allowedActions)->not->toContain(SupplierAction::EditCredentials)
+        ->and($translated->status)->toBe(OrderStatus::InProgress)
+        ->and($translated->holdReason)->toBe(OrderHoldReason::EaServers);
+});
+
+test('a status in neither the retryable set nor the edit pair offers no actions', function (string $status, OrderHoldReason $expectedHold, OrderStatus $expectedStatus): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(Supplier::Fft, $status, [], OrderStatus::InProgress);
+
+    expect($translated->allowedActions)->toBe([])
+        ->and($translated->holdReason)->toBe($expectedHold)
+        ->and($translated->status)->toBe($expectedStatus)
+        ->and($translated->supported)->toBeTrue();
+})->with([
+    'needEmailConfirm' => ['needEmailConfirm', OrderHoldReason::Credentials, OrderStatus::WaitingForCustomer],
+    '2FADisabled' => ['2FADisabled', OrderHoldReason::Credentials, OrderStatus::WaitingForCustomer],
+    'failedNoClub' => ['failedNoClub', OrderHoldReason::NoClub, OrderStatus::WaitingForCustomer],
+    'TMLocked' => ['TMLocked', OrderHoldReason::MarketLocked, OrderStatus::WaitingForCustomer],
+    'dailyReceiverLimit' => ['dailyReceiverLimit', OrderHoldReason::Paused, OrderStatus::InProgress],
+]);
+
+test('an unknown sbcStatus comes back supported false, no actions, no hold reason, and canonical status unchanged', function (): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        'CompletelyUnknownSbcStatusCode',
+        ['challengesDone' => 1, 'totalChallenges' => 7],
+        OrderStatus::WaitingForCustomer,
+    );
+
+    expect($translated->supported)->toBeFalse()
+        ->and($translated->status)->toBe(OrderStatus::WaitingForCustomer)
+        ->and($translated->holdReason)->toBeNull()
+        ->and($translated->allowedActions)->toBe([])
+        ->and($translated->observedState)->toBe('CompletelyUnknownSbcStatusCode')
+        ->and($translated->squadsDone)->toBe(1)
+        ->and($translated->squadsTotal)->toBe(7);
+});
+
+test('all four counters land in the right fields from raw payload keys', function (): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        'started',
+        [
+            'challengesDone' => 3,
+            'totalChallenges' => 7,
+            'timesSolved' => 1,
+            'timesToSolve' => 2,
+        ],
+        OrderStatus::InProgress,
+    );
+
+    expect($translated->squadsDone)->toBe(3)
+        ->and($translated->squadsTotal)->toBe(7)
+        ->and($translated->solvesDone)->toBe(1)
+        ->and($translated->solvesTotal)->toBe(2);
+});
+
+test('over-delivery is stored unclamped', function (): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        'started',
+        [
+            'challengesDone' => 8,
+            'totalChallenges' => 7,
+            'timesSolved' => 3,
+            'timesToSolve' => 2,
+        ],
+        OrderStatus::InProgress,
+    );
+
+    expect($translated->squadsDone)->toBe(8)
+        ->and($translated->squadsTotal)->toBe(7)
+        ->and($translated->solvesDone)->toBe(3)
+        ->and($translated->solvesTotal)->toBe(2);
 });
