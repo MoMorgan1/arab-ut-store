@@ -376,31 +376,83 @@ final class ApplySupplierObservation
     }
 
     /**
-     * Recursively masks email addresses in supplier payload before database storage.
+     * The only supplier keys that may be stored, derived from live responses on
+     * 2026-09-12 rather than from documentation.
      *
-     * FFT status payloads can carry the customer's EA account email address.
-     * To protect customer PII, we reduce the local part of any email address to its
-     * first character plus a fixed three dots while preserving the domain.
-     * Diagnostic supplier strings, status codes, and counters are preserved verbatim.
+     * This is an allowlist on purpose, because the blocklist that preceded it
+     * lost. It masked anything shaped like an email address and stored
+     * everything else - and UTT's getOrder returns `passwordAccount`, the
+     * customer's EA password in plaintext, on every single status poll. The
+     * sweep reads that endpoint for the life of an order, so the old version
+     * would have written a customer's password into our own database
+     * repeatedly, in a column we keep forever for diagnosis.
+     *
+     * FFT's response likewise carries `toPay` and `sellerReceives` - what we
+     * pay the supplier. Deliberately absent below: our margin has no business
+     * in a row anything customer-facing might one day read.
+     *
+     * A key not named here is dropped, not masked, and dropped silently: the
+     * key names themselves say what to go looking for.
+     *
+     * @var list<string>
+     */
+    private const array STORABLE_OBSERVATION_KEYS = [
+        // FFT status vocabulary and progress
+        'status',
+        'accountCheck',
+        'accountCheckLong',
+        'economyState',
+        'economyStateLong',
+        'amountOrdered',
+        'amount',
+        'coinsUsed',
+        'externalOrderID',
+        'coinsCustomerAccount',
+        'wasAborted',
+        'knownClub',
+        'cached',
+        'simplifiedStatus',
+        // Added by UttClient when it maps UTT into FFT's shape
+        'platform',
+        '_supplier',
+        '_uttStatusOrder',
+        '_uttIdOrder',
+        // Challenge progress, read by the translator
+        'challengesDone',
+        'totalChallenges',
+        'challenges',
+    ];
+
+    /**
+     * Reduces a supplier payload to the keys we are willing to keep, then masks
+     * any address embedded in the free-text values that survive.
+     *
+     * `accountCheckLong` and `economyStateLong` are the supplier's own prose and
+     * can mention the account, so the email sweep stays as a second layer over
+     * the allowlist rather than instead of it.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
     private function maskRawPayload(array $payload): array
     {
-        $masked = [];
+        $stored = [];
 
         foreach ($payload as $key => $value) {
+            if (! in_array($key, self::STORABLE_OBSERVATION_KEYS, true)) {
+                continue;
+            }
+
             if (is_array($value)) {
-                $masked[$key] = $this->maskRawPayload($value);
+                $stored[$key] = $this->maskRawPayload($value);
             } elseif (is_string($value)) {
-                $masked[$key] = $this->maskStringEmails($value);
+                $stored[$key] = $this->maskStringEmails($value);
             } else {
-                $masked[$key] = $value;
+                $stored[$key] = $value;
             }
         }
 
-        return $masked;
+        return $stored;
     }
 
     /**

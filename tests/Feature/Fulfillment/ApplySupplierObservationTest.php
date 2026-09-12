@@ -661,20 +661,27 @@ it('does not fire completion effects on non-completing observations (Rule 6)', f
     Notification::assertNothingSent();
 });
 
-it('masks customer email in raw payload before storing in the observation column (Rule 7)', function (): void {
+it('stores only allowlisted supplier keys and masks addresses in the prose that survives (Rule 7)', function (): void {
     [$order, $item, $job] = createObservationContext();
 
+    // Shaped like the real responses read on 2026-09-12: UTT returns the
+    // customer's account name, address, password and backup codes on every
+    // status poll, and FFT returns what we pay the supplier.
     $rawPayload = [
-        'orderID' => 'FFT-123456',
         'status' => 'entered',
-        'ea_email' => 'fifa_customer@example.com',
-        'account_details' => [
-            'email' => 'nested_account@ea.origin.com',
-            'state' => 'challenge_running',
-        ],
-        'note' => 'login failed for fifa_customer@example.com',
-        'contact' => 'Customer <fifa_customer@example.com>',
         'amount' => 250,
+        'amountOrdered' => 500,
+        'accountCheck' => 'wrongUserPass',
+        'accountCheckLong' => 'login failed for fifa_customer@example.com',
+        'nameAccount' => 'Mohamed Abdallah',
+        'emailAccount' => 'fifa_customer@example.com',
+        'passwordAccount' => 'a-real-password',
+        'backupCodes' => '11111111,22222222',
+        'toPay' => 3.1008,
+        'sellerReceives' => 2.7910,
+        'moneySpent' => '31.20',
+        'publicSaleStocks' => '159,1.04',
+        'somethingTheSupplierAddedLater' => 'unexpected',
     ];
 
     $state = new TranslatedState(
@@ -696,14 +703,26 @@ it('masks customer email in raw payload before storing in the observation column
     $freshJob = $job->fresh();
     $stored = $freshJob->observation;
 
-    // Emails must be masked to first character plus fixed dots with domain preserved
-    expect($stored['ea_email'])->toBe('f...@example.com')
-        ->and($stored['account_details']['email'])->toBe('n...@ea.origin.com')
-        ->and($stored['note'])->toBe('login failed for f...@example.com')
-        ->and($stored['contact'])->toBe('Customer <f...@example.com>')
-        ->and($stored['status'])->toBe('entered')
-        ->and($stored['orderID'])->toBe('FFT-123456')
-        ->and($stored['amount'])->toBe(250);
+    // Dropped, not masked: asserted by absence of the key, because a masked
+    // value still records that the field was there and what to look for.
+    foreach ([
+        'nameAccount', 'emailAccount', 'passwordAccount', 'backupCodes',
+        'toPay', 'sellerReceives', 'moneySpent', 'publicSaleStocks',
+        'somethingTheSupplierAddedLater',
+    ] as $forbidden) {
+        expect($stored)->not->toHaveKey($forbidden);
+    }
+
+    // The password must not survive anywhere in the row, under any key.
+    expect(json_encode($stored))->not->toContain('a-real-password');
+
+    // What we do keep, including the supplier's prose with the address masked
+    // out of it rather than the whole field discarded.
+    expect($stored['status'])->toBe('entered')
+        ->and($stored['amount'])->toBe(250)
+        ->and($stored['amountOrdered'])->toBe(500)
+        ->and($stored['accountCheck'])->toBe('wrongUserPass')
+        ->and($stored['accountCheckLong'])->toBe('login failed for f...@example.com');
 });
 
 it('re-opens polling without un-completing earlier phase when challenge observation arrives on completed coins job (Rule 8)', function (): void {
