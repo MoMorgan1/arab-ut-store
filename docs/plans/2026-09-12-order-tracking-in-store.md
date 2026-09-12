@@ -81,7 +81,10 @@ one is a security regression the first would otherwise introduce.
 Tests: revoked device, expired device, wrong-user device, no device, Google login path, WhatsApp
 login path, and a stale marker.
 
-**A2. Rotate the supplier keys.** Mohamed rotates FFT and UTT and distributes them to **both** the
+**A2. Rotate the supplier keys.** Not housekeeping: both keys sit in plaintext in the tracker's
+`config.php` on a host that is about to be retired, and during this work a review agent read that
+file and copied the values into its own transcript. Treat them as already disclosed. Mohamed
+rotates FFT and UTT and distributes them to **both** the
 store's `shared/.env` and n8n — n8n still places orders and runs the pricing and catalog workflows
 against these suppliers.
 
@@ -167,6 +170,13 @@ order, aggregates items to the order conservatively, and fires completion effect
 review invite) exactly once regardless of which path completed the order. A supplier cancellation
 never produces `refunded`.
 
+**Deciding what not to store is part of this task.** An FFT status payload can carry the
+customer's EA account email - the tracker masks it before the browser for exactly that reason - and
+`RawSupplierObservation::toArray()` hands it over raw, by design, because capture and redaction are
+different jobs. The raw capture stops here: whatever writes the `observation` column decides what
+is masked first, and that decision is written down rather than left to whoever reads the column
+next.
+
 **Observation ordering stays a requirement here** even though the batch endpoint is gone. Dropping
 that endpoint removed one source of out-of-order arrivals — a late batch — but not the other: the
 sweep and a customer's refresh press can read the same job at the same time and finish in either
@@ -221,6 +231,13 @@ needs a real operation model, because the supplier can return HTTP 200 and still
 the change: credential versions, `pending`/`applied`/`failed` state, concurrency control, and
 semantic validation of the response, not just its status code. Otherwise stored credentials
 silently disagree with the supplier while the page says success. Rate limited per order.
+
+**A challenge retry must prove the challenge belongs to the order.** Found in review, 2026-09-12:
+the tracker validates a retry twice - the challenge id's format, and that the challenge is
+actually on that order (`api-handlers.php:1852-1860`, which answers `403 SBC_NOT_IN_ORDER`). The
+supplier client built in B1 does neither; it strips the prefix and posts. So the ownership check
+has to live here, or a crafted request retries a different customer's challenge through our own
+credentials.
 
 **D2. Signed per-order link.** A random token bound to one order, stored hashed, never expiring,
 serving the C4 presenter. Read for the life of the order; actions refuse once terminal.
