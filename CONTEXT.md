@@ -74,6 +74,23 @@ customer-facing concept. It is translated into an Order Status plus a Hold Reaso
 correcting account credentials, resuming a stopped delivery, retrying a failed challenge.
 Owner rule, 2026-09-12: the customer keeps full control of these.
 
+**The customer never reads about our plumbing.** Owner rule, 2026-09-12. No customer-facing
+string names a Supplier, a poll, an integration, or a lookup that failed, and none reports what we
+are doing internally about it. Two reasons, and the second is the one that keeps getting missed:
+the customer cannot act on the fact that a supplier API did not answer, **and explaining the
+mechanism is how machine-written copy gives itself away** - on a store whose product is trust, that
+costs money. His words: "`دي تفاصيل كتيرة مش لازم الزبون يعرفها تماما ... وكمان بتبين ان الشغل بالـai`".
+
+Where a state exists only because of our internals, name it from the customer's side or show less.
+Two worked examples, both from the tracking canvas: an item placed with a Supplier that has not
+answered yet is `جاري المعالجة` / `طلبك قيد التنفيذ` and nothing more - the tracker's own default
+branch, no new sentence; and an observation we could not read shows the Order's own status with the
+progress card simply **absent**, because an absent card says nothing untrue while a card explaining
+that automated lookup failed says something the customer neither needs nor can use.
+
+This sharpens the brevity rule rather than repeating it. Brevity bans explanations; this bans a
+whole subject.
+
 ## Nothing arrives from a Supplier. We ask, or we do not know.
 
 Owner's correction, 2026-09-12, and the single most load-bearing fact about this integration.

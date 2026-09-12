@@ -74,6 +74,22 @@ Decided 2026-09-12, briefing the C3 canvas:
   today, so an admin surface to enter it is implied.
 - **The WhatsApp link stays in n8n**, inside the fulfillment automation. The store does not send it.
 
+- **The visual layer is part of the port, not decoration around it.** Seeing the first canvas the
+  owner said his own site looks better, and he is right: `ring.js` is a canvas living-gold ring with
+  drifting embers, a breathing glow and a completion burst of shockwave plus coin-sparks, pausing its
+  own loop off-screen and drawing one static frame under `prefers-reduced-motion`; `styles.css`
+  carries 29 keyframes including the sheen that travels along the progress fill; and `fx.js` adds a
+  fine-pointer-only 3D tilt and magnetic buttons. His instruction: "`عايزه برضو نفس موشنز وايكونز وكل
+  تفاصيل الاساسي متهملهمش مع النقل ... اعتمد نفس الموقع الحالي يعني على الأقل انقله تماما ونبقى نعدل
+  عليه`". Port it, then adjust from there.
+- **The icon glyphs are the tracker's; the icon library is the store's.** The tracker loads Font
+  Awesome 6.4.0 for 41 glyphs. The store keeps `lucide-react` and draws the same glyphs in lucide's
+  geometry, because a second icon font for forty glyphs costs a download and puts two visual
+  vocabularies on one page. WhatsApp is a brand mark lucide does not carry; the store already draws it
+  in `resources/js/components/account/app-icon.tsx`.
+- **The customer never reads about our plumbing.** Recorded in `CONTEXT.md`; it killed four strings
+  the first canvas invented and it applies to every customer surface, not only tracking.
+
 ## Objectives is not sellable, and that is accepted for now
 
 Owner decision, 2026-09-12: Objectives is not needed at the moment, so this stays as it is.
