@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Auth\AdminMfaSession;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -9,6 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class EnsureAdminMfa
 {
+    public function __construct(private readonly AdminMfaSession $mfaSession) {}
+
     /** @param Closure(Request): Response $next */
     public function handle(Request $request, Closure $next): Response
     {
@@ -22,7 +25,7 @@ final class EnsureAdminMfa
             return redirect()->to(route($prefix.'settings', absolute: false));
         }
 
-        if ($request->hasSession() && ! $request->session()->has('auth.two_factor_confirmed_at')) {
+        if ($request->hasSession() && ! $this->mfaSession->satisfied($user, $request)) {
             return redirect()->guest(route($prefix.'confirm-2fa', absolute: false));
         }
 

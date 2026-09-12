@@ -5,6 +5,7 @@ use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\CartItemSecret;
 use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -53,6 +54,18 @@ function promotedCheckoutCart(array $overrides = []): array
             'price_version' => 3,
         ],
     ]);
+    $secret = new CartItemSecret([
+        'cart_item_id' => $item->id,
+        'masked_summary' => ['has_password' => true, 'backup_code_count' => 3],
+        'retained_until' => null,
+        'deleted_at' => null,
+    ]);
+    $secret->encrypted_payload = [
+        'ea_email' => 'promo@example.test',
+        'ea_password' => 'Opaque password',
+        'backup_codes' => ['12345678', '23456789', '34567890'],
+    ];
+    $secret->save();
 
     return compact('user', 'cart', 'item', 'variant');
 }

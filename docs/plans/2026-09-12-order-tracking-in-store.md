@@ -26,6 +26,71 @@ twenty-five issues in the first draft. Awaiting owner approval before any brief 
 - EA credentials ride in the placement payload; the durable outbox row stays secret-free.
 - Phone is the primary viewport; verify 390px first. No input under `1rem`.
 
+Added 2026-09-12, after the first implementation round:
+
+- **The customer controls everything.** Adopt the tracker's button sets as they are, for every
+  hold reason. The "we will retry and update you" wording came from Salla's constraints; on the
+  tracking link the customer has always had the controls, and that is what the owner wants kept.
+  So the reason's class still decides the canonical status, but the actions come from the tracker's
+  `showEditStates` / `showResumeStates` with no exceptions carved out.
+- **Manual orders take everything**: pick an existing customer or add one, pick an existing
+  product or add one, and so on through the form. Not a narrowed subset.
+- **Objectives is a manual service.** `CONTEXT.md` was right and the enum was wrong.
+- **The activation gate is documentation, not a blocker right now**: the store is taking no orders
+  at all while FIFA 26 winds down, so there is nothing to strand. It becomes real again the day
+  orders resume - see the gate section below.
+
+## Objectives is not sellable, and that is accepted for now
+
+Owner decision, 2026-09-12: Objectives is not needed at the moment, so this stays as it is.
+
+**Do not "fix" this by reverting the required-secret change in `PlaceOrder`.** That would restore
+a worse bug, not repair a feature.
+
+The facts, because I got them wrong once already and wrote the wrong version into a commit
+message. Every service that carries EA credentials has its own add-to-cart action that collects
+them: `AddCoinsToCart`, `AddSbcToCart`, `AddRivalsToCart`, `AddFutChampionsToCart`. Objectives goes
+through the generic `AddCatalogItemToCart`, which collects nothing. The cart then *displays* that
+credentials are needed - `CartController::credentialsKind()` returns `'sbc'` for Objectives by
+default - but no path anywhere collects them, and `CartItemCredentialsController` is limited to
+Rivals and FutChampions. So Objectives is the only credential-bearing service with no way to
+supply credentials.
+
+That is why the credentials were being dropped at checkout: `PlaceOrder` had nothing to save. It
+has always been this way; requiring the secret did not create the gap, it made it visible and
+moved the failure before payment instead of after it. Today a customer reaching checkout is
+stopped, and shown the generic "cart or prices changed" message, which cannot help them.
+
+Making Objectives work needs an `AddObjectivesToCart` path collecting credentials the way the SBC
+path does, a cart-side entry point, and `CartItemCredentialsController` widened to accept it. That
+is a new interface, so it goes through a `/design` canvas before code, per `CLAUDE.md`.
+
+## The tracker's behaviour is the specification
+
+Owner instruction, 2026-09-12, after five corrections in one day: **port what
+`track.arab-ut.com` does. Do not redesign it.** The site is mature, it has been in front of real
+customers, and every one of its apparent oddities so far has turned out to encode something true
+about the suppliers or the customers.
+
+The tally, because it is the argument for the rule rather than an apology:
+
+| I changed | The tracker had | Who was right |
+| --- | --- | --- |
+| `loginFailed` to a credentials hold with an edit button | EA-server hold, resume only | the tracker |
+| `abort` to `Cancelled` | stopped, resumable | the tracker |
+| automatic-recovery reasons to show no buttons | every reason keeps its buttons | the tracker |
+| flagged the `store_stock` resume button as unhelpful | offers it anyway | the tracker |
+| challenge progress to one counter | two tracks, squads and solves | the tracker |
+
+Every deviation ran the same direction: reasoning from first principles about a domain the working
+implementation already had right. So the default is now inverted. **Match the tracker unless the
+owner says otherwise, and write down any deviation he approves along with his reason.**
+
+This does not extend to the three things that are ours rather than the tracker's: canonical
+`OrderStatus` (the store's spine, which the tracker has no concept of), what we persist (the
+tracker stores nothing, we have an allowlist because the suppliers return passwords), and security
+boundaries. Those are store concerns and the tracker is not evidence about them.
+
 ## Blocked on Mohamed
 
 - Export of `Fulfillment v14` and of the order-status workflow.
@@ -81,7 +146,10 @@ one is a security regression the first would otherwise introduce.
 Tests: revoked device, expired device, wrong-user device, no device, Google login path, WhatsApp
 login path, and a stale marker.
 
-**A2. Rotate the supplier keys.** Mohamed rotates FFT and UTT and distributes them to **both** the
+**A2. Rotate the supplier keys.** Not housekeeping: both keys sit in plaintext in the tracker's
+`config.php` on a host that is about to be retired, and during this work a review agent read that
+file and copied the values into its own transcript. Treat them as already disclosed. Mohamed
+rotates FFT and UTT and distributes them to **both** the
 store's `shared/.env` and n8n — n8n still places orders and runs the pricing and catalog workflows
 against these suppliers.
 
@@ -167,11 +235,54 @@ order, aggregates items to the order conservatively, and fires completion effect
 review invite) exactly once regardless of which path completed the order. A supplier cancellation
 never produces `refunded`.
 
+**A later phase arriving on a finished job must re-open polling.** Found while building B3,
+2026-09-12, and confirmed by reading rather than assumed: a challenge placement recorded against a
+job whose coins phase already completed is stored correctly, but nothing resets `status` or
+`next_poll_at`, so the challenge is never polled. The job looks finished and the challenge runs
+unobserved at the supplier. This is the phase-progression half of reconciliation and it belongs
+here: B3 deliberately does not let a second placement touch job lifecycle, because a second phase
+must not make a finished first phase look unfinished either. Both halves are this task's problem -
+re-open polling for the new phase without un-completing the old one.
+
+**Deciding what not to store is part of this task.** An FFT status payload can carry the
+customer's EA account email - the tracker masks it before the browser for exactly that reason - and
+`RawSupplierObservation::toArray()` hands it over raw, by design, because capture and redaction are
+different jobs. The raw capture stops here: whatever writes the `observation` column decides what
+is masked first, and that decision is written down rather than left to whoever reads the column
+next.
+
 **Observation ordering stays a requirement here** even though the batch endpoint is gone. Dropping
 that endpoint removed one source of out-of-order arrivals — a late batch — but not the other: the
 sweep and a customer's refresh press can read the same job at the same time and finish in either
 order. So an observation older than the one already stored is discarded, and the per-job lock from
 decision 13 is what makes that check meaningful rather than racy.
+
+**Three boundaries B5 cannot decide on its own**, found in review 2026-09-12 and left stated
+rather than guessed:
+
+- **A partially-cancelled order stalls.** Any `Cancelled` item makes "every item completed"
+  unreachable, so an order whose remaining item finishes sits in `InProgress` for good - no
+  cashback, no review invite - until a human acts. That follows correctly from "an observation
+  never cancels an order", but somebody has to decide what a part-cancelled order's completion
+  means, and it is not the reconciler.
+- **Item status is not monotonic.** A `Completed` item on a still-open multi-item order can move
+  backwards under the phase-progression rule. Once the ORDER completes, the terminal rule freezes
+  everything, so the exposure is bounded to open orders.
+- **`order_items.order_id` is immutable only by convention.** Nothing updates it today, which is
+  what makes the unlocked read of it safe before the transaction opens. The day someone adds a
+  "move an item between orders" writer, that read becomes wrong silently.
+
+**A challenge id the supplier does not recognise belongs here too.** `observeChallenges()` is bulk
+and answers only about the ids it knows, so an id we asked about can simply be absent. That is not
+an error and not zero progress: the reader keeps the job's existing counters and applies whatever
+did come back, per the same fail-closed rule that governs an unknown status code. But an id that
+stays absent across several sweeps means the challenge is not where we think it is, and that must
+reach Mohamed rather than spin forever.
+
+The implementer proposed a new hold reason for it. It is not one - the enum has seventeen values,
+all of them things a customer reads, and "FFT does not recognise this challenge id" is an operator
+problem. It is the same shape as a paid item with no placement row, which is what this task
+already exists to surface.
 
 **B6. Silence alarm.** An automated paid item with no placement row after a bounded wait is
 surfaced to Mohamed. Covers "n8n placed successfully and its callback was lost", which n8n cannot
@@ -189,14 +300,88 @@ thirty seconds per viewer. Refresh goes through a separate bounded request, de-d
 per-job lock so concurrent viewers cause one supplier call. Manual-service items carry status
 only.
 
+**Two items inherited from the Objectives fix, 2026-09-12, both needing an owner call:**
+
+- **A missing EA secret at checkout tells the customer the wrong thing.** `PlaceOrder` raises
+  `CheckoutUnavailable('EA account details are required.')`, but the Paylink checkout controller
+  folds every non-phone `CheckoutUnavailable` into the generic "your cart or prices have changed,
+  refresh and try again". A customer whose credentials went missing is told to refresh, which
+  cannot help them. The fix is a distinct error for that case and copy that names the actual next
+  action.
+- **Objectives is the only service not held to `quantity === 1`.** It now binds to one EA
+  credential snapshot per item, so a quantity above one is ambiguous: is it several completions on
+  one account, or a mistake? Decide before it matters, because the ambiguity is in orders already
+  placeable today.
+
 **C2. Copy and the refund unfolding** (Claude; Mohamed approves the texts). Stop folding
 `Refunded` in **both** `OrderStatus::forCustomer()` and `OrderItemStatus::forCustomer():16`. The
 assertions that will fail are `tests/Feature/Account/AccountOrdersTest.php:309` and `:334` — the
 parity tests check enum/label coverage, not folding. Revise the cancellation wording at
 `lang/{ar,en}/orders.php:8`. Keep raw status driving financial logic. Then the hold-reason work:
 separate reason text from contextual action copy, and change only the reasons that actually tell
-the customer to message us — several already describe automatic recovery and must not be given a
-button. Gulf-leaning simple Arabic, no Egyptian slang.
+the customer to message us - several already describe automatic recovery and must not be given a
+button.
+
+**The disagreements are already enumerated, so this decision arrives with evidence rather than as
+an abstract question.** Produced by the B2 work, 2026-09-12, comparing each reason's text in
+`lang/ar/orders.php:19-36` against the actions the translation layer now offers for the supplier
+codes that resolve to it:
+
+*Our text promises automatic recovery, but a Resume button appears next to it:*
+`ea_servers` (via `loginFailed`), `connection` (via `FailedProxyConnectionError`,
+`FailProxyUnavailable`), `no_player` (via `noSuitableSender`, `noPlayer`), and `paused` (via
+`dailyReceiverLimit` and the stopped-status fallback, though not via `tempbanCooldown`,
+`listingTempban` or `deactivated`, which offer nothing).
+
+**Resolved by the owner, 2026-09-12: the text changes, not the button.** Keep every button the
+tracker offers, for every reason, and revise the Arabic so it stops promising automatic recovery
+where a control exists. The Salla-era wording was written for a page with no controls on it; the
+tracking link has always given the customer the actions, and full customer control is the point.
+
+`store_stock` deserves a note, because it was raised as a doubt and the owner's answer settles it.
+The reason comes from the supplier telling us OUR float is short, so a press may not succeed yet -
+and that is precisely why the button belongs there. The float gets topped up at any time and the
+customer has no way of knowing when; pressing resume is the cheapest way for them to find out it
+worked, and a press that fails costs nothing and can be repeated. So the copy only needs to avoid
+promising immediacy. It must not tell the customer to wait for us.
+
+Retry pressure is already bounded elsewhere: D1 rate limits actions per order, and B1's
+per-supplier limiter sits under both the sweep and the button.
+
+*Our text asks for something the offered buttons do not do:*
+`credentials` asks the customer to correct the order form, but the three 2FA codes resolving to it
+offer only Resume; `platform` and `account_banned` both say "راسلنا" while buttons appear;
+`market_locked` asks the customer to play matches or supply another account, which neither button
+does; `no_club` matches on Resume but carries an extra Edit.
+
+*Text and actions already agree:* `backup_codes`, `insufficient_coins`, `active_session`,
+`transfer_list_full`, `captcha`, `unassigned`, `store_stock`, `maintenance`.
+
+Gulf-leaning simple Arabic, no Egyptian slang.
+
+**The optimistic window after an action is not a timer, and porting it as one loses the point.**
+The owner described it as "a temporary state for ten seconds", and the tracker's implementation is
+better than that: `isRetryGraceActive` (`assets/js/ui.js:250`) suppresses the stale error until
+**whichever comes first** - the grace deadline passes, or `statusShowsRetryStarted()` sees the real
+state actually move. The moment a poll shows movement the optimistic state stands aside, and if
+nothing moves the error returns on its own.
+
+Both halves matter. A plain ten-second timer brings the error back while the retry is genuinely
+under way, which reads as a failure that has not happened; and an optimistic state with no
+deadline hides a real second failure indefinitely. The grace is also held in `sessionStorage`
+(`ui.js:1032`) so it survives the page's own reloads, which it must, because the page reloads
+while the window is open.
+
+Port the condition, not the duration.
+
+**Progress is capped at 100%, and the raw counters are not.** Owner decision, 2026-09-12: both
+suppliers over-deliver slightly - 3,000,150 coins against 3,000,000 ordered, 502K against 500K -
+and 150 coins on three million is noise rather than information. The bar stops at 100%. The
+tracker already does exactly this (`Math.min((delivered / total) * 100, 100)`, `ui.js:530`), so
+this is agreement rather than a new rule.
+
+What we store stays whatever the supplier said. Clamping belongs to the display; rewriting the
+observation to fit the bar would be falsifying the record to protect a progress bar.
 
 **C3. Canvas, then the port** (canvas: Claude; port: DeepSeek). A `/design` canvas leading with
 390px: the ring, the progress bar, the three stat boxes, the action box, the challenge cards,
@@ -216,11 +401,37 @@ and no analytics at all.
 ## Slice D — actions and notifications (Claude)
 
 **D1. Self-service actions.** Each action derives from the allowed-action set, and is
-re-authorised server-side when pressed — never trusted from the client. Credential correction
-needs a real operation model, because the supplier can return HTTP 200 and still not have applied
-the change: credential versions, `pending`/`applied`/`failed` state, concurrency control, and
-semantic validation of the response, not just its status code. Otherwise stored credentials
-silently disagree with the supplier while the page says success. Rate limited per order.
+re-authorised server-side when pressed — never trusted from the client. Rate limited per order.
+
+**Credential correction is a two-step protocol, and the earlier draft of this task had it wrong.**
+It said the supplier "can return HTTP 200 and still not have applied the change", and asked for
+semantic validation of that response. The owner's description, 2026-09-12, is that the immediate
+answer honestly means *received* and nothing more: the item then moves to trying again, the
+supplier's bot attempts a fresh login later, and only that attempt reveals whether the details
+work or the item returns to the same hold. See `CONTEXT.md`.
+
+So the model is `submitted` → `acknowledged` → later `worked` or `wrong again`, where the last
+step arrives in a subsequent observation rather than in the submission's response. This task
+therefore does not need response-validation; it needs a **pending state with an owner**:
+credential versions so a second submission during a pending attempt is ordered rather than
+racing, and copy that says "received, trying again" rather than "fixed".
+
+The reconciler must stay free to move an item from in-progress back to the same hold reason,
+because that is how a second wrong password becomes visible. No no-going-backwards rule may
+block it.
+
+**A credential fix must schedule its own read.** Nothing arrives from a supplier - the verdict on
+new details exists only in a poll - and a customer who has just retyped their password is watching
+the screen. So accepting a credential fix sets the job's `next_poll_at` to now and stamps
+`last_viewed_at`, putting it in D3's attention band instead of the background one. Without that,
+the customer waits out the ordinary cadence to learn something the supplier may already know.
+
+**A challenge retry must prove the challenge belongs to the order.** Found in review, 2026-09-12:
+the tracker validates a retry twice - the challenge id's format, and that the challenge is
+actually on that order (`api-handlers.php:1852-1860`, which answers `403 SBC_NOT_IN_ORDER`). The
+supplier client built in B1 does neither; it strips the prefix and posts. So the ownership check
+has to live here, or a crafted request retries a different customer's challenge through our own
+credentials.
 
 **D2. Signed per-order link.** A random token bound to one order, stored hashed, never expiring,
 serving the C4 presenter. Read for the life of the order; actions refuse once terminal.
@@ -282,10 +493,13 @@ same signed link. Needs: a `manual` value on `orders.channel` (today only `store
 permission of its own, and staff audit on every creation. Reuse `PlaceOrder` rather than writing a
 second checkout — that constraint is in the Admin skill's non-negotiables and it applies here.
 
-Money makes this consequential, so the form's behaviour gets owner approval before it is built:
-which services it may create, whether it can create a customer or only pick an existing one, and
-whether a manual order earns cashback and loyalty spend (it should not, by the same reasoning that
-excludes `salla_import`).
+**Owner decision, 2026-09-12: the form takes everything.** Pick an existing customer or add a new
+one; pick an existing product or add one; and the same pattern through the rest of the form. No
+narrowed subset of services.
+
+Still open, because money is involved and the owner has not ruled on it: whether a manual order
+earns cashback and loyalty spend. It should not, by the same reasoning that excludes
+`salla_import`, but that is a recommendation and not yet a decision.
 
 **G2. Retire the tracker.** Once G1 and C are live and verified: confirm no unresolved supplier
 job is outstanding, redirect `track.arab-ut.com` at the store, update the assistant prompts
@@ -327,6 +541,26 @@ shipment has landed rather than by an in-workflow poll. Same removals.
 **F3. Retire.** Delete `Customer Notifier` and v14's `Forward Status Update` node once D3 is live
 and verified. Disable every execution-data save mode on the credential-bearing workflows first
 (the ADR's condition), and verify with synthetic credentials before any real order runs through.
+
+## Activation gate
+
+The placement endpoint ships before the reconciliation that makes its second phase observable, so
+the order of switch-on is a correctness requirement rather than a preference.
+
+**Owner note, 2026-09-12: the store is currently taking no orders at all, so nothing can be
+stranded today and this gate is not blocking anyone.** It is written down because it stops being
+free the moment orders resume, and that day will not announce itself.
+
+**`N8N_FULFILLMENT_KEY` and `N8N_FULFILLMENT_SECRET` should stay unset until D3 and the B5
+phase-progression fix are live.** While they are unset the route answers 401 before the controller
+runs - `VerifyN8nFulfillmentSignature::handle()` returns `unauthorized()` ahead of
+`$next($request)` when the key is not a non-empty string or the secret is under 32 characters - so
+the endpoint is inert by default and no placement can be recorded. Verified 2026-09-12.
+
+That inertness is what makes deferring the phase-progression gap safe. Set those two keys and the
+endpoint starts acknowledging challenge placements that nothing will ever poll: a challenge would
+run at the supplier while the job reads as finished. So the two environment variables are the
+switch, and D3 plus B5 are its preconditions.
 
 ## Gates
 

@@ -467,13 +467,15 @@ final readonly class PlaceOrder
             throw new CheckoutUnavailable('A cart item is invalid.');
         }
 
-        $isManualService = $this->isManualService($service);
+        $isBoosterConfigured = $this->isBoosterConfiguredService($service);
         $secret = match (true) {
-            $isManualService => $this->requiredManualSecret($item, $configuration),
-            in_array($service, [ServiceType::Coins, ServiceType::Sbc], true) => $this->requiredSecret($item),
+            $isBoosterConfigured => $this->requiredManualSecret($item, $configuration),
+            // Coins, SBC, and Objectives all carry EA credentials collected in the cart,
+            // which is a different question from whether a bot or a person delivers them.
+            in_array($service, [ServiceType::Coins, ServiceType::Sbc, ServiceType::Objectives], true) => $this->requiredSecret($item),
             default => null,
         };
-        $attachment = $isManualService ? $this->requiredManualAttachment($item) : null;
+        $attachment = $isBoosterConfigured ? $this->requiredManualAttachment($item) : null;
         $category = $variant->product->category;
 
         return [
@@ -515,7 +517,7 @@ final readonly class PlaceOrder
 
         // Only the manual services carry a schedule version; the other
         // allow-lists would drop the key silently.
-        if ($this->isManualService($service) && $price->scheduleVersion !== null) {
+        if ($this->isBoosterConfiguredService($service) && $price->scheduleVersion !== null) {
             $configuration['schedule_version'] = $price->scheduleVersion;
         }
 
@@ -586,9 +588,16 @@ final readonly class PlaceOrder
         return $attachment;
     }
 
-    private function isManualService(ServiceType $service): bool
+    /**
+     * Deliberately not isManual(): Objectives is delivered by a person too, but
+     * it is a catalog product with no division target and no squad image. This
+     * helper was called isManualService while meaning the narrower thing, and
+     * that mislabelling is what silently dropped Objectives credentials at
+     * checkout - so the name now says which question it answers.
+     */
+    private function isBoosterConfiguredService(ServiceType $service): bool
     {
-        return $service->isManual();
+        return $service->isBoosterConfigured();
     }
 
     private function requiredSecret(CartItem $item): CartItemSecret

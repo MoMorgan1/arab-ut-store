@@ -14,6 +14,7 @@ use App\Support\AI\SystemMonotonicClock;
 use App\View\Components\InertiaApp;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
@@ -86,6 +87,10 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(10)->by('account-identity-confirm-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
             Limit::perMinute(20)->by('account-identity-confirm-ip:'.$request->ip()),
         ]);
+        RateLimiter::for('account-tracking-refresh', fn (Request $request): array => [
+            Limit::perMinute(30)->by('account-tracking-refresh-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
+            Limit::perMinute(10)->by('account-tracking-refresh-order:'.(string) $request->route('order')),
+        ]);
 
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
@@ -106,6 +111,26 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(10)
                 ->by('automation-sbc-pricing-read:'.hash('sha256', $identity));
+        });
+
+        RateLimiter::for('automation-fulfillment', function (Request $request): Limit {
+            $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
+
+            return Limit::perMinute(10)
+                ->by('automation-fulfillment:'.hash('sha256', $identity))
+                ->response(
+                    // The routing pipeline renders throttle exceptions before
+                    // route middleware sees them, so the documented envelope
+                    // and Retry-After headers have to come from the limiter.
+                    function (Request $request, array $headers): JsonResponse {
+                        return response()->json([
+                            'error' => [
+                                'code' => 'fulfillment_rate_limited',
+                                'message' => 'Too many fulfillment placement requests.',
+                            ],
+                        ], 429, $headers)->header('Cache-Control', 'no-store');
+                    },
+                );
         });
 
         RateLimiter::for('paylink-webhook', fn (): Limit => Limit::perMinute(120)

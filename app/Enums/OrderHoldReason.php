@@ -3,7 +3,15 @@
 namespace App\Enums;
 
 /**
- * The curated set of reasons an order stops and waits on the customer.
+ * The curated set of reasons an order is not moving.
+ *
+ * Not all of them wait on the customer, and the distinction decides the
+ * canonical status above: eleven of these ask the customer to do something or
+ * to message us, and six - EaServers, StoreStock, Connection, NoPlayer,
+ * Maintenance and Paused - say we are handling it and ask nothing. A reason in
+ * the second group must never move an item to WaitingForCustomer, because the
+ * customer has nothing to wait on. The reason texts in lang/ar/orders.php are
+ * where that split is visible.
  *
  * These mirror the issue topics Luna already answers in the knowledge base,
  * so the message on the order page and the message in the chat agree.

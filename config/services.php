@@ -48,6 +48,8 @@ return [
         'pricing_secret' => env('N8N_PRICING_SECRET'),
         'sbc_pricing_read_key' => env('N8N_SBC_PRICING_READ_KEY'),
         'sbc_pricing_read_secret' => env('N8N_SBC_PRICING_READ_SECRET'),
+        'fulfillment_key' => env('N8N_FULFILLMENT_KEY'),
+        'fulfillment_secret' => env('N8N_FULFILLMENT_SECRET'),
         // After this many failed delivery attempts an order-paid event is
         // retired as failed for manual requeue instead of being retried
         // forever. A literal rather than an env entry, so .env.example keeps
@@ -57,6 +59,27 @@ return [
             static fn (string $host): string => strtolower(trim($host)),
             explode(',', (string) env('N8N_CATALOG_MEDIA_HOSTS', '')),
         ))),
+    ],
+
+    // The external fulfillment suppliers, reached through App\Suppliers. The
+    // rate limit and circuit breaker values are literals rather than env
+    // entries, so only real credentials live in the environment.
+    'suppliers' => [
+        'rate_limit_per_minute' => 120,
+        'circuit_failure_threshold' => 5,
+        'circuit_cooldown_seconds' => 60,
+        'circuit_failure_window_seconds' => 600,
+
+        'fft' => [
+            'base_url' => env('SUPPLIER_FFT_BASE_URL', 'https://futtransfer.top'),
+            'api_user' => env('SUPPLIER_FFT_API_USER'),
+            'api_key' => env('SUPPLIER_FFT_API_KEY'),
+        ],
+
+        'utt' => [
+            'base_url' => env('SUPPLIER_UTT_BASE_URL', 'https://utautotransfer.com/api'),
+            'api_key' => env('SUPPLIER_UTT_API_KEY'),
+        ],
     ],
 
     'orders' => [

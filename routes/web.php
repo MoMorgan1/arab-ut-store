@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Account\ItemTrackingRefreshController;
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
@@ -67,6 +68,10 @@ Route::post('/orders/{order}/payments/paylink', PaylinkOrderPaymentController::c
     ->where('order', OrderHandle::routePattern())
     ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
     ->name('store.orders.paylink-payment');
+Route::post('/orders/{order}/items/{item}/tracking', ItemTrackingRefreshController::class)
+    ->where('order', OrderHandle::routePattern())
+    ->middleware(['auth', NoStore::class, 'throttle:account-tracking-refresh'])
+    ->name('store.orders.items.tracking');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.show');
@@ -189,6 +194,10 @@ Route::prefix('{locale}')
             ->where('order', OrderHandle::routePattern())
             ->middleware(['auth', NoStore::class, 'throttle:coins-cart'])
             ->name('localized.store.orders.paylink-payment');
+        Route::post('/orders/{order}/items/{item}/tracking', ItemTrackingRefreshController::class)
+            ->where('order', OrderHandle::routePattern())
+            ->middleware(['auth', NoStore::class, 'throttle:account-tracking-refresh'])
+            ->name('localized.store.orders.items.tracking');
         Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.credentials.show');

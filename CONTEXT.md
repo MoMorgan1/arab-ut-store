@@ -74,6 +74,93 @@ customer-facing concept. It is translated into an Order Status plus a Hold Reaso
 correcting account credentials, resuming a stopped delivery, retrying a failed challenge.
 Owner rule, 2026-09-12: the customer keeps full control of these.
 
+## Nothing arrives from a Supplier. We ask, or we do not know.
+
+Owner's correction, 2026-09-12, and the single most load-bearing fact about this integration.
+
+**A Supplier never notifies us of anything.** There is no callback, no webhook, no push. Every
+change in a delivery's state is discovered because the store asked. If nobody asks, the order sits
+at whatever we last recorded, however wrong that has become.
+
+The credential fix is the clearest case. When an Item is held because the account details are
+wrong and the customer submits corrected ones, the Supplier's reply is `success` - and that means
+exactly two things: the details were updated, and it will try again. It is not a verdict. Whether
+the new details actually work is discovered later, by polling, when the state changes to
+transferring or back to the same error.
+
+So a credential submission has three outcomes, not two: **accepted**, then later **worked** or
+**wrong again** - and the third is only ever visible to a poll.
+
+Three consequences, each easy to get backwards:
+
+- A successful submission must never be shown to the customer as "fixed". It is "received, we are
+  trying again". Saying "fixed" and then returning to the same hold reason reads as a store that
+  does not know what is happening to its own orders.
+- **A credential fix has to be followed by a prompt read.** A customer who has just corrected
+  their password is watching the screen. Leaving them on the ordinary background cadence means
+  minutes of "trying again" before anything moves, when the answer may already exist at the
+  Supplier.
+- An Item moving from in-progress back to the same hold reason is **correct behaviour**, not a
+  regression. Any rule forbidding a status from going backwards has to permit it, or a second
+  wrong password becomes invisible.
+
+Customer-facing text for every Supplier state the tracker knows is transcribed in the tracker
+repo's `STATUS_MAPPING.md`, including which states offer an edit button and which send the
+customer to support instead.
+
+## What the Suppliers actually return
+
+Read from live orders on 2026-09-12 with the owner's keys, read-only. Written down because two of
+these were being guessed from the tracker's frontend code, and two of the guesses were wrong.
+
+**Coins progress is reported in different units by each Supplier.** FFT sends `amount` and
+`amountOrdered` **in thousands** - an order of 500,000 coins reads `amountOrdered: 500`. UTT sends
+`amountProcessed` and `amountTotal` as **raw coins**, which is why the normalising mapper divides
+by 1000 on that side and the store multiplies on the other. Field names are `amount` /
+`amountOrdered` after normalisation; `delivered` and `total` are the tracker's own computed
+variables, not Supplier fields.
+
+**Delivery overshoots.** Real completed orders show `amountOrdered: 500` against `amount: 502`,
+and `amountTotal: 3000000` against `amountProcessed: 3000150`. Progress is not bounded by the
+amount ordered, so anything rendering a percentage has to survive more than 100%.
+
+**Challenge status is bulk, keyed by Challenge id, and reports two progress tracks at once.** Read
+live on 2026-09-12 from `sbcStatusBulkAPI`, which takes a LIST of Challenge ids - not an order id -
+and answers with one object per id. A real completed Challenge order:
+
+    challengesDone: 7      totalChallenges: 7       challengesSubmitted: 14
+    timesSolved: 2         timesToSolve: 2
+    sbcStatus: finished    costCoins: 546650        setId: 702
+
+One Challenge is a set of squads - seven, in this case. `challengesDone` / `totalChallenges` is
+progress through the squads of the solve **currently being worked**. `timesSolved` / `timesToSolve`
+is which solve that is: this customer bought the same Challenge twice, so the supplier built the
+seven squads, finished a solve, and built them again. `challengesSubmitted: 14` is the cumulative
+total across both.
+
+**Both tracks are customer-facing and neither replaces the other**, which is how the existing
+tracker shows it: a counter out of seven for the squads in hand, and a separate line saying which
+solve of how many. Showing only the squad counter makes a two-solve order look finished halfway
+through; showing only the solve counter throws away all the visible movement inside a solve, which
+is the part that actually changes minute to minute.
+
+`sbcStatus` is its own status vocabulary, separate from the coins `status`. `account` carries the
+customer's email and must not be stored. The id to keep per Item is the Challenge id itself
+(returned as `sbcSolveID`), and one Item can carry several - the store has nowhere to put them
+today, because the old tracker read them from the Google Sheet.
+
+**A Challenge order is not readable from the coins status endpoint.** Asking `orderStatusAPI` for
+an SBC order answers HTTP 404 with the plain-text body `notFound` - not JSON, and not an error
+about the order being missing. Challenge status has its own endpoint (`sbcStatusBulkAPI`).
+
+**A Supplier status response carries secrets we did not ask for.** UTT's `getOrder` returns
+`nameAccount`, `emailAccount`, `passwordAccount` and `backupCodes` - the customer's EA password in
+plaintext - on **every status poll**, alongside the delivery fields. FFT's response carries
+`toPay` and `sellerReceives`, our own cost. Anything that persists a Supplier payload must
+therefore keep an allowlist of fields, not a list of fields to hide: the first version of ours
+masked addresses, stored everything else, and would have written customers' passwords into our
+database on every poll for the life of every order.
+
 ## Challenges
 
 **Challenge / SBC** — a Squad Building Challenge. Mohamed calls these "طلبات التحديات".
