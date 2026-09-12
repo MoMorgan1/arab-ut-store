@@ -49,7 +49,10 @@ minutes old, or more than five minutes ahead, is rejected with `409`.
   "order_item_public_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
   "supplier": "fft",
   "supplier_order_id": "FFT-CHL-8837410",
-  "delivery_phase": "challenge"
+  "delivery_phase": "challenge",
+  "challenge_ids": [
+    "c6d05f3b-63a1-4328-98e3-b09e4a305fbb"
+  ]
 }
 ```
 
@@ -59,6 +62,7 @@ minutes old, or more than five minutes ahead, is rejected with `409`.
 | `supplier` | yes | `fft` or `utt`. |
 | `supplier_order_id` | yes | The supplier's own reference, 1-255 characters: the challenge id for FFT, the order id for UTT. |
 | `delivery_phase` | yes | `coins` or `challenge`. A plain Coins order reports `coins`. An SBC item reports `coins` for the funding shipment and `challenge` for the solve. `challenge` is refused unless the item is SBC and the supplier is `fft`. |
+| `challenge_ids` | conditionally | Array of UUID strings or a single comma-separated string. Required when `delivery_phase` is `challenge`; refused when `delivery_phase` is `coins`. |
 
 ## Idempotency and conflicts
 
@@ -70,13 +74,13 @@ The job row mirrors the first placement's supplier, reference, and phase so
 existing readers keep working; the placements table is the complete record and
 the second phase never overwrites the mirror.
 
-An identical report — same item, phase, supplier, and supplier reference — is a
+An identical report — same item, phase, supplier, supplier reference, and challenge ids — is a
 successful no-op: the same `200` response, no duplicate row, and no counter or
-status change. A job that has since progressed, completed, or failed is not
+status change. Challenge ID sets differing only in case or `SBC-` prefix are treated as identical. A job that has since progressed, completed, or failed is not
 reopened by a retry.
 
 Within one phase, the first placement wins. A second placement for the same item
-and phase with a different supplier or reference is refused with
+and phase with a different supplier, reference, or challenge id set is refused with
 `409 item_placement_conflict`, and the recorded placement is left untouched. A
 `(supplier, supplier_order_id)` pair belongs to exactly one placement ever, so a
 reference already recorded — for another item or the other phase — is refused
@@ -125,6 +129,9 @@ Validation failures use Laravel's standard `422` body with `message` and
 | 422 | `service_not_automated` | The item is not deliverable by a supplier; only Coins and SBC are automated. | Do not retry; alert. |
 | 422 | `service_has_no_challenge` | A `challenge` phase was reported for an item that is not SBC. | Do not retry; alert (phase or item mismatch). |
 | 422 | `supplier_cannot_solve_challenges` | A `challenge` phase was reported for UTT; only FFT solves challenges. | Do not retry; alert (supplier or item mismatch). |
+| 422 | `challenge_ids_required` | A `challenge` phase was reported without any challenge ids. | Include the challenge ids returned by FFT and retry. |
+| 422 | `challenge_ids_not_permitted` | A `coins` phase was reported carrying `challenge_ids`. | Remove `challenge_ids` from coins placements and retry. |
+| 422 | `invalid_challenge_ids` | One or more challenge ids failed UUID format validation. | Correct the invalid ids and retry; a partial list is rejected rather than partially stored because dropping invalid ids leaves missing challenges untracked and invisible. |
 | 422 | `order_item_unpaid` | Payment has not been confirmed yet. | Retry after the payment event confirms; alert if it persists. |
 | 409 | `supplier_reference_conflict` | This supplier reference is already recorded on another placement. | Do not retry; alert (placement or order mismatch). |
 | 409 | `item_placement_conflict` | The item already holds a different placement for this phase. | Do not retry; alert. |

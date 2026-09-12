@@ -10,6 +10,7 @@ use App\Models\FulfillmentJob;
 use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Suppliers\ChallengeIds;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +30,7 @@ final class RecordSupplierPlacement
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
+     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'challenge_ids_required'|'challenge_ids_not_permitted'|'invalid_challenge_ids'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null, invalidCount: int|null}
      */
     public function execute(array $payload): array
     {
@@ -46,13 +47,13 @@ final class RecordSupplierPlacement
             // cannot close, not dead code. The loser is told to retry, and the
             // retry then reads the winner and resolves to the idempotent
             // replay or the precise conflict.
-            return ['outcome' => 'placement_conflict', 'jobPublicId' => null];
+            return self::result('placement_conflict');
         }
     }
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
+     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'challenge_ids_required'|'challenge_ids_not_permitted'|'invalid_challenge_ids'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null, invalidCount: int|null}
      */
     private function record(array $payload): array
     {
@@ -92,6 +93,48 @@ final class RecordSupplierPlacement
             return self::result('supplier_cannot_solve_challenges');
         }
 
+        $rawChallengeIds = $payload['challenge_ids'] ?? null;
+
+        // A coins placement carries no challenges: accepting IDs here signals
+        // a caller confused about which phase they are reporting.
+        if ($phase === DeliveryPhase::Coins) {
+            if ($rawChallengeIds !== null && $rawChallengeIds !== '' && $rawChallengeIds !== []) {
+                return self::result('challenge_ids_not_permitted');
+            }
+        }
+
+        /** @var list<string> $strict */
+        $strict = [];
+
+        if ($phase === DeliveryPhase::Challenge) {
+            // A challenge placement with no IDs is untrackable the moment it
+            // lands; reject it rather than recording a headless job.
+            if ($rawChallengeIds === null || $rawChallengeIds === '' || $rawChallengeIds === []) {
+                return self::result('challenge_ids_required');
+            }
+
+            if (! is_string($rawChallengeIds) && ! is_array($rawChallengeIds)) {
+                return self::result('invalid_challenge_ids', invalidCount: 1);
+            }
+
+            $permissive = ChallengeIds::parse($rawChallengeIds);
+
+            if ($permissive === []) {
+                return self::result('challenge_ids_required');
+            }
+
+            $strict = ChallengeIds::normalize($rawChallengeIds);
+
+            // Reject if any input was dropped rather than storing a partial
+            // list: a missing challenge becomes invisible if quietly omitted.
+            if (count($strict) < count($permissive)) {
+                return self::result(
+                    'invalid_challenge_ids',
+                    invalidCount: count($permissive) - count($strict),
+                );
+            }
+        }
+
         if ($order->paid_at === null) {
             return self::result('unpaid');
         }
@@ -113,10 +156,21 @@ final class RecordSupplierPlacement
                 // The same phase with the same exact report is a true no-op: a
                 // job that has since moved on, failed, or accumulated poll
                 // errors must not be reopened or reset by a stale retry.
-                return $existing->supplier === $supplier
-                    && $existing->supplier_order_id === $reference
-                        ? self::result('replayed', $job)
-                        : self::result('item_conflict');
+                // A different challenge ID set is a conflict, not an overwrite,
+                // because replacing them orphans the original solve targets.
+                $sameReport = $existing->supplier === $supplier
+                    && $existing->supplier_order_id === $reference;
+
+                if ($phase === DeliveryPhase::Challenge) {
+                    $existingIds = $existing->challengeIds();
+                    $sameReport = $sameReport
+                        && count($existingIds) === count($strict)
+                        && array_diff($existingIds, $strict) === [];
+                }
+
+                return $sameReport
+                    ? self::result('replayed', $job)
+                    : self::result('item_conflict');
             }
 
             // Only a job with no placements at all can carry a hand-built or
@@ -186,6 +240,7 @@ final class RecordSupplierPlacement
             'delivery_phase' => $phase,
             'supplier' => $supplier,
             'supplier_order_id' => $reference,
+            'supplier_challenge_ids' => $phase === DeliveryPhase::Challenge ? $strict : null,
             'idempotency_key' => 'fulfillment-placement:'.$publicId.':'.$phase->value,
             'placed_at' => now(),
         ]);
@@ -194,14 +249,15 @@ final class RecordSupplierPlacement
     }
 
     /**
-     * @param  'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict'  $outcome
-     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
+     * @param  'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'challenge_ids_required'|'challenge_ids_not_permitted'|'invalid_challenge_ids'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict'  $outcome
+     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'challenge_ids_required'|'challenge_ids_not_permitted'|'invalid_challenge_ids'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null, invalidCount: int|null}
      */
-    private static function result(string $outcome, ?FulfillmentJob $job = null): array
+    private static function result(string $outcome, ?FulfillmentJob $job = null, ?int $invalidCount = null): array
     {
         return [
             'outcome' => $outcome,
             'jobPublicId' => $job instanceof FulfillmentJob ? (string) $job->public_id : null,
+            'invalidCount' => $invalidCount,
         ];
     }
 }

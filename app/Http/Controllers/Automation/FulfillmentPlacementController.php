@@ -19,6 +19,7 @@ final class FulfillmentPlacementController extends Controller
             'supplier' => ['required', 'string', Rule::in(Supplier::values())],
             'supplier_order_id' => ['required', 'string', 'max:255'],
             'delivery_phase' => ['required', 'string', Rule::enum(DeliveryPhase::class)],
+            'challenge_ids' => ['sometimes'],
         ]);
 
         $result = $recordSupplierPlacement->execute($validated);
@@ -38,6 +39,17 @@ final class FulfillmentPlacementController extends Controller
             'service_has_no_challenge' => $this->error('service_has_no_challenge', 'This order item has no challenge to solve.', 422),
             'supplier_cannot_solve_challenges' => $this->error('supplier_cannot_solve_challenges', 'This supplier does not solve challenges.', 422),
             'unpaid' => $this->error('order_item_unpaid', 'The order has not been paid.', 422),
+            'challenge_ids_required' => $this->error('challenge_ids_required', 'Challenge placements must include at least one challenge id.', 422),
+            'challenge_ids_not_permitted' => $this->error('challenge_ids_not_permitted', 'Coins placements cannot accept challenge ids.', 422),
+            'invalid_challenge_ids' => $this->error(
+                'invalid_challenge_ids',
+                sprintf(
+                    '%d challenge %s invalid.',
+                    $result['invalidCount'] ?? 1,
+                    ($result['invalidCount'] ?? 1) === 1 ? 'id is' : 'ids are',
+                ),
+                422,
+            ),
             'supplier_reference_conflict' => $this->error('supplier_reference_conflict', 'This supplier order reference is already recorded on another placement.', 409),
             'item_conflict' => $this->error('item_placement_conflict', 'This order item already has a different placement for this phase.', 409),
             'placement_conflict' => $this->error('placement_conflict', 'The placement conflicted with a concurrent request. Retry.', 409),

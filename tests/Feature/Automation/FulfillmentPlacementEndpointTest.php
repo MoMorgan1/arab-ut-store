@@ -76,7 +76,10 @@ function paidOrderItem(ServiceType $service = ServiceType::Coins): OrderItem
 
 it('records a signed placement and starts polling', function () {
     $item = paidOrderItem(ServiceType::Sbc);
-    $payload = placementPayload($item, ['delivery_phase' => DeliveryPhase::Challenge->value]);
+    $payload = placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'],
+    ]);
 
     $response = signedFulfillmentPlacement($payload)
         ->assertOk()
@@ -105,6 +108,7 @@ it('records a signed placement and starts polling', function () {
         ->and($placement->delivery_phase)->toBe(DeliveryPhase::Challenge)
         ->and($placement->supplier)->toBe(Supplier::Fft)
         ->and($placement->supplier_order_id)->toBe($payload['supplier_order_id'])
+        ->and($placement->challengeIds())->toBe(['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'])
         ->and($placement->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':challenge')
         ->and($placement->placed_at)->not->toBeNull();
 });
@@ -199,6 +203,7 @@ it('records both phases of a challenge against one job without moving the mirror
     $challenge = signedFulfillmentPlacement(placementPayload($item, [
         'supplier_order_id' => 'FFT-CHL-8837410',
         'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'],
     ]))->assertOk();
 
     expect($challenge->json('data.job_public_id'))->toBe($coins->json('data.job_public_id'));
@@ -217,8 +222,10 @@ it('records both phases of a challenge against one job without moving the mirror
 
     expect($placements)->toHaveCount(2)
         ->and($placements['coins']->supplier_order_id)->toBe($coinsReference)
+        ->and($placements['coins']->challengeIds())->toBe([])
         ->and($placements['coins']->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':coins')
         ->and($placements['challenge']->supplier_order_id)->toBe('FFT-CHL-8837410')
+        ->and($placements['challenge']->challengeIds())->toBe(['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'])
         ->and($placements['challenge']->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':challenge');
 });
 
@@ -231,6 +238,7 @@ it('treats a retry of one phase as a no-op after the other phase landed', functi
     signedFulfillmentPlacement(placementPayload($item, [
         'supplier_order_id' => 'FFT-CHL-8837410',
         'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'],
     ]))->assertOk();
 
     FulfillmentJob::sole()->forceFill(['status' => FulfillmentStatus::Completed])->save();
@@ -295,6 +303,7 @@ it('refuses a reference already recorded by the other phase of the same item', f
     signedFulfillmentPlacement(placementPayload($item, [
         'supplier_order_id' => $reference,
         'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'],
     ]))
         ->assertStatus(409)
         ->assertJsonPath('error.code', 'supplier_reference_conflict');
@@ -511,4 +520,173 @@ it('authenticates before charging the trusted credential rate-limit bucket', fun
     expect($limited->headers->get('Cache-Control'))->toContain('no-store')
         ->and($invalidAfterLimit->headers->get('Cache-Control'))->toContain('no-store')
         ->and($rotatedInvalidAfterLimit->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+it('stores challenge ids normalised and returns them through the model accessor', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $rawIds = [
+        'SBC-C6D05F3B-63A1-4328-98E3-B09E4A305FBB',
+        '9C8B7A6D-1234-4567-890A-BCDEF0123456',
+        'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+    ];
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => $rawIds,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('data.acknowledged', true);
+
+    $placement = FulfillmentPlacement::sole();
+
+    expect($placement->challengeIds())->toBe([
+        'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+        '9c8b7a6d-1234-4567-890a-bcdef0123456',
+    ])
+        ->and($placement->challengeIds())->toBe([
+            'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+            '9c8b7a6d-1234-4567-890a-bcdef0123456',
+        ])
+        ->and($placement->supplier_challenge_ids)->toBe([
+            'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+            '9c8b7a6d-1234-4567-890a-bcdef0123456',
+        ]);
+});
+
+it('accepts challenge ids as a comma-separated string and stores them identically', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $stringIds = 'SBC-C6D05F3B-63A1-4328-98E3-B09E4A305FBB, 9C8B7A6D-1234-4567-890A-BCDEF0123456';
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => $stringIds,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('data.acknowledged', true);
+
+    $placement = FulfillmentPlacement::sole();
+
+    expect($placement->challengeIds())->toBe([
+        'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+        '9c8b7a6d-1234-4567-890a-bcdef0123456',
+    ]);
+});
+
+it('refuses a challenge placement without challenge ids', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+    ]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'challenge_ids_required');
+
+    expect(FulfillmentPlacement::count())->toBe(0)
+        ->and(FulfillmentJob::count())->toBe(0);
+});
+
+it('refuses a coins placement carrying challenge ids', function () {
+    $item = paidOrderItem(ServiceType::Coins);
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Coins->value,
+        'challenge_ids' => ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'],
+    ]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'challenge_ids_not_permitted');
+
+    expect(FulfillmentPlacement::count())->toBe(0)
+        ->and(FulfillmentJob::count())->toBe(0);
+});
+
+it('rejects a list containing a malformed id and stores nothing', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => [
+            'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+            'not-a-valid-uuid',
+        ],
+    ]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'invalid_challenge_ids')
+        ->assertJsonPath('error.message', '1 challenge id is invalid.');
+
+    expect(FulfillmentPlacement::count())->toBe(0)
+        ->and(FulfillmentJob::count())->toBe(0);
+});
+
+it('reports the count of multiple malformed ids without naming them back', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => [
+            'bad-id-1',
+            'bad-id-2',
+            'c6d05f3b-63a1-4328-98e3-b09e4a305fbb',
+        ],
+    ]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'invalid_challenge_ids')
+        ->assertJsonPath('error.message', '2 challenge ids are invalid.');
+
+    expect(FulfillmentPlacement::count())->toBe(0)
+        ->and(FulfillmentJob::count())->toBe(0);
+});
+
+it('treats identical retry with same ids as no-op and conflicts on different ids', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $initialIds = ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'];
+    $differentIds = ['9c8b7a6d-1234-4567-890a-bcdef0123456'];
+    $reference = 'FFT-CHL-8837410';
+
+    $payload = placementPayload($item, [
+        'supplier_order_id' => $reference,
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => $initialIds,
+    ]);
+
+    signedFulfillmentPlacement($payload)->assertOk();
+
+    signedFulfillmentPlacement($payload)
+        ->assertOk()
+        ->assertJsonPath('data.acknowledged', true);
+
+    expect(FulfillmentPlacement::count())->toBe(1);
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => $reference,
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => $differentIds,
+    ]))
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'item_placement_conflict');
+
+    expect(FulfillmentPlacement::count())->toBe(1)
+        ->and(FulfillmentPlacement::sole()->challengeIds())->toBe($initialIds);
+});
+
+it('treats retry with ids differing only in case or SBC prefix as a no-op', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $canonicalId = 'c6d05f3b-63a1-4328-98e3-b09e4a305fbb';
+    $reference = 'FFT-CHL-8837410';
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => $reference,
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => [$canonicalId],
+    ]))->assertOk();
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => $reference,
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => ['SBC-'.strtoupper($canonicalId)],
+    ]))
+        ->assertOk()
+        ->assertJsonPath('data.acknowledged', true);
+
+    expect(FulfillmentPlacement::count())->toBe(1)
+        ->and(FulfillmentPlacement::sole()->challengeIds())->toBe([$canonicalId]);
 });
