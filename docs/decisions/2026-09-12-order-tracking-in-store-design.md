@@ -78,25 +78,29 @@ and removes the Sheet from the path permanently.
      bounded wait is surfaced to Mohamed. This covers the case n8n cannot see: it placed
      successfully and its callback never arrived. Without it that order is paid for and invisible
      to everyone, which is precisely the failure the Sheet used to make loud.
-3. **n8n polls the suppliers; Laravel calls them only when a customer presses something.**
-   Revised 2026-09-12 after measuring both machines. The two jobs have opposite shapes:
+3. **Laravel reads the suppliers. n8n only places.** This decision moved twice in one day, so the
+   reasoning is recorded to stop it moving again.
 
-   - **Polling** is high-volume, continuous, and entirely network wait. It runs on the VPS that
-     already hosts n8n — Hostinger KVM 2, 2 vCPU and 8 GB, idling at 1.2–2.6% CPU and 25% memory
-     over the last twenty-nine hours, up 220 days. A schedule-triggered workflow asks the store
-     what is open, reads the suppliers, and posts observations back.
-   - **Customer actions** — correct credentials, resume, retry — are rare, user-triggered, and
-     need an answer while the customer is looking at the screen. Laravel calls the supplier
-     directly for these.
+   **It is settled on cohesion, not on capacity.** The status translation layer is PHP (see below):
+   it is the thing that turns a supplier's word into an `OrderStatus`, a hold reason and a set of
+   allowed actions. If n8n did the polling, it would fetch raw supplier JSON, post it to the store,
+   and the store would interpret it — so n8n would be a relay in the read path, adding a network
+   hop, an authentication boundary, batch-ordering problems and a second place to debug, in
+   exchange for no interpretive value at all. The reader belongs where the interpreter is.
 
-   The store remains the source of truth either way: n8n reads suppliers and reports, it does not
-   hold state. What this avoids is the real bottleneck: the store is on shared hosting with a
-   one-minute cron, where every supplier call holds a PHP process for up to twelve seconds. Fifty
-   live orders checked every two minutes is about twenty-five calls a minute, which does not fit
-   one sequential cron tick at poor supplier latency — while a nearly idle VPS sits beside it.
+   The capacity argument, in both directions, is weaker than it looks and is not what decides
+   this. Against the store: shared hosting, a one-minute cron, sequential calls. For the store:
+   perhaps fifty-odd calls a minute. But "one second per supplier call" is an assumption, not a
+   measurement — FFT and UTT are bots driving EA, and the twelve-second timeout exists because
+   somebody reached it — so the real ceiling could be a third of that. Either way it is far above
+   present load, and the failure mode matters more than the ceiling: an overrunning tick is simply
+   skipped by `withoutOverlapping`, which degrades quietly. That is what the instrumentation in
+   D3 is for.
 
-   Supplier credentials therefore live in **both** n8n and the store's `.env`, validated on read
-   the way `PublishOrderPaidEvent::configuration()` validates the n8n publisher.
+   So Laravel polls on its own schedule and Laravel answers customer actions; n8n receives a
+   placement request, places the order, and reports the reference. Supplier credentials live in
+   the store's `.env` **and** in n8n, validated on read the way
+   `PublishOrderPaidEvent::configuration()` validates the n8n publisher.
 
 ### What the customer sees
 
@@ -160,18 +164,24 @@ and removes the Sheet from the path permanently.
     each, inside `LiveOrderController`'s synchronous path. One slow supplier would then hold the
     page hostage and one outage would queue every viewer behind it.
 
-    So: render the last stored observation immediately, with its age. The observations arrive
-    from the n8n sweep (decision 3), not from the render path, so the page's thirty-second reload
-    is a database read and costs nothing outside.
+    So: render the last stored observation immediately, **with its age on screen**, and give the
+    customer a refresh control that forces one read now. The page's own thirty-second reload stays
+    a database read and costs nothing outside.
 
-    The sweep is a **schedule-triggered** workflow, not the wait-in-execution loop v14 uses today.
-    That matters twice over: it keeps each n8n execution seconds long instead of hours — the whole
-    reason the current workflow is hard to debug — and it is what lets a customer be told their
-    order stopped without opening anything.
+    The reads come from a scheduled sweep whose **cadence follows attention**: roughly every
+    20–30 seconds for a job whose order page is being looked at, every 2–5 minutes for one that is
+    not. "Being looked at" needs a real mechanism rather than a guess — the page stamps the job
+    when it loads and the sweep reads that stamp. This is what makes a single fixed cadence
+    unnecessary: the fast path exists only where somebody is watching, which is also the only
+    place its absence would be noticed.
 
-    Stall detection stays in the store, because it is a query over observation age, not an HTTP
-    call: an open job whose last observation is older than its expected cadence is stalled, and
-    the store can see that without talking to anyone.
+    Both the refresh control and the sweep go through one per-job lock, so ten people watching one
+    order still cause one supplier call. Without that lock the refresh button is a thundering herd
+    with a friendlier name.
+
+    Stall detection is the same loop and costs nothing extra: an open job whose newest observation
+    is older than the cadence expected for its phase is stalled. That is what lets a customer be
+    told their order stopped without opening anything.
 14. **Notifications are sent by the store**, not by n8n: the store is what noticed the change,
     it already has Whapi wired for OTP, and `notification_deliveries` exists for exactly this
     de-duplication. The message catalogue is ported from Mohamed's existing n8n order-status
@@ -222,10 +232,10 @@ challenge workflow would duplicate the coins logic, because a Challenge order sh
 | --- | --- | --- |
 | `ship-coins` | the store, on a paid automated item | pick a supplier, place the shipment, report the reference |
 | `solve-challenge` | the store, once the shipment has landed | submit the challenge, report the reference |
-| `poll-open-jobs` | schedule | ask the store what is open, read the suppliers, post observations back |
 
-The store therefore exposes three endpoints to n8n: one to receive a placement reference, one to
-receive observations, and one read for "what is open". All on the existing HMAC scheme.
+Two workflows, and **one** endpoint on the store: the placement report. There is no observation
+endpoint and no "what is open" read, because by decision 3 the store polls the suppliers itself
+and never needs to tell n8n what to look at. n8n has no read path into the store at all.
 
 **The purchase budget comes from the store, and `ArabUT Price Settings` goes with the rest of the
 Sheets.** v14 reads that sheet to decide the maximum it will pay a supplier, with a stale-sheet
