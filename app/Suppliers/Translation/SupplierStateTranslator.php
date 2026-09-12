@@ -1352,7 +1352,23 @@ final class SupplierStateTranslator
 
     private function isFinished(string $status): bool
     {
-        return $this->in(self::FINISHED_STATUSES, $status);
+        return self::statusIsFinished($status);
+    }
+
+    /**
+     * Whether a supplier status means the order finished, matched exactly.
+     *
+     * Public because the presenter needs the same answer and must not
+     * re-derive it: the tracker tests the substrings 'finish' and 'complet',
+     * which also match 'unfinished' - a real status this store pins as not
+     * finished (tests/Fixtures/Suppliers/fft-states.php:120). Re-implementing
+     * the check is how that bug comes back.
+     */
+    public static function statusIsFinished(string $status): bool
+    {
+        $status = trim($status);
+
+        return $status !== '' && in_array($status, self::FINISHED_STATUSES, true);
     }
 
     private function isStopped(string $status): bool

@@ -38,6 +38,9 @@ final class ItemTracking
      *     presentation: string,
      *     headline: string,
      *     subline: string,
+     *     // The completed subline carries a `:console` placeholder, because the
+     *     // tracker names the customer's own console in it and the item already
+     *     // carries the platform; the client substitutes it.
      *     holdReason: string|null,
      *     holdMessage: string|null,
      *     holdTone: string|null,
@@ -229,7 +232,12 @@ final class ItemTracking
                         $challengeFinishedAt = CarbonImmutable::createFromTimestamp($ts > 10000000000 ? (int) ($ts / 1000) : $ts)->utc()->toIso8601String();
                     }
 
-                    $cardHoldReason = SupplierStateTranslator::SBC_STATUS_HOLDS[$rawStatus] ?? null;
+                    // A finished order asks nothing of anyone, and that has to reach the
+                    // cards too: emptying their buttons while leaving "fix your sign-in
+                    // details" above them is the same defect one level down.
+                    $cardHoldReason = $orderIsTerminal
+                        ? null
+                        : SupplierStateTranslator::SBC_STATUS_HOLDS[$rawStatus] ?? null;
                     $cardHoldMessage = $cardHoldReason?->message($locale);
                     $cardHoldTone = match (true) {
                         $cardHoldReason === null => null,
@@ -292,8 +300,9 @@ final class ItemTracking
         $accCheck = is_string($obs['accountCheck'] ?? null) ? trim($obs['accountCheck']) : '';
         $econ = is_string($obs['economyState'] ?? null) ? trim($obs['economyState']) : '';
         $simplified = is_string($obs['simplifiedStatus'] ?? null) ? strtolower(trim($obs['simplifiedStatus'])) : '';
-        $isFinished = str_contains($rawStatus, 'finish')
-            || str_contains($rawStatus, 'complet')
+        // The translator's exact check, not the tracker's substring one: 'finish'
+        // also matches 'unfinished', which this store pins as not finished.
+        $isFinished = SupplierStateTranslator::statusIsFinished($rawStatus)
             || $job->completed_at !== null;
 
         $workStarted = $isFinished

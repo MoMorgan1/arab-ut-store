@@ -75,7 +75,12 @@ return [
         ],
         'completed' => [
             'headline' => 'Completed',
-            'subline' => 'Order completed successfully.',
+            'subline' => 'Your coins have all been delivered
+
+1. You can open the game on :console right away and enjoy
+2. If you want to use the app, wait 30 minutes.
+
+Congratulations on the squad!',
         ],
         'stopped' => [
             'headline' => 'Temporarily Paused',
@@ -91,7 +96,7 @@ return [
         ],
         'refunded' => [
             'headline' => 'Refunded',
-            'subline' => 'The amount was returned to your wallet',
+            'subline' => 'This order was refunded',
         ],
         'not_reported' => [
             'headline' => 'Queued',

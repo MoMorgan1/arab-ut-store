@@ -803,3 +803,56 @@ test('a live order still reports the supplier state and its actions', function (
         ->and($tracking['holdTone'])->toBe('action')
         ->and($tracking['actions'])->toBe(['edit_credentials', 'resume']);
 });
+
+test('a terminal order stops asking the customer to fix anything, on the cards too', function (): void {
+    $challengeId = '5e1b6bc9-4444-5555-6666-777788889999';
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner, OrderStatus::Cancelled);
+    $item = trackingItem($order, ServiceType::Sbc);
+
+    $job = trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observation' => [$challengeId => ['sbcStatus' => 'WrongUserPass']],
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId],
+        'idempotency_key' => 'placement-terminal-cards',
+        'placed_at' => now(),
+    ]);
+
+    $tracking = ItemTracking::for($item, 'ar');
+
+    // Emptying the buttons while leaving "fix your sign-in details" above them is
+    // the same defect one level down.
+    expect($tracking['challenges'][0]['actions'])->toBe([])
+        ->and($tracking['challenges'][0]['holdReason'])->toBeNull()
+        ->and($tracking['challenges'][0]['holdMessage'])->toBeNull()
+        ->and($tracking['challenges'][0]['holdTone'])->toBeNull()
+        // The state itself stays: it is what happened, and the card still names it.
+        ->and($tracking['challenges'][0]['state'])->toBe('sign_in_failed');
+});
+
+test('workStarted uses the exact finished check, so unfinished is not finished', function (
+    string $status,
+    bool $expected,
+): void {
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+
+    trackingJob($item, ['observation' => ['status' => $status], 'completed_at' => null]);
+
+    expect(ItemTracking::for($item, 'en')['workStarted'])->toBe($expected);
+})->with([
+    // The tracker tests the substring 'finish', which also matches this one. The
+    // store pins it as not finished, and workStarted has to agree.
+    'unfinished' => ['unfinished', false],
+    'finished' => ['finished', true],
+    'completed' => ['completed', true],
+]);
