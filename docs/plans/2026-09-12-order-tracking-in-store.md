@@ -65,6 +65,32 @@ Making Objectives work needs an `AddObjectivesToCart` path collecting credential
 path does, a cart-side entry point, and `CartItemCredentialsController` widened to accept it. That
 is a new interface, so it goes through a `/design` canvas before code, per `CLAUDE.md`.
 
+## The tracker's behaviour is the specification
+
+Owner instruction, 2026-09-12, after five corrections in one day: **port what
+`track.arab-ut.com` does. Do not redesign it.** The site is mature, it has been in front of real
+customers, and every one of its apparent oddities so far has turned out to encode something true
+about the suppliers or the customers.
+
+The tally, because it is the argument for the rule rather than an apology:
+
+| I changed | The tracker had | Who was right |
+| --- | --- | --- |
+| `loginFailed` to a credentials hold with an edit button | EA-server hold, resume only | the tracker |
+| `abort` to `Cancelled` | stopped, resumable | the tracker |
+| automatic-recovery reasons to show no buttons | every reason keeps its buttons | the tracker |
+| flagged the `store_stock` resume button as unhelpful | offers it anyway | the tracker |
+| challenge progress to one counter | two tracks, squads and solves | the tracker |
+
+Every deviation ran the same direction: reasoning from first principles about a domain the working
+implementation already had right. So the default is now inverted. **Match the tracker unless the
+owner says otherwise, and write down any deviation he approves along with his reason.**
+
+This does not extend to the three things that are ours rather than the tracker's: canonical
+`OrderStatus` (the store's spine, which the tracker has no concept of), what we persist (the
+tracker stores nothing, we have an allowlist because the suppliers return passwords), and security
+boundaries. Those are store concerns and the tracker is not evidence about them.
+
 ## Blocked on Mohamed
 
 - Export of `Fulfillment v14` and of the order-status workflow.
