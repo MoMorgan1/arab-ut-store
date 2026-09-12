@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Automation\CatalogSnapshotController;
 use App\Http\Controllers\Automation\CoinsPricingRunController;
+use App\Http\Controllers\Automation\FulfillmentPlacementController;
 use App\Http\Controllers\Automation\SbcCatalogSnapshotController;
 use App\Http\Controllers\Automation\SbcCoinsPricingReadController;
 use App\Http\Controllers\Payments\PaylinkWebhookController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\VerifyN8nCatalogSignature;
+use App\Http\Middleware\VerifyN8nFulfillmentSignature;
 use App\Http\Middleware\VerifyN8nPricingSignature;
 use App\Http\Middleware\VerifyN8nSbcCatalogSignature;
 use App\Http\Middleware\VerifyN8nSbcPricingReadSignature;
@@ -28,6 +30,12 @@ Route::post('/automation/v1/pricing/coins/runs', CoinsPricingRunController::clas
 Route::get('/automation/v1/pricing/coins/sbc-bases', SbcCoinsPricingReadController::class)
     ->middleware([VerifyN8nSbcPricingReadSignature::class, 'throttle:automation-sbc-pricing-read'])
     ->name('automation.pricing.coins.sbc-bases.show');
+
+// Signature first, unlike the older automation routes: a forged request must not burn the real
+// credential's limiter bucket, because a placement that never lands leaves a paid order invisible.
+Route::post('/automation/v1/fulfillment/placements', FulfillmentPlacementController::class)
+    ->middleware([VerifyN8nFulfillmentSignature::class, 'throttle:automation-fulfillment'])
+    ->name('automation.fulfillment.placements.store');
 
 Route::post('/payments/paylink/webhook', PaylinkWebhookController::class)
     ->middleware([NoStore::class, VerifyPaylinkWebhook::class, 'throttle:paylink-webhook'])

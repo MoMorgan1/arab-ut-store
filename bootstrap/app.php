@@ -8,6 +8,7 @@ use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\SetDisplayCurrency;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\VerifyN8nFulfillmentSignature;
 use App\Http\Middleware\VerifyN8nSbcPricingReadSignature;
 use App\Http\Responses\ChatErrorResponse;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -46,6 +47,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(
             ThrottleRequests::class,
             VerifyN8nSbcPricingReadSignature::class,
+        );
+        $middleware->prependToPriorityList(
+            ThrottleRequests::class,
+            VerifyN8nFulfillmentSignature::class,
         );
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->route('locale') === 'en'
             ? route('localized.login', ['locale' => 'en'], absolute: false)
