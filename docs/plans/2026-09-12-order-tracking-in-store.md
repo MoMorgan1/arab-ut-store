@@ -321,6 +321,21 @@ does; `no_club` matches on Resume but carries an extra Edit.
 
 Gulf-leaning simple Arabic, no Egyptian slang.
 
+**The optimistic window after an action is not a timer, and porting it as one loses the point.**
+The owner described it as "a temporary state for ten seconds", and the tracker's implementation is
+better than that: `isRetryGraceActive` (`assets/js/ui.js:250`) suppresses the stale error until
+**whichever comes first** - the grace deadline passes, or `statusShowsRetryStarted()` sees the real
+state actually move. The moment a poll shows movement the optimistic state stands aside, and if
+nothing moves the error returns on its own.
+
+Both halves matter. A plain ten-second timer brings the error back while the retry is genuinely
+under way, which reads as a failure that has not happened; and an optimistic state with no
+deadline hides a real second failure indefinitely. The grace is also held in `sessionStorage`
+(`ui.js:1032`) so it survives the page's own reloads, which it must, because the page reloads
+while the window is open.
+
+Port the condition, not the duration.
+
 **C3. Canvas, then the port** (canvas: Claude; port: DeepSeek). A `/design` canvas leading with
 390px: the ring, the progress bar, the three stat boxes, the action box, the challenge cards,
 drawn in the store's tokens. Mohamed approves or edits on the canvas; his edits are the design.

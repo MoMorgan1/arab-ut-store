@@ -78,6 +78,10 @@ final class ReadLiveOrder
                         'id',
                         'order_item_id',
                         'supplier',
+                        // Selected because ItemTracking treats a job with no
+                        // reference as unplaced: omit this column and every item
+                        // silently reports no tracking at all.
+                        'supplier_order_id',
                         'delivery_phase',
                         'hold_reason',
                         'allowed_actions',

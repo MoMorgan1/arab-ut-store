@@ -87,6 +87,10 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(10)->by('account-identity-confirm-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
             Limit::perMinute(20)->by('account-identity-confirm-ip:'.$request->ip()),
         ]);
+        RateLimiter::for('account-tracking-refresh', fn (Request $request): array => [
+            Limit::perMinute(30)->by('account-tracking-refresh-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
+            Limit::perMinute(10)->by('account-tracking-refresh-order:'.(string) $request->route('order')),
+        ]);
 
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());

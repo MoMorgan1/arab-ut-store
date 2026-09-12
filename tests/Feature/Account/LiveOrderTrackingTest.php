@@ -44,9 +44,16 @@ function trackingItem(
  */
 function trackingJob(OrderItem $item, array $attributes = []): FulfillmentJob
 {
+    // A placed job by default: a supplier and its reference. An observation cannot
+    // exist before placement, so a job carrying observation data without a
+    // reference is a state the system never reaches - and a fixture that builds
+    // one tests nothing real. Individual tests override these to model an
+    // unplaced job deliberately.
     return FulfillmentJob::factory()->create([
         'order_item_id' => $item->id,
         'status' => FulfillmentStatus::InProgress,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'fft-'.$item->id,
         ...$attributes,
     ]);
 }

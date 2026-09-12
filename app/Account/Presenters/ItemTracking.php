@@ -47,9 +47,14 @@ final class ItemTracking
 
         $job = $item->fulfillmentJob;
 
-        // An item not yet placed with a supplier carries no job row at all;
-        // returning null avoids confusing the customer with an empty card.
-        if (! $job instanceof FulfillmentJob) {
+        // An item not yet placed with a supplier carries nothing to track. That is
+        // true whether the job row is absent or present-but-unbound: a job created
+        // ahead of placement has no supplier reference yet, and reporting it as an
+        // object of nulls would make "not placed" indistinguishable from "placed and
+        // silent" without inspecting every field.
+        if (! $job instanceof FulfillmentJob
+            || $job->supplier === null
+            || ($job->supplier_order_id ?? '') === '') {
             return null;
         }
 
@@ -71,7 +76,7 @@ final class ItemTracking
         ] : null;
 
         return [
-            'supplier' => $job->supplier?->value,
+            'supplier' => $job->supplier->value,
             'phase' => $job->delivery_phase?->value,
             'holdReason' => $holdReason?->value,
             'holdMessage' => $holdReason?->message($locale),
