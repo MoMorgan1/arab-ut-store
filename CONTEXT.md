@@ -74,6 +74,31 @@ customer-facing concept. It is translated into an Order Status plus a Hold Reaso
 correcting account credentials, resuming a stopped delivery, retrying a failed challenge.
 Owner rule, 2026-09-12: the customer keeps full control of these.
 
+## Correcting credentials is a two-step protocol, not a request and a verdict
+
+Owner's description, 2026-09-12. This shapes every screen and state machine that touches a
+credential fix, and getting it wrong makes the store lie to the customer.
+
+When an Item is held because the account details are wrong and the customer submits corrected
+ones, the Supplier answers **immediately** — and that answer means only "received". It is not a
+judgement on whether the new details work. The Item then moves to trying again, and the Supplier's
+bot attempts a fresh login some time later. That attempt is where the truth appears: either the
+details are wrong again and the Item returns to the same hold, or they work and the delivery
+starts.
+
+So a credential submission has three outcomes, not two: **received**, then later **worked** or
+**wrong again**. The third arrives in a subsequent observation, not in the response to the
+submission.
+
+Two consequences worth stating because they are easy to get backwards:
+
+- A successful submission must never be reported to the customer as "fixed". It is "received, we
+  are trying again". Saying "fixed" and then returning to the same hold reason a minute later
+  reads as the store not knowing what is happening.
+- An Item moving from in-progress back to the same hold reason is **correct behaviour here**, not
+  a regression to be guarded against. Any rule that forbids a status going backwards has to permit
+  this, or a second wrong password becomes invisible.
+
 ## Challenges
 
 **Challenge / SBC** — a Squad Building Challenge. Mohamed calls these "طلبات التحديات".
