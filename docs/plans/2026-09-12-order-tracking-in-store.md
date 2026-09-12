@@ -260,10 +260,15 @@ tracker offers, for every reason, and revise the Arabic so it stops promising au
 where a control exists. The Salla-era wording was written for a page with no controls on it; the
 tracking link has always given the customer the actions, and full customer control is the point.
 
-One case to write carefully rather than differently: `store_stock` comes from the supplier telling
-us OUR balance is short, so pressing resume cannot succeed until we top up. It keeps its button
-per this decision - the text has to set the expectation that it may need a second try shortly,
-instead of implying the press will fix it.
+`store_stock` deserves a note, because it was raised as a doubt and the owner's answer settles it.
+The reason comes from the supplier telling us OUR float is short, so a press may not succeed yet -
+and that is precisely why the button belongs there. The float gets topped up at any time and the
+customer has no way of knowing when; pressing resume is the cheapest way for them to find out it
+worked, and a press that fails costs nothing and can be repeated. So the copy only needs to avoid
+promising immediacy. It must not tell the customer to wait for us.
+
+Retry pressure is already bounded elsewhere: D1 rate limits actions per order, and B1's
+per-supplier limiter sits under both the sweep and the button.
 
 *Our text asks for something the offered buttons do not do:*
 `credentials` asks the customer to correct the order form, but the three 2FA codes resolving to it
