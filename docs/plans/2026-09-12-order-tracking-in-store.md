@@ -90,6 +90,19 @@ Decided 2026-09-12, briefing the C3 canvas:
 - **The customer never reads about our plumbing.** Recorded in `CONTEXT.md`; it killed four strings
   the first canvas invented and it applies to every customer surface, not only tracking.
 
+Canvas approved 2026-09-12 ("`تمام موافق كمل`"), with two readings recorded because the approval
+did not name them:
+
+- **Structure (ب): one tracking block above the invoice, with tabs when the order has both kinds.**
+  His approval did not pick between the two structures the canvas drew, and (ب) is the only one
+  consistent with both of his earlier answers - (أ), tracking inside each item's details, makes tabs
+  impossible, because an item is one kind by definition. Told to him plainly; it is a one-line change
+  at the mount point if he meant (أ).
+- **The EA-servers wording** is the condensation of the tracker's own sentence for that state
+  (`errorMap.loginFailed`): the login failed, it is most likely EA server pressure on their side,
+  press resume to try again. A fresh sentence was drafted and discarded - the tracker has copy real
+  customers have already read, and that outranks an invention.
+
 ## Objectives is not sellable, and that is accepted for now
 
 Owner decision, 2026-09-12: Objectives is not needed at the moment, so this stays as it is.
