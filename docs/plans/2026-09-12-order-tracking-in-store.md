@@ -272,6 +272,18 @@ rather than guessed:
   what makes the unlocked read of it safe before the transaction opens. The day someone adds a
   "move an item between orders" writer, that read becomes wrong silently.
 
+**A challenge id the supplier does not recognise belongs here too.** `observeChallenges()` is bulk
+and answers only about the ids it knows, so an id we asked about can simply be absent. That is not
+an error and not zero progress: the reader keeps the job's existing counters and applies whatever
+did come back, per the same fail-closed rule that governs an unknown status code. But an id that
+stays absent across several sweeps means the challenge is not where we think it is, and that must
+reach Mohamed rather than spin forever.
+
+The implementer proposed a new hold reason for it. It is not one - the enum has seventeen values,
+all of them things a customer reads, and "FFT does not recognise this challenge id" is an operator
+problem. It is the same shape as a paid item with no placement row, which is what this task
+already exists to surface.
+
 **B6. Silence alarm.** An automated paid item with no placement row after a bounded wait is
 surfaced to Mohamed. Covers "n8n placed successfully and its callback was lost", which n8n cannot
 see and which otherwise leaves a paid order invisible.

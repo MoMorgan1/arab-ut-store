@@ -417,10 +417,16 @@ final class ApplySupplierObservation
         '_supplier',
         '_uttStatusOrder',
         '_uttIdOrder',
-        // Challenge progress, read by the translator
+        // Challenge progress and details from sbcStatusBulkAPI
         'challengesDone',
         'totalChallenges',
-        'challenges',
+        'challengesSubmitted',
+        'timesSolved',
+        'timesToSolve',
+        'sbcStatus',
+        'costCoins',
+        'setId',
+        'sbcSolveID',
     ];
 
     /**

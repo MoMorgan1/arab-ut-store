@@ -106,6 +106,15 @@ final class UttClient implements SupplierClient
     }
 
     /**
+     * @param  list<string>  $challengeIds
+     * @return array<string, array<string, mixed>>
+     */
+    public function observeChallenges(array $challengeIds): array
+    {
+        throw new LogicException('Supplier [utt] does not support challenge tracking.');
+    }
+
+    /**
      * Fetch the raw UTT order, rejecting the 200-with-error-body trap.
      *
      * @return array<string, mixed>

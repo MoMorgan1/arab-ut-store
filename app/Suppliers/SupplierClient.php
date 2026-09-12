@@ -63,4 +63,16 @@ interface SupplierClient
      * @throws SupplierUnavailable
      */
     public function retryChallenge(string $supplierOrderId, string $challengeId): SupplierActionResult;
+
+    /**
+     * Read the supplier's view of active challenge (SBC) solves.
+     *
+     * UTT does not solve challenges and throws a LogicException instead.
+     *
+     * @param  list<string>  $challengeIds
+     * @return array<string, array<string, mixed>>
+     *
+     * @throws SupplierUnavailable
+     */
+    public function observeChallenges(array $challengeIds): array;
 }

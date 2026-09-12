@@ -844,3 +844,59 @@ it('never moves a completed order backwards when a challenge observation arrives
         ->and($item->fresh()->status)->toBe(OrderItemStatus::Completed)
         ->and(OrderStatusHistory::query()->count())->toBe(0);
 });
+
+it('stores challenge observation allowlist keys and drops forbidden fields such as account (Rule 7)', function (): void {
+    [$order, $item, $job] = createObservationContext();
+
+    $rawPayload = [
+        'challengesDone' => 7,
+        'totalChallenges' => 7,
+        'challengesSubmitted' => 14,
+        'timesSolved' => 2,
+        'timesToSolve' => 2,
+        'sbcStatus' => 'finished',
+        'costCoins' => 546650,
+        'setId' => 702,
+        'sbcSolveID' => '1803b7a6-0000-0000-0000-00000064265f',
+        'account' => 'customer@example.com',
+        'created' => '2026-04-02 17:56:00',
+        'cached' => 0,
+        'sbcName' => 'Icon Challenge',
+        'sbcImageUrl' => 'https://example.test/icon.png',
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'finished',
+        challengesSolved: 2,
+        challengesRequested: 2,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $stored = $job->fresh()->observation;
+
+    expect($stored)->toHaveKey('sbcStatus', 'finished')
+        ->and($stored)->toHaveKey('timesSolved', 2)
+        ->and($stored)->toHaveKey('timesToSolve', 2)
+        ->and($stored)->toHaveKey('setId', 702)
+        ->and($stored)->toHaveKey('costCoins', 546650)
+        ->and($stored)->toHaveKey('challengesDone', 7)
+        ->and($stored)->toHaveKey('totalChallenges', 7)
+        ->and($stored)->toHaveKey('challengesSubmitted', 14)
+        ->and($stored)->toHaveKey('sbcSolveID', '1803b7a6-0000-0000-0000-00000064265f')
+        ->and($stored)->toHaveKey('cached', 0)
+        ->and($stored)->not->toHaveKey('account')
+        ->and($stored)->not->toHaveKey('sbcName')
+        ->and($stored)->not->toHaveKey('sbcImageUrl')
+        ->and($stored)->not->toHaveKey('created')
+        ->and(json_encode($stored))->not->toContain('customer@example.com');
+});

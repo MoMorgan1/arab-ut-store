@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use LogicException;
 
 /**
  * The futtransfer (FFT) supplier.
@@ -56,6 +57,56 @@ final class FftClient implements SupplierClient
         $this->guard->recordSuccess(Supplier::Fft);
 
         return new RawSupplierObservation(Supplier::Fft, $supplierOrderId, $data, CarbonImmutable::now());
+    }
+
+    /**
+     * Read the supplier's view of active challenge (SBC) solves.
+     *
+     * @param  list<string>  $challengeIds
+     * @return array<string, array<string, mixed>>
+     *
+     * @throws SupplierUnavailable
+     * @throws LogicException
+     */
+    public function observeChallenges(array $challengeIds): array
+    {
+        $normalizedIds = ChallengeIds::normalize($challengeIds);
+
+        if ($normalizedIds === []) {
+            // Asking for the status of no challenges is a caller bug rather than a supplier fault.
+            throw new LogicException('Cannot observe challenge status without valid challenge IDs.');
+        }
+
+        $config = $this->configuration();
+
+        $payload = [
+            'sbcIDs' => $normalizedIds,
+            'apiUser' => $config['api_user'],
+            'apiKey' => $config['api_key'],
+        ];
+
+        $targetId = implode(',', $normalizedIds);
+        $response = $this->request($config, $targetId, '/sbcStatusBulkAPI', $payload, SupplierCallProfile::Polling);
+        $data = $response->json();
+
+        if (! is_array($data)) {
+            $this->guard->recordFailure(Supplier::Fft);
+
+            throw new SupplierUnavailable(Supplier::Fft, $targetId, $response->status(), 'invalid_body');
+        }
+
+        $this->guard->recordSuccess(Supplier::Fft);
+
+        /** @var array<string, array<string, mixed>> $result */
+        $result = [];
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $result[(string) $key] = $value;
+            }
+        }
+
+        return $result;
     }
 
     public function correctCredentials(string $supplierOrderId, array $credentials): SupplierActionResult
