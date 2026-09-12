@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\OrderStatus;
 use App\Enums\Supplier;
 use App\Suppliers\Exceptions\SupplierNotConfigured;
 use App\Suppliers\Exceptions\SupplierUnavailable;
 use App\Suppliers\SupplierGuard;
+use App\Suppliers\Translation\SupplierStateTranslator;
 use App\Suppliers\UttClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -73,8 +75,33 @@ test('observe translates utt interruption states into fft equivalents', function
     'logging' => ['LOGGING', 'entered', 'entered', ''],
     'system softban' => ['BUYING SOFTBAN', 'entered', '', 'tempbanCooldown'],
     'bad proxy' => ['BAD PROXY', 'interrupted', '', 'FailedProxyConnectionError'],
-    'unknown status spins' => ['SOMETHING NEW', 'entered', '', ''],
+    'unknown status passes through, not spun' => ['SOMETHING NEW', 'SOMETHING NEW', '', ''],
 ]);
+
+test('an unknown utt status fails closed through the translator instead of spinning', function () {
+    Http::fake([
+        'https://utt.example.test/api/getOrder' => Http::response(['order' => [
+            'idOrder' => 'utt-42',
+            'statusOrder' => 'SOMETHING NEW',
+        ]]),
+    ]);
+
+    $observation = app(UttClient::class)->observe('utt-42');
+
+    $translated = (new SupplierStateTranslator)->translate(
+        $observation,
+        OrderStatus::WaitingForCustomer,
+        null,
+    );
+
+    expect($observation->payload['status'])->toBe('SOMETHING NEW')
+        ->and($observation->payload['_uttStatusOrder'])->toBe('SOMETHING NEW')
+        ->and($translated->supported)->toBeFalse()
+        ->and($translated->status)->toBe(OrderStatus::WaitingForCustomer)
+        ->and($translated->holdReason)->toBeNull()
+        ->and($translated->allowedActions)->toBe([])
+        ->and($translated->observedState)->toBe('something new');
+});
 
 test('observe rejects the order not found trap without counting it against the circuit', function () {
     config()->set('services.suppliers.circuit_failure_threshold', 1);

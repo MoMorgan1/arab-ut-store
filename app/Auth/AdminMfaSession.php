@@ -7,14 +7,22 @@ use Illuminate\Http\Request;
 
 /**
  * Owns the session marker that tells the admin gate the TOTP challenge has
- * already been satisfied. Two keys are written together: the Unix timestamp of
- * the grant and how it was earned.
+ * already been satisfied. Three keys are written together: the Unix timestamp
+ * of the grant, how it was earned, and the account's revocation counter when it
+ * was minted.
  */
 final class AdminMfaSession
 {
     public const CONFIRMED_AT_KEY = 'auth.two_factor_confirmed_at';
 
     public const CONFIRMED_VIA_KEY = 'auth.two_factor_confirmed_via';
+
+    /**
+     * The account's revocation counter at the moment of the grant. A credential
+     * change bumps the counter, stranding every marker that carries an older
+     * value wherever its session lives.
+     */
+    public const REVOCATION_KEY = 'auth.two_factor_revocation';
 
     public const VIA_CHALLENGE = 'challenge';
 
@@ -37,18 +45,20 @@ final class AdminMfaSession
 
     public function stampChallenge(Request $request): void
     {
-        $request->session()->put([
-            self::CONFIRMED_AT_KEY => now()->getTimestamp(),
-            self::CONFIRMED_VIA_KEY => self::VIA_CHALLENGE,
-        ]);
+        $user = $request->user();
+
+        // Callers only reach this after authenticating, and the marker is only
+        // meaningful against an account, so an anonymous request stamps nothing.
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $this->stamp($request, $user, self::VIA_CHALLENGE);
     }
 
-    public function stampDevice(Request $request): void
+    public function stampDevice(User $user, Request $request): void
     {
-        $request->session()->put([
-            self::CONFIRMED_AT_KEY => now()->getTimestamp(),
-            self::CONFIRMED_VIA_KEY => self::VIA_DEVICE,
-        ]);
+        $this->stamp($request, $user, self::VIA_DEVICE);
     }
 
     public function forget(Request $request): void
@@ -56,6 +66,7 @@ final class AdminMfaSession
         $request->session()->forget([
             self::CONFIRMED_AT_KEY,
             self::CONFIRMED_VIA_KEY,
+            self::REVOCATION_KEY,
         ]);
     }
 
@@ -70,14 +81,17 @@ final class AdminMfaSession
 
         if (is_int($confirmedAt)) {
             $age = now()->getTimestamp() - $confirmedAt;
-            $invalidatedAt = $user->mfa_invalidated_at?->getTimestamp();
+            $markerRevocation = $request->session()->get(self::REVOCATION_KEY);
 
-            // A credential change stamps the account, and a marker minted before
-            // that moment is dead wherever its session lives: this is how a
-            // password reset reaches browsers the reset itself cannot clear.
-            $invalidated = $invalidatedAt !== null && $confirmedAt < $invalidatedAt;
+            // A credential change bumps the account's counter, and a marker
+            // that records any other value was minted before that change and is
+            // dead: this is how a password reset reaches browsers the reset
+            // itself cannot clear. A marker with no counter reads as zero, the
+            // value a never-revoked account has, so the bare marker
+            // tests/TestCase.php seeds keeps working until the first revocation.
+            $counterMatches = ($markerRevocation ?? 0) === $user->mfa_revocation;
 
-            if (! $invalidated && $age <= self::MAX_AGE_DAYS * 24 * 60 * 60) {
+            if ($counterMatches && $age <= self::MAX_AGE_DAYS * 24 * 60 * 60) {
                 // A challenge grant stands for its whole life, while a device grant
                 // is only trusted briefly so a revocation can take effect quickly.
                 if ($via !== self::VIA_DEVICE || $age <= self::DEVICE_RECHECK_MINUTES * 60) {
@@ -87,11 +101,20 @@ final class AdminMfaSession
         }
 
         if ($this->trustedDevices->trusts($user, $request)) {
-            $this->stampDevice($request);
+            $this->stampDevice($user, $request);
 
             return true;
         }
 
         return false;
+    }
+
+    private function stamp(Request $request, User $user, string $via): void
+    {
+        $request->session()->put([
+            self::CONFIRMED_AT_KEY => now()->getTimestamp(),
+            self::CONFIRMED_VIA_KEY => $via,
+            self::REVOCATION_KEY => $user->mfa_revocation,
+        ]);
     }
 }

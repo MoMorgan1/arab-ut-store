@@ -307,7 +307,11 @@ final class UttClient implements SupplierClient
             'TRANSFERRING', 'CHANGING SENDER',
         ];
 
-        $fftStatus = $statusMap[$statusOrder] ?? 'entered';
+        // Unknown UTT statuses stay unknown: the tracker defaults them to
+        // 'entered' (functions.php:1347), which would spin forever instead of
+        // flagging an unmapped code. Passing the code through lets the
+        // translator's unknown guard fail closed.
+        $fftStatus = $statusMap[$statusOrder] ?? $statusOrder;
 
         if (in_array($statusOrder, $activeStatuses, true)) {
             $fftStatus = 'entered';

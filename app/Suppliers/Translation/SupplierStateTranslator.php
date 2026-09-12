@@ -147,6 +147,14 @@ final class SupplierStateTranslator
     ];
 
     /**
+     * economyState value the tracker pauses without naming a hold: on its own
+     * it keeps the order moving with no action, but beside a stopped status it
+     * waits on the customer. Named so every code comparison in this class is
+     * exact against a constant.
+     */
+    private const string ECONOMY_STATE_DEACTIVATED = 'deactivated';
+
+    /**
      * accountCheck codes that describe healthy progress, never a hold.
      *
      * @var list<string>
@@ -184,6 +192,42 @@ final class SupplierStateTranslator
         'waiting',
         'waitingforassignment',
         'transfersinprogress',
+    ];
+
+    /**
+     * status values that mean the order finished, transcribed exactly from
+     * track/STATUS_MAPPING_CURRENT.md: 'finished' and 'completed'. Matching is
+     * exact on purpose: the tracker tests for the substrings 'finish' and
+     * 'complet', so a status like 'unfinished' would complete a live order
+     * past the unknown-code guard. Everything not listed here is unknown and
+     * fails closed in firstUnknownCode().
+     *
+     * @var list<string>
+     */
+    private const array FINISHED_STATUSES = [
+        'finished',
+        'completed',
+    ];
+
+    /**
+     * status values that mean the order is stopped and shows Resume, matched
+     * exactly like FINISHED_STATUSES. track/STATUS_MAPPING_CURRENT.md item 8
+     * names 'interrupted', 'stopped' and 'abort', but the running tracker tests
+     * the substrings 'stop', 'abort' and 'interrupted'
+     * (track/assets/js/ui.js:413-414, track/includes/functions.php:97), which
+     * also catches the inflected values 'stopping' and 'aborted'. This list
+     * follows the JavaScript: those five are the concrete stopped codes.
+     * Anything else, like 'unstoppable', is unknown and fails closed in
+     * firstUnknownCode().
+     *
+     * @var list<string>
+     */
+    private const array STOPPED_STATUSES = [
+        'interrupted',
+        'stopped',
+        'stopping',
+        'abort',
+        'aborted',
     ];
 
     /**
@@ -274,14 +318,12 @@ final class SupplierStateTranslator
             return $this->unsupported($current, null, $progress);
         }
 
-        $completes = $this->isFinished($status) && $phase !== DeliveryPhase::Coins;
+        // Validation comes before completion: a finished-looking status must
+        // never carry an unknown code past the guard into Completed.
+        $unknown = $this->firstUnknownCode($status, $accountCheck, $economyState);
 
-        if (! $completes) {
-            $unknown = $this->firstUnknownCode($status, $accountCheck, $economyState);
-
-            if ($unknown !== null) {
-                return $this->unsupported($current, $unknown, $progress);
-            }
+        if ($unknown !== null) {
+            return $this->unsupported($current, $unknown, $progress);
         }
 
         $resolved = $this->resolve($observation->supplier, $status, $accountCheck, $economyState, $phase);
@@ -342,7 +384,7 @@ final class SupplierStateTranslator
             return $this->hold($hold, $economyState, $supplier, $status, $accountCheck, $economyState, $phase, $observed);
         }
 
-        if ($economyState === 'deactivated') {
+        if ($economyState === self::ECONOMY_STATE_DEACTIVATED) {
             return $this->deactivated($supplier, $status, $accountCheck, $economyState, $phase, $observed);
         }
 
@@ -490,7 +532,7 @@ final class SupplierStateTranslator
 
     private function isKnownEconomyState(string $code): bool
     {
-        return $code === 'deactivated'
+        return $code === self::ECONOMY_STATE_DEACTIVATED
             || array_key_exists($code, self::ECONOMY_STATE_HOLDS)
             || $this->in(self::SAFE_ECONOMY_STATES, $code);
     }
@@ -512,14 +554,12 @@ final class SupplierStateTranslator
 
     private function isFinished(string $status): bool
     {
-        return str_contains($status, 'finish') || str_contains($status, 'complet');
+        return $this->in(self::FINISHED_STATUSES, $status);
     }
 
     private function isStopped(string $status): bool
     {
-        return str_contains($status, 'stop')
-            || str_contains($status, 'interrupted')
-            || str_contains($status, 'abort');
+        return $this->in(self::STOPPED_STATUSES, $status);
     }
 
     private function isTerminal(OrderStatus $status): bool

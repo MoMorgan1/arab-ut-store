@@ -1,11 +1,13 @@
 # n8n Fulfillment Placement v1 API
 
-n8n reports one signed supplier placement at a time for a paid automated item
-(Coins or SBC). Laravel owns the job lifecycle from there: a successful
-placement creates — or idempotently binds — the fulfillment job and starts
-polling FFT or UTT for observations. This is the only inbound fulfillment
-surface, and there is no read path into the store: the store polls the
-suppliers itself, so n8n never needs to look anything up.
+n8n reports one signed supplier placement per delivery phase for a paid
+automated item (Coins or SBC). A challenge item is reported twice: first the
+`coins` phase for the funding shipment, then the `challenge` phase for the
+solve, each with its own supplier reference. Laravel owns the job lifecycle
+from there: a successful placement creates — or idempotently binds — the
+fulfillment job and starts polling FFT or UTT for observations. This is the
+only inbound fulfillment surface, and there is no read path into the store:
+the store polls the suppliers itself, so n8n never needs to look anything up.
 
 ## Endpoint
 
@@ -56,23 +58,29 @@ minutes old, or more than five minutes ahead, is rejected with `409`.
 | `order_item_public_id` | yes | ULID of the order item from the order-paid payload. |
 | `supplier` | yes | `fft` or `utt`. |
 | `supplier_order_id` | yes | The supplier's own reference, 1-255 characters: the challenge id for FFT, the order id for UTT. |
-| `delivery_phase` | no | `coins` or `challenge`. Only meaningful for a challenge delivery; omit it for a plain Coins order. Recorded when the job is created or bound, never used to overwrite a later phase. |
+| `delivery_phase` | yes | `coins` or `challenge`. A plain Coins order reports `coins`. An SBC item reports `coins` for the funding shipment and `challenge` for the solve. `challenge` is refused unless the item is SBC and the supplier is `fft`. |
 
 ## Idempotency and conflicts
 
 Each order item has at most one job, keyed by
 `fulfillment_jobs.idempotency_key = "fulfillment-placement:" + order_item_public_id`.
+Each job holds at most one placement per phase, keyed by
+`fulfillment_placements.idempotency_key = "fulfillment-placement:" + order_item_public_id + ":" + delivery_phase`.
+The job row mirrors the first placement's supplier, reference, and phase so
+existing readers keep working; the placements table is the complete record and
+the second phase never overwrites the mirror.
 
-An identical report — same item, supplier, and supplier reference — is a
+An identical report — same item, phase, supplier, and supplier reference — is a
 successful no-op: the same `200` response, no duplicate row, and no counter or
 status change. A job that has since progressed, completed, or failed is not
 reopened by a retry.
 
-The first placement wins. A second placement for the same item with a different
-supplier or reference is refused with `409 item_placement_conflict`, and the
-existing placement is left untouched. A `(supplier, supplier_order_id)` pair can
-only ever belong to one order item, so a reference already bound to another item
-is refused with `409 supplier_reference_conflict`.
+Within one phase, the first placement wins. A second placement for the same item
+and phase with a different supplier or reference is refused with
+`409 item_placement_conflict`, and the recorded placement is left untouched. A
+`(supplier, supplier_order_id)` pair belongs to exactly one placement ever, so a
+reference already recorded — for another item or the other phase — is refused
+with `409 supplier_reference_conflict`.
 
 ## Success response
 
@@ -89,8 +97,9 @@ is refused with `409 supplier_reference_conflict`.
 ```
 
 Success is `200` with `data.acknowledged: true`, whether the placement was just
-recorded or recognised as an identical retry. The job is set to `in_progress`,
-the supplier error state is cleared, and polling begins at the next sweep.
+recorded or recognised as an identical retry. On the first placement the job is
+set to `in_progress`, the supplier error state is cleared, and polling begins at
+the next sweep; a later phase only adds its placement row.
 
 ## Errors
 
@@ -114,9 +123,11 @@ Validation failures use Laravel's standard `422` body with `message` and
 | 409 | `stale_placement` | Timestamp outside the ±5 minute window. | Re-sign with a fresh timestamp and retry. |
 | 404 | `order_item_not_found` | No order item with that ULID. | Do not retry; alert. |
 | 422 | `service_not_automated` | The item is not deliverable by a supplier; only Coins and SBC are automated. | Do not retry; alert. |
+| 422 | `service_has_no_challenge` | A `challenge` phase was reported for an item that is not SBC. | Do not retry; alert (phase or item mismatch). |
+| 422 | `supplier_cannot_solve_challenges` | A `challenge` phase was reported for UTT; only FFT solves challenges. | Do not retry; alert (supplier or item mismatch). |
 | 422 | `order_item_unpaid` | Payment has not been confirmed yet. | Retry after the payment event confirms; alert if it persists. |
-| 409 | `supplier_reference_conflict` | This supplier reference belongs to another order item. | Do not retry; alert (placement or order mismatch). |
-| 409 | `item_placement_conflict` | The item already holds a different placement. | Do not retry; alert. |
+| 409 | `supplier_reference_conflict` | This supplier reference is already recorded on another placement. | Do not retry; alert (placement or order mismatch). |
+| 409 | `item_placement_conflict` | The item already holds a different placement for this phase. | Do not retry; alert. |
 | 409 | `placement_conflict` | A concurrent request won the unique-index race. | Retry once; the retry returns the idempotent success or the precise conflict. |
 | 429 | `fulfillment_rate_limited` | More than 10 requests per minute for the key. | Back off and retry. |
 | 422 | — | Payload validation failed. | Fix the payload before retrying. |

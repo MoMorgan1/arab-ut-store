@@ -265,13 +265,13 @@ class FortifyServiceProvider extends ServiceProvider
     /**
      * A trusted device is a standing bypass of the TOTP challenge, so anything
      * that invalidates the second factor - or that account recovery would go
-     * through - must drop every remembered device with it. The same events
-     * stamp the account so session markers minted before them are refused
-     * everywhere, which reaches browsers this request cannot clear.
+     * through - must drop every remembered device with it. The same events bump
+     * the account's revocation counter so session markers minted before them
+     * are refused everywhere, which reaches browsers this request cannot clear.
      */
     private function revokeTrustedDevicesOnCredentialChange(): void
     {
-        $forget = function (object $event): void {
+        $revoke = function (object $event): void {
             $user = $event->user ?? null;
 
             if (! $user instanceof User) {
@@ -280,10 +280,11 @@ class FortifyServiceProvider extends ServiceProvider
 
             app(TrustedDeviceRegistry::class)->forgetAll($user);
 
-            // The timestamp is the only revocation signal sessions this
-            // request cannot reach will ever see; stamping it after forgetting
-            // the devices keeps both from drifting apart.
-            $user->forceFill(['mfa_invalidated_at' => now()])->save();
+            // The counter is the only revocation signal sessions this request
+            // cannot reach will ever see. Incrementing in the database counts
+            // every event in the request cycle, which stamping a moment cannot
+            // guarantee when two of them land in the same second.
+            $user->increment('mfa_revocation');
 
             $request = app()->bound('request') ? app('request') : null;
 
@@ -292,10 +293,10 @@ class FortifyServiceProvider extends ServiceProvider
             }
         };
 
-        Event::listen(TwoFactorAuthenticationDisabled::class, $forget);
-        Event::listen(TwoFactorAuthenticationConfirmed::class, $forget);
-        Event::listen(RecoveryCodesGenerated::class, $forget);
-        Event::listen(PasswordReset::class, $forget);
+        Event::listen(TwoFactorAuthenticationDisabled::class, $revoke);
+        Event::listen(TwoFactorAuthenticationConfirmed::class, $revoke);
+        Event::listen(RecoveryCodesGenerated::class, $revoke);
+        Event::listen(PasswordReset::class, $revoke);
     }
 
     private function hardenTwoFactorManagementRoutes(): void

@@ -18,10 +18,17 @@ use App\Enums\SupplierAction;
  * while actions come from the tracker's showEditStates/showResumeStates lists,
  * except the two silent automatic codes (insufficientFunds, calcErrorMaintenance).
  *
+ * The `combinations` table covers interactions between the axes: an unknown
+ * code always wins over a finished-looking status, unknown codes are reported
+ * in accountCheck > economyState > status order, `unfinished` is not finished,
+ * and `unstoppable` is not stopped. Every combination is unsupported and keeps
+ * the current status.
+ *
  * @return array{
  *     accountCheck: array<string, array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>}>,
  *     economyState: array<string, array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>}>,
- *     status: array<string, array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>}>
+ *     status: array<string, array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>}>,
+ *     combinations: array<string, array{payload: array<string, string>, current: OrderStatus, expected: array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>, observed: string}}>
  * }
  */
 return [
@@ -82,7 +89,9 @@ return [
         'finished' => ['status' => OrderStatus::Completed, 'hold' => null, 'actions' => []],
         'completed' => ['status' => OrderStatus::Completed, 'hold' => null, 'actions' => []],
         'stopped' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Paused, 'actions' => [SupplierAction::Resume]],
+        'stopping' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Paused, 'actions' => [SupplierAction::Resume]],
         'abort' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Paused, 'actions' => [SupplierAction::Resume]],
+        'aborted' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Paused, 'actions' => [SupplierAction::Resume]],
         'interrupted' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Paused, 'actions' => [SupplierAction::Resume]],
         'entered' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
         'started' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
@@ -90,5 +99,47 @@ return [
         'waiting' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
         'waitingforassignment' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
         'transfersinprogress' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
+    ],
+    'combinations' => [
+        'finished with an unknown account check stays unsupported' => [
+            'payload' => ['status' => 'finished', 'accountCheck' => 'brandnewsignal', 'economyState' => ''],
+            'current' => OrderStatus::WaitingForCustomer,
+            'expected' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => null, 'actions' => [], 'observed' => 'brandnewsignal'],
+        ],
+        'finished with an unknown economy state stays unsupported' => [
+            'payload' => ['status' => 'finished', 'accountCheck' => '', 'economyState' => 'brandnewsignal'],
+            'current' => OrderStatus::InProgress,
+            'expected' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => [], 'observed' => 'brandnewsignal'],
+        ],
+        'completed with an unknown account check stays unsupported' => [
+            'payload' => ['status' => 'completed', 'accountCheck' => 'brandnewsignal', 'economyState' => ''],
+            'current' => OrderStatus::InProgress,
+            'expected' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => [], 'observed' => 'brandnewsignal'],
+        ],
+        'unfinished is not finished' => [
+            'payload' => ['status' => 'unfinished', 'accountCheck' => '', 'economyState' => ''],
+            'current' => OrderStatus::WaitingForCustomer,
+            'expected' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => null, 'actions' => [], 'observed' => 'unfinished'],
+        ],
+        'unstoppable is not stopped' => [
+            'payload' => ['status' => 'unstoppable', 'accountCheck' => '', 'economyState' => ''],
+            'current' => OrderStatus::InProgress,
+            'expected' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => [], 'observed' => 'unstoppable'],
+        ],
+        'unfinished beside a known customer code is still unsupported' => [
+            'payload' => ['status' => 'unfinished', 'accountCheck' => 'wrongBA', 'economyState' => ''],
+            'current' => OrderStatus::InProgress,
+            'expected' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => [], 'observed' => 'unfinished'],
+        ],
+        'unknown status beside a known account check stays unsupported' => [
+            'payload' => ['status' => 'manual review', 'accountCheck' => 'wrongBA', 'economyState' => ''],
+            'current' => OrderStatus::InProgress,
+            'expected' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => [], 'observed' => 'manual review'],
+        ],
+        'unknown status beside an unknown account check reports the account check first' => [
+            'payload' => ['status' => 'manual review', 'accountCheck' => 'brandnewsignal', 'economyState' => ''],
+            'current' => OrderStatus::WaitingForCustomer,
+            'expected' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => null, 'actions' => [], 'observed' => 'brandnewsignal'],
+        ],
     ],
 ];

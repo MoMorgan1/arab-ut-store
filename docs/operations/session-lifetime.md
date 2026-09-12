@@ -52,6 +52,15 @@ the session — they are coupled in one direction only.
   revoking trusted devices clears the marker on the spot. Otherwise a thirty-day session would
   have turned a revoked device into a standing bypass.
 
+- **Revocation counts, it does not compare clocks.** `users.mfa_revocation` is an integer the
+  credential-change listener increments, and a marker records the value it was minted under; a
+  marker whose value differs from the account's is dead. The first attempt compared a
+  second-resolution timestamp instead, which let a grant earned in the same second as a password
+  reset survive it, and let a backwards clock do the same. Counting has neither failure mode. An
+  absent counter reads as zero, which is what keeps the roughly eighty admin test files that seed
+  a bare marker working - safe because an account with zero revocations has nothing to invalidate,
+  and any increment kills those markers immediately.
+
 ## Deploying it
 
 `SESSION_LIFETIME` lives in the server's `shared/.env` on Hostinger, not in the release. Change it

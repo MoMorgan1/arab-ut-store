@@ -184,16 +184,17 @@ it('invalidates another session marker when the password is reset', function ():
     $this->actingAs($admin)->withSession([
         'auth.two_factor_confirmed_at' => $stampedAt,
         'auth.two_factor_confirmed_via' => 'challenge',
+        'auth.two_factor_revocation' => 0,
     ]);
 
     // The reset happens in another browser: this request carries no session,
-    // so only the account epoch can invalidate the marker under test.
+    // so only the account counter can invalidate the marker under test.
     $this->app->instance('request', Request::create('/__tests/other-browser'));
 
     event(new PasswordReset($admin));
 
     expect(session('auth.two_factor_confirmed_at'))->toBe($stampedAt)
-        ->and($admin->fresh()->mfa_invalidated_at)->not->toBeNull();
+        ->and($admin->fresh()->mfa_revocation)->toBe(1);
 
     $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
 });
@@ -205,6 +206,7 @@ it('invalidates another session marker when two factor authentication is disable
     $this->actingAs($admin)->withSession([
         'auth.two_factor_confirmed_at' => $stampedAt,
         'auth.two_factor_confirmed_via' => 'challenge',
+        'auth.two_factor_revocation' => 0,
     ]);
 
     $this->app->instance('request', Request::create('/__tests/other-browser'));
@@ -212,7 +214,79 @@ it('invalidates another session marker when two factor authentication is disable
     event(new TwoFactorAuthenticationDisabled($admin));
 
     expect(session('auth.two_factor_confirmed_at'))->toBe($stampedAt)
-        ->and($admin->fresh()->mfa_invalidated_at)->not->toBeNull();
+        ->and($admin->fresh()->mfa_revocation)->toBe(1);
+
+    $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
+});
+
+it('invalidates another session marker minted in the same second as the revocation', function (): void {
+    $this->freezeTime();
+
+    ['user' => $admin] = adminMfaGateUser();
+
+    $this->actingAs($admin)->withSession([
+        'auth.two_factor_confirmed_at' => now()->getTimestamp(),
+        'auth.two_factor_confirmed_via' => 'challenge',
+        'auth.two_factor_revocation' => 0,
+    ]);
+
+    $this->app->instance('request', Request::create('/__tests/other-browser'));
+
+    // A timestamp epoch compared with a strict less-than let a marker that
+    // shared the revocation's second survive it; the counter has no such gap.
+    event(new PasswordReset($admin));
+
+    expect($admin->fresh()->mfa_revocation)->toBe(1);
+
+    $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
+});
+
+it('invalidates another session marker when the clock moves backwards before the revocation', function (): void {
+    ['user' => $admin] = adminMfaGateUser();
+
+    $this->actingAs($admin)->withSession([
+        'auth.two_factor_confirmed_at' => now()->getTimestamp(),
+        'auth.two_factor_confirmed_via' => 'challenge',
+        'auth.two_factor_revocation' => 0,
+    ]);
+
+    $this->app->instance('request', Request::create('/__tests/other-browser'));
+
+    // An NTP correction or a restored VM snapshot can put the clock behind a
+    // marker minted moments earlier; the counter does not read the clock.
+    $this->travelTo(now()->subMinutes(5));
+
+    event(new PasswordReset($admin));
+
+    expect($admin->fresh()->mfa_revocation)->toBe(1);
+
+    $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
+});
+
+it('counts two revocation events in the same request cycle', function (): void {
+    ['user' => $admin] = adminMfaGateUser();
+
+    $this->app->instance('request', Request::create('/__tests/other-browser'));
+
+    event(new PasswordReset($admin));
+    event(new TwoFactorAuthenticationDisabled($admin));
+
+    expect($admin->fresh()->mfa_revocation)->toBe(2);
+});
+
+it('treats a marker without a counter as valid only while the account has no revocations', function (): void {
+    ['user' => $admin] = adminMfaGateUser();
+
+    // tests/TestCase.php seeds exactly this bare marker for every admin test
+    // browser, so it must stand while the account has no revocation history.
+    $this->actingAs($admin)
+        ->withSession(['auth.two_factor_confirmed_at' => now()->getTimestamp()])
+        ->get('/admin')
+        ->assertOk();
+
+    $this->app->instance('request', Request::create('/__tests/other-browser'));
+
+    event(new PasswordReset($admin));
 
     $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
 });
@@ -225,6 +299,10 @@ it('keeps admin access after confirming two factor on the admin screen', functio
     $this->post('/admin/confirm-2fa', [
         'code' => (new Google2FA)->getCurrentOtp($secret),
     ])->assertRedirect('/admin');
+
+    // The gate compares the recorded counter, so a marker that satisfied the
+    // age check without recording one would still be refused here.
+    expect(session('auth.two_factor_revocation'))->toBe(0);
 
     $this->get('/admin')->assertOk();
 });
@@ -241,13 +319,14 @@ it('keeps the admin gate reachable after confirming two factor through fortify',
         (string) $admin->fresh()->two_factor_secret,
     );
 
-    // Confirming dispatches TwoFactorAuthenticationConfirmed, which stamps the
-    // epoch: a marker minted afterwards must still satisfy the admin gate.
+    // Confirming dispatches TwoFactorAuthenticationConfirmed, which bumps the
+    // counter: a marker minted afterwards must record the new value to satisfy
+    // the admin gate.
     $this->postJson(route('two-factor.confirm'), [
         'code' => (new Google2FA)->getCurrentOtp($secret),
     ])->assertOk();
 
-    expect($admin->fresh()->mfa_invalidated_at)->not->toBeNull();
+    expect($admin->fresh()->mfa_revocation)->toBe(1);
 
     $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
 
@@ -255,15 +334,17 @@ it('keeps the admin gate reachable after confirming two factor through fortify',
         'code' => adminMfaGateNextOtp($secret),
     ])->assertRedirect('/admin');
 
+    expect(session('auth.two_factor_revocation'))->toBe(1);
+
     $this->get('/admin')->assertOk();
 });
 
-it('stamps the invalidation epoch without an active request session', function (): void {
+it('bumps the revocation counter without an active request session', function (): void {
     ['user' => $admin] = adminMfaGateUser();
 
     $this->app->forgetInstance('request');
 
     event(new RecoveryCodesGenerated($admin));
 
-    expect($admin->fresh()->mfa_invalidated_at)->not->toBeNull();
+    expect($admin->fresh()->mfa_revocation)->toBe(1);
 });

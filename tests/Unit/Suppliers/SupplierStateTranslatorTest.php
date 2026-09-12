@@ -41,13 +41,30 @@ function fftTranslatorFixture(): array
 {
     $datasets = [];
 
-    /** @var array<string, array<string, array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>}>> $fields */
-    $fields = require dirname(__DIR__, 2).'/Fixtures/Suppliers/fft-states.php';
+    /** @var array<string, array<string, array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>}>> $axes */
+    $axes = require dirname(__DIR__, 2).'/Fixtures/Suppliers/fft-states.php';
 
-    foreach ($fields as $field => $entries) {
-        foreach ($entries as $code => $expected) {
+    foreach (['accountCheck', 'economyState', 'status'] as $field) {
+        foreach ($axes[$field] as $code => $expected) {
             $datasets[$field.':'.$code] = [$field, $code, $expected];
         }
+    }
+
+    return $datasets;
+}
+
+/**
+ * @return array<string, array{0: array<string, string>, 1: OrderStatus, 2: array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>, observed: string}}>
+ */
+function fftTranslatorCombinations(): array
+{
+    /** @var array{combinations: array<string, array{payload: array<string, string>, current: OrderStatus, expected: array{status: OrderStatus, hold: OrderHoldReason|null, actions: list<SupplierAction>, observed: string}}>} $fixture */
+    $fixture = require dirname(__DIR__, 2).'/Fixtures/Suppliers/fft-states.php';
+
+    $datasets = [];
+
+    foreach ($fixture['combinations'] as $name => $case) {
+        $datasets[$name] = [$case['payload'], $case['current'], $case['expected']];
     }
 
     return $datasets;
@@ -66,6 +83,34 @@ test('every known supplier code becomes its canonical state', function (string $
         ->and($translated->holdReason)->toBe($expected['hold'])
         ->and($translated->allowedActions)->toBe($expected['actions']);
 })->with(fftTranslatorFixture());
+
+test('an unknown code is rejected before a finished-looking status can complete', function (array $payload, OrderStatus $current, array $expected): void {
+    $translated = (new SupplierStateTranslator)->translate(
+        fftTranslatorObservation($payload),
+        $current,
+        null,
+    );
+
+    expect($translated->supported)->toBeFalse()
+        ->and($translated->status)->toBe($expected['status'])
+        ->and($translated->holdReason)->toBe($expected['hold'])
+        ->and($translated->allowedActions)->toBe($expected['actions'])
+        ->and($translated->observedState)->toBe($expected['observed']);
+})->with(fftTranslatorCombinations());
+
+test('a status that merely resembles a stopped status is unsupported, not a hold', function (): void {
+    $translated = (new SupplierStateTranslator)->translate(
+        fftTranslatorObservation(['status' => 'UNSTOPPABLE', 'accountCheck' => '', 'economyState' => '']),
+        OrderStatus::InProgress,
+        null,
+    );
+
+    expect($translated->supported)->toBeFalse()
+        ->and($translated->status)->toBe(OrderStatus::InProgress)
+        ->and($translated->holdReason)->toBeNull()
+        ->and($translated->allowedActions)->toBe([])
+        ->and($translated->observedState)->toBe('unstoppable');
+});
 
 test('a real account error outranks an active status and a deactivated economy state', function (): void {
     $translated = (new SupplierStateTranslator)->translate(

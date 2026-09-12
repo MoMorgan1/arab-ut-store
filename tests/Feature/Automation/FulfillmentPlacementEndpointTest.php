@@ -5,8 +5,10 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
 use App\Models\FulfillmentJob;
+use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
@@ -58,6 +60,7 @@ function placementPayload(OrderItem $item, array $changes = []): array
         'order_item_public_id' => (string) $item->public_id,
         'supplier' => Supplier::Fft->value,
         'supplier_order_id' => 'FFT-'.Str::ulid(),
+        'delivery_phase' => DeliveryPhase::Coins->value,
     ], $changes);
 }
 
@@ -95,16 +98,37 @@ it('records a signed placement and starts polling', function () {
         ->and($job->attempt_count)->toBe(0)
         ->and($job->next_poll_at)->not->toBeNull()
         ->and($job->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id);
+
+    $placement = FulfillmentPlacement::sole();
+
+    expect($placement->fulfillment_job_id)->toBe($job->id)
+        ->and($placement->delivery_phase)->toBe(DeliveryPhase::Challenge)
+        ->and($placement->supplier)->toBe(Supplier::Fft)
+        ->and($placement->supplier_order_id)->toBe($payload['supplier_order_id'])
+        ->and($placement->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':challenge')
+        ->and($placement->placed_at)->not->toBeNull();
 });
 
-it('records a plain coins placement without a delivery phase', function () {
+it('mirrors a plain coins placement on the job and records its phase', function () {
     $item = paidOrderItem(ServiceType::Coins);
+    $payload = placementPayload($item);
 
-    signedFulfillmentPlacement(placementPayload($item))
+    signedFulfillmentPlacement($payload)
         ->assertOk()
         ->assertJsonPath('data.acknowledged', true);
 
-    expect(FulfillmentJob::sole()->delivery_phase)->toBeNull();
+    $job = FulfillmentJob::sole();
+
+    expect($job->delivery_phase)->toBe(DeliveryPhase::Coins)
+        ->and($job->supplier)->toBe(Supplier::Fft)
+        ->and($job->supplier_order_id)->toBe($payload['supplier_order_id']);
+
+    $placement = FulfillmentPlacement::sole();
+
+    expect($placement->fulfillment_job_id)->toBe($job->id)
+        ->and($placement->delivery_phase)->toBe(DeliveryPhase::Coins)
+        ->and($placement->supplier_order_id)->toBe($payload['supplier_order_id'])
+        ->and($placement->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':coins');
 });
 
 it('treats an identical retry as a no-op that grants nothing', function () {
@@ -130,12 +154,68 @@ it('treats an identical retry as a no-op that grants nothing', function () {
     $job->refresh();
 
     expect(FulfillmentJob::count())->toBe(1)
+        ->and(FulfillmentPlacement::count())->toBe(1)
         ->and($job->status)->toBe(FulfillmentStatus::Completed)
         ->and($job->completed_at)->not->toBeNull()
         ->and($job->attempt_count)->toBe(3)
         ->and($job->last_error)->toBe('kept')
         ->and($job->last_error_code)->toBe('supplier_5xx')
         ->and($job->next_poll_at->equalTo($polledAt))->toBeTrue();
+});
+
+it('records both phases of a challenge against one job without moving the mirror', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $coinsReference = 'FFT-COINS-8837410';
+
+    $coins = signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => $coinsReference,
+    ]))->assertOk();
+
+    $challenge = signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => 'FFT-CHL-8837410',
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+    ]))->assertOk();
+
+    expect($challenge->json('data.job_public_id'))->toBe($coins->json('data.job_public_id'));
+
+    $job = FulfillmentJob::sole();
+
+    expect(FulfillmentJob::count())->toBe(1)
+        ->and($job->supplier)->toBe(Supplier::Fft)
+        ->and($job->supplier_order_id)->toBe($coinsReference)
+        ->and($job->delivery_phase)->toBe(DeliveryPhase::Coins)
+        ->and($job->placements()->count())->toBe(2);
+
+    $placements = FulfillmentPlacement::query()
+        ->get()
+        ->keyBy(fn (FulfillmentPlacement $placement): string => $placement->delivery_phase->value);
+
+    expect($placements)->toHaveCount(2)
+        ->and($placements['coins']->supplier_order_id)->toBe($coinsReference)
+        ->and($placements['coins']->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':coins')
+        ->and($placements['challenge']->supplier_order_id)->toBe('FFT-CHL-8837410')
+        ->and($placements['challenge']->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':challenge');
+});
+
+it('treats a retry of one phase as a no-op after the other phase landed', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $coins = placementPayload($item, ['supplier_order_id' => 'FFT-COINS-8837410']);
+
+    signedFulfillmentPlacement($coins)->assertOk();
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => 'FFT-CHL-8837410',
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+    ]))->assertOk();
+
+    FulfillmentJob::sole()->forceFill(['status' => FulfillmentStatus::Completed])->save();
+
+    signedFulfillmentPlacement($coins)
+        ->assertOk()
+        ->assertJsonPath('data.acknowledged', true);
+
+    expect(FulfillmentPlacement::count())->toBe(2)
+        ->and(FulfillmentJob::sole()->status)->toBe(FulfillmentStatus::Completed);
 });
 
 it('refuses a reference that is already bound to another item', function () {
@@ -155,7 +235,7 @@ it('refuses a reference that is already bound to another item', function () {
         ->and(FulfillmentJob::sole()->order_item_id)->toBe($first->id);
 });
 
-it('refuses a second placement for an item that already holds a different one', function () {
+it('refuses a second placement for a phase that already holds a different one', function () {
     $item = paidOrderItem();
     $payload = placementPayload($item);
 
@@ -175,7 +255,26 @@ it('refuses a second placement for an item that already holds a different one', 
     $job = FulfillmentJob::sole();
 
     expect($job->supplier)->toBe(Supplier::Fft)
-        ->and($job->supplier_order_id)->toBe($payload['supplier_order_id']);
+        ->and($job->supplier_order_id)->toBe($payload['supplier_order_id'])
+        ->and(FulfillmentPlacement::count())->toBe(1);
+});
+
+it('refuses a reference already recorded by the other phase of the same item', function () {
+    $item = paidOrderItem(ServiceType::Sbc);
+    $reference = 'FFT-SHARED-8837410';
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => $reference,
+    ]))->assertOk();
+
+    signedFulfillmentPlacement(placementPayload($item, [
+        'supplier_order_id' => $reference,
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+    ]))
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'supplier_reference_conflict');
+
+    expect(FulfillmentPlacement::count())->toBe(1);
 });
 
 it('does not reveal anything about an unknown order item id', function () {
@@ -183,6 +282,7 @@ it('does not reveal anything about an unknown order item id', function () {
         'order_item_public_id' => (string) Str::ulid(),
         'supplier' => Supplier::Fft->value,
         'supplier_order_id' => 'FFT-UNKNOWN',
+        'delivery_phase' => DeliveryPhase::Coins->value,
     ])
         ->assertNotFound()
         ->assertJsonPath('error.code', 'order_item_not_found')
@@ -214,6 +314,31 @@ it('refuses services that no supplier delivers', function (ServiceType $service)
     'rivals' => [ServiceType::Rivals],
     'fut champions' => [ServiceType::FutChampions],
 ]);
+
+it('refuses a challenge phase on an item with no challenge to solve', function () {
+    signedFulfillmentPlacement(placementPayload(paidOrderItem(ServiceType::Coins), [
+        'supplier_order_id' => 'FFT-CHL-8837410',
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+    ]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'service_has_no_challenge');
+
+    expect(FulfillmentJob::count())->toBe(0)
+        ->and(FulfillmentPlacement::count())->toBe(0);
+});
+
+it('refuses a supplier that does not solve challenges', function () {
+    signedFulfillmentPlacement(placementPayload(paidOrderItem(ServiceType::Sbc), [
+        'supplier' => Supplier::Utt->value,
+        'supplier_order_id' => 'UTT-CHL-8837410',
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+    ]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'supplier_cannot_solve_challenges');
+
+    expect(FulfillmentJob::count())->toBe(0)
+        ->and(FulfillmentPlacement::count())->toBe(0);
+});
 
 it('refuses an order that has not been paid', function () {
     $order = Order::factory()->create();
@@ -268,6 +393,7 @@ it('rejects an invalid body before any placement work', function (array $overrid
         'order_item_public_id' => '01ARZ3NDEKTSV4RRFFQ69G5FAV',
         'supplier' => Supplier::Fft->value,
         'supplier_order_id' => 'FFT-VALIDATION',
+        'delivery_phase' => DeliveryPhase::Coins->value,
     ], $overrides);
 
     signedFulfillmentPlacement($payload)
@@ -280,7 +406,44 @@ it('rejects an invalid body before any placement work', function (array $overrid
     'missing reference' => [['supplier_order_id' => null], 'supplier_order_id'],
     'malformed item id' => [['order_item_public_id' => 'not-a-ulid'], 'order_item_public_id'],
     'unknown delivery phase' => [['delivery_phase' => 'both'], 'delivery_phase'],
+    'missing delivery phase' => [['delivery_phase' => null], 'delivery_phase'],
 ]);
+
+it('enforces one placement per phase and one item per reference in the schema', function () {
+    $job = FulfillmentJob::factory()->create();
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Coins,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'FFT-SCHEMA-1',
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'FFT-SCHEMA-2',
+    ]);
+
+    expect(fn () => FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Coins,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'FFT-SCHEMA-3',
+    ]))->toThrow(UniqueConstraintViolationException::class);
+
+    $otherJob = FulfillmentJob::factory()->create();
+
+    expect(fn () => FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $otherJob->id,
+        'delivery_phase' => DeliveryPhase::Coins,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'FFT-SCHEMA-2',
+    ]))->toThrow(UniqueConstraintViolationException::class);
+
+    expect(FulfillmentPlacement::count())->toBe(2);
+});
 
 it('throttles a key that hammers the endpoint', function () {
     $item = paidOrderItem();

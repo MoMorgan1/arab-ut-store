@@ -93,4 +93,10 @@ class FulfillmentJob extends DomainModel
     {
         return $this->hasMany(FulfillmentAttempt::class);
     }
+
+    /** @return HasMany<FulfillmentPlacement, $this> */
+    public function placements(): HasMany
+    {
+        return $this->hasMany(FulfillmentPlacement::class);
+    }
 }

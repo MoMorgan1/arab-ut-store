@@ -170,6 +170,15 @@ order, aggregates items to the order conservatively, and fires completion effect
 review invite) exactly once regardless of which path completed the order. A supplier cancellation
 never produces `refunded`.
 
+**A later phase arriving on a finished job must re-open polling.** Found while building B3,
+2026-09-12, and confirmed by reading rather than assumed: a challenge placement recorded against a
+job whose coins phase already completed is stored correctly, but nothing resets `status` or
+`next_poll_at`, so the challenge is never polled. The job looks finished and the challenge runs
+unobserved at the supplier. This is the phase-progression half of reconciliation and it belongs
+here: B3 deliberately does not let a second placement touch job lifecycle, because a second phase
+must not make a finished first phase look unfinished either. Both halves are this task's problem -
+re-open polling for the new phase without un-completing the old one.
+
 **Deciding what not to store is part of this task.** An FFT status payload can carry the
 customer's EA account email - the tracker masks it before the browser for exactly that reason - and
 `RawSupplierObservation::toArray()` hands it over raw, by design, because capture and redaction are

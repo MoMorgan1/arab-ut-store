@@ -7,6 +7,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
 use App\Models\FulfillmentJob;
+use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -28,7 +29,7 @@ final class RecordSupplierPlacement
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
+     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
      */
     public function execute(array $payload): array
     {
@@ -39,22 +40,26 @@ final class RecordSupplierPlacement
             );
         } catch (UniqueConstraintViolationException) {
             // A concurrent request won a unique index race after both reads
-            // saw no conflict. The loser is told to retry, and the retry then
-            // reads the winner and resolves to the idempotent replay or the
-            // precise conflict.
+            // saw no conflict. The database constraint is the real authority
+            // here; the application-level checks above exist only to return a
+            // friendlier 409, so this catch is the backstop for the race they
+            // cannot close, not dead code. The loser is told to retry, and the
+            // retry then reads the winner and resolves to the idempotent
+            // replay or the precise conflict.
             return ['outcome' => 'placement_conflict', 'jobPublicId' => null];
         }
     }
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
+     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
      */
     private function record(array $payload): array
     {
         $publicId = (string) $payload['order_item_public_id'];
         $supplier = Supplier::from((string) $payload['supplier']);
         $reference = (string) $payload['supplier_order_id'];
+        $phase = DeliveryPhase::from((string) $payload['delivery_phase']);
 
         /** @var OrderItem|null $item */
         $item = OrderItem::query()->where('public_id', $publicId)->first();
@@ -76,6 +81,17 @@ final class RecordSupplierPlacement
             return self::result('not_automated');
         }
 
+        // A challenge phase only exists under an SBC item, and only FFT solves
+        // challenges. Refuse the impossible pairings before payment state:
+        // they can never become valid by waiting.
+        if ($phase === DeliveryPhase::Challenge && $item->service_type !== ServiceType::Sbc) {
+            return self::result('service_has_no_challenge');
+        }
+
+        if ($phase === DeliveryPhase::Challenge && ! $supplier->handlesChallenges()) {
+            return self::result('supplier_cannot_solve_challenges');
+        }
+
         if ($order->paid_at === null) {
             return self::result('unpaid');
         }
@@ -86,25 +102,46 @@ final class RecordSupplierPlacement
             ->lockForUpdate()
             ->first();
 
-        if ($job !== null
-            && $job->supplier === $supplier
-            && $job->supplier_order_id === $reference) {
-            // An identical retry is a true no-op: a job that has since moved
-            // on, failed, or accumulated poll errors must not be reopened or
-            // reset by a stale placement retry.
-            return self::result('replayed', $job);
+        if ($job instanceof FulfillmentJob) {
+            $existing = FulfillmentPlacement::query()
+                ->where('fulfillment_job_id', $job->id)
+                ->where('delivery_phase', $phase->value)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing instanceof FulfillmentPlacement) {
+                // The same phase with the same exact report is a true no-op: a
+                // job that has since moved on, failed, or accumulated poll
+                // errors must not be reopened or reset by a stale retry.
+                return $existing->supplier === $supplier
+                    && $existing->supplier_order_id === $reference
+                        ? self::result('replayed', $job)
+                        : self::result('item_conflict');
+            }
+
+            // Only a job with no placements at all can carry a hand-built or
+            // pre-migration mirror; once a placement exists, the mirror is
+            // just the first placement's advertisement and never blocks a
+            // later phase.
+            $mirrorBound = ! $job->placements()->exists()
+                && ($job->supplier !== null
+                    || $job->supplier_order_id !== null
+                    || $job->delivery_phase !== null);
+
+            if ($mirrorBound
+                && ($job->supplier !== $supplier
+                    || $job->supplier_order_id !== $reference
+                    || ($job->delivery_phase !== null && $job->delivery_phase !== $phase))) {
+                return self::result('item_conflict');
+            }
         }
 
-        if ($job !== null
-            && ($job->supplier !== null && $job->supplier !== $supplier
-                || $job->supplier_order_id !== null)) {
-            return self::result('item_conflict');
-        }
-
-        $boundElsewhere = FulfillmentJob::query()
+        // A supplier reference identifies one supplier-side order for exactly
+        // one item and phase, so it can never be recorded on a second
+        // placement, whatever that placement is for.
+        $boundElsewhere = FulfillmentPlacement::query()
             ->where('supplier', $supplier->value)
             ->where('supplier_order_id', $reference)
-            ->where('order_item_id', '!=', $item->id)
             ->lockForUpdate()
             ->exists();
 
@@ -112,36 +149,51 @@ final class RecordSupplierPlacement
             return self::result('supplier_reference_conflict');
         }
 
-        $placement = [
-            'status' => FulfillmentStatus::InProgress,
+        if (! $job instanceof FulfillmentJob) {
+            $job = FulfillmentJob::query()->create([
+                'order_item_id' => $item->id,
+                'status' => FulfillmentStatus::InProgress,
+                'supplier' => $supplier,
+                'supplier_order_id' => $reference,
+                'delivery_phase' => $phase,
+                'next_poll_at' => now(),
+                'last_error_code' => null,
+                'last_error' => null,
+                'idempotency_key' => 'fulfillment-placement:'.$publicId,
+            ]);
+        } elseif ($job->supplier === null && $job->supplier_order_id === null) {
+            // The job holds no first placement yet; adopt this one's identity.
+            // Later phases leave the mirror alone: it advertises the first
+            // placement, while the placements table holds the full record.
+            $job->forceFill([
+                'status' => FulfillmentStatus::InProgress,
+                'supplier' => $supplier,
+                'supplier_order_id' => $reference,
+                'delivery_phase' => $phase,
+                'next_poll_at' => now(),
+                'last_error_code' => null,
+                'last_error' => null,
+            ])->save();
+        } elseif ($job->delivery_phase === null) {
+            // A legacy partial mirror (supplier and reference, no phase).
+            $job->forceFill(['delivery_phase' => $phase])->save();
+        }
+
+        FulfillmentPlacement::query()->create([
+            'fulfillment_job_id' => $job->id,
+            'delivery_phase' => $phase,
             'supplier' => $supplier,
             'supplier_order_id' => $reference,
-            'next_poll_at' => now(),
-            'last_error_code' => null,
-            'last_error' => null,
-        ];
-
-        if (isset($payload['delivery_phase'])) {
-            $placement['delivery_phase'] = DeliveryPhase::from((string) $payload['delivery_phase']);
-        }
-
-        if ($job !== null) {
-            $job->forceFill($placement)->save();
-
-            return self::result('recorded', $job);
-        }
-
-        $job = FulfillmentJob::query()->create($placement + [
-            'order_item_id' => $item->id,
-            'idempotency_key' => 'fulfillment-placement:'.$publicId,
+            'idempotency_key' => 'fulfillment-placement:'.$publicId.':'.$phase->value,
+            'placed_at' => now(),
         ]);
 
         return self::result('recorded', $job);
     }
 
     /**
-     * @param  'recorded'|'replayed'|'unknown_item'|'not_automated'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict'  $outcome
-     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
+     * @param  'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict'  $outcome
+     * @return array{outcome: 'recorded'|'replayed'|'unknown_item'|'not_automated'|'service_has_no_challenge'|'supplier_cannot_solve_challenges'|'unpaid'|'supplier_reference_conflict'|'item_conflict'|'placement_conflict', jobPublicId: string|null}
      */
     private static function result(string $outcome, ?FulfillmentJob $job = null): array
     {
