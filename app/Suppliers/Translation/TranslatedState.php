@@ -2,9 +2,11 @@
 
 namespace App\Suppliers\Translation;
 
+use App\Enums\HoldTone;
 use App\Enums\OrderHoldReason;
 use App\Enums\OrderStatus;
 use App\Enums\SupplierAction;
+use App\Enums\TrackingPresentation;
 
 /**
  * The canonical meaning of one supplier observation.
@@ -31,6 +33,8 @@ final readonly class TranslatedState
         public ?int $squadsTotal = null,
         public ?int $solvesDone = null,
         public ?int $solvesTotal = null,
+        public ?HoldTone $holdTone = null,
+        public ?TrackingPresentation $presentation = null,
     ) {}
 
     /**

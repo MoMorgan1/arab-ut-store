@@ -29,13 +29,22 @@ final class RefreshItemTracking
      * translating the observation, and applying it to canonical storage.
      *
      * @return array{
-     *     supplier: string|null,
+     *     kind: string,
      *     phase: string|null,
+     *     presentation: string,
+     *     headline: string,
+     *     subline: string,
      *     holdReason: string|null,
      *     holdMessage: string|null,
+     *     holdTone: string|null,
+     *     completedAt: string|null,
      *     actions: list<string>,
      *     supported: bool,
      *     observedAt: string|null,
+     *     accountCoins: array{
+     *         amount: int|null,
+     *         state: string,
+     *     },
      *     progress: array{
      *         coinsDelivered: int|null,
      *         coinsOrdered: int|null,
@@ -43,6 +52,20 @@ final class RefreshItemTracking
      *         squadsTotal: int|null,
      *         solvesDone: int|null,
      *         solvesTotal: int|null,
+     *     }|null,
+     *     challenges: list<array{
+     *         target: int,
+     *         state: string,
+     *         stateLabel: string,
+     *         squads: array{done: int|null, total: int|null},
+     *         solves: array{done: int|null, total: int|null},
+     *         coinsUsed: int|null,
+     *         finishedAt: string|null,
+     *         actions: list<string>,
+     *     }>|null,
+     *     coverage: array{
+     *         answered: int,
+     *         requested: int,
      *     }|null,
      * }|null
      */

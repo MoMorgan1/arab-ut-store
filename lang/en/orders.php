@@ -35,4 +35,59 @@ return [
         'maintenance' => 'The game servers are under EA maintenance. We resume automatically once it ends.',
         'paused' => 'Your order is paused for now and we will resume shortly. Message us any time for details.',
     ],
+    'tracking_states' => [
+        'processing' => [
+            'headline' => 'Processing',
+            'subline' => 'Your order is being processed',
+        ],
+        'logging_in' => [
+            'headline' => 'Signing In',
+            'subline' => 'Signing into your account, no action needed right now...',
+        ],
+        'preparing' => [
+            'headline' => 'Preparing Transfer',
+            'subline' => 'Preparing the transfer on the market...',
+        ],
+        'transferring' => [
+            'headline' => 'Transferring Coins',
+            'subline' => 'Transferring coins to your account',
+        ],
+        'transferring_part_done' => [
+            'headline' => 'Transferring Coins',
+            'subline' => 'Part of the coins has been transferred, transferring the rest...',
+        ],
+        'finishing' => [
+            'headline' => 'Finishing Order',
+            'subline' => 'Delivery complete, finishing up the order. Please wait for player listings to clear before logging in.',
+        ],
+        'completed' => [
+            'headline' => 'Completed',
+            'subline' => 'Order completed successfully.',
+        ],
+        'stopped' => [
+            'headline' => 'Temporarily Paused',
+            'subline' => 'The order has been paused',
+        ],
+        'needs_review' => [
+            'headline' => 'Action Required',
+            'subline' => 'Please check the details below',
+        ],
+        'not_reported' => [
+            'headline' => 'Queued',
+            'subline' => 'Waiting for processing to start with the supplier',
+        ],
+    ],
+    'challenge_states' => [
+        'queued' => 'Queued',
+        'waiting_previous_solve' => 'Waiting for previous challenge',
+        'started' => 'Started',
+        'fetching_challenge' => 'Fetching challenge info',
+        'fetching_squads' => 'Fetching squads',
+        'solving' => 'Solving squad',
+        'done' => 'Completed',
+        'sign_in_failed' => 'Sign-in failed',
+        'session_expired' => 'Session expired',
+        'failed' => 'Failed',
+        'unknown' => 'Unknown',
+    ],
 ];

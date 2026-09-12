@@ -84,9 +84,13 @@ final class ReadLiveOrder
                         'supplier_order_id',
                         'delivery_phase',
                         'hold_reason',
+                        'presentation',
+                        'hold_tone',
+                        'observation',
                         'allowed_actions',
                         'observation_supported',
                         'observed_at',
+                        'completed_at',
                         'coins_delivered',
                         'coins_ordered',
                         // The same reason as supplier_order_id above: an unselected
@@ -97,7 +101,12 @@ final class ReadLiveOrder
                         'squads_total',
                         'solves_done',
                         'solves_total',
-                    ]),
+                    ])->with(['placements' => fn ($placements) => $placements->select([
+                        'id',
+                        'fulfillment_job_id',
+                        'delivery_phase',
+                        'supplier_challenge_ids',
+                    ])]),
                 ])
                 ->withExists('secret')
                 ->withExists('squadImage')

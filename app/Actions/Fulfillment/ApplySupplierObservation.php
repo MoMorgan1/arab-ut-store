@@ -304,6 +304,8 @@ final class ApplySupplierObservation
                 fn (SupplierAction $action): string => $action->value,
                 $state->allowedActions,
             );
+            $job->presentation = $state->presentation;
+            $job->hold_tone = $state->holdTone;
         }
 
         // Progress counters are only updated when non-null so earlier phases are not erased
@@ -433,6 +435,7 @@ final class ApplySupplierObservation
         'costCoins',
         'setId',
         'sbcSolveID',
+        'finishedAt',
     ];
 
     /**

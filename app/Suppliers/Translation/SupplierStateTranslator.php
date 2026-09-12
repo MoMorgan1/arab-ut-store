@@ -2,11 +2,14 @@
 
 namespace App\Suppliers\Translation;
 
+use App\Enums\ChallengeState;
 use App\Enums\DeliveryPhase;
+use App\Enums\HoldTone;
 use App\Enums\OrderHoldReason;
 use App\Enums\OrderStatus;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
+use App\Enums\TrackingPresentation;
 use App\Suppliers\ChallengeIds;
 use App\Suppliers\RawSupplierObservation;
 
@@ -275,6 +278,42 @@ final class SupplierStateTranslator
     ];
 
     /**
+     * AccountCheck values that require customer action (ui.js:269-274).
+     *
+     * @var list<string>
+     */
+    public const array CUSTOMER_ACTION_ACCOUNT_CHECKS = [
+        'wrongBA', 'wrongUserPass', 'wrongConsole', 'noTM', 'noClub',
+        'tlFull', 'notEnoughCoins', 'console', 'consoleLoggedIn', 'active session', 'captcha',
+        'wrongPersona', 'unassignedItemsPresent', 'LoginFailedDeviceBan',
+        'loginFailed', 'insufficientFunds', '2FADisabled', 'no2fa', 'No2FA',
+    ];
+
+    /**
+     * EconomyState values that require customer action (ui.js:277-283).
+     *
+     * @var list<string>
+     */
+    public const array CUSTOMER_ACTION_ECONOMY_STATES = [
+        'FailedWrongCredentialsTo', 'FailedWrongBACodeTo',
+        'FailWebAppCustomerLocked', 'FailLoggedInConsoleTo',
+        'insufficientFunds', 'FailNoClubToCanBeEAErrorTryAgain',
+        'FailedReceiverDeviceBan', 'FailedSessionExpiredCustomerLoggedIn?',
+        'FailedTLfullReceiver', 'FailWebAppNotYetUnlocked',
+    ];
+
+    /**
+     * EconomyState values that are system-side (auto-retry, yellow info box) (ui.js:286-290).
+     *
+     * @var list<string>
+     */
+    public const array SYSTEM_INFO_ECONOMY_STATES = [
+        'tempbanCooldown', 'listingTempban', 'dailyReceiverLimit', 'calcErrorMaintenance',
+        'FailedProxyConnectionError', 'FailProxyUnavailable',
+        'noPlayer', 'noSuitableSender', 'belowMinTransfer',
+    ];
+
+    /**
      * SBC statuses that mean the challenge is complete, matching track/assets/js/ui.js:967-970, 999.
      * Matching is exact on purpose; substring matching would incorrectly match 'unfinished'.
      *
@@ -307,7 +346,7 @@ final class SupplierStateTranslator
      *
      * @var array<string, OrderHoldReason|null>
      */
-    private const array SBC_STATUS_HOLDS = [
+    public const array SBC_STATUS_HOLDS = [
         // Auth / session errors
         'WrongUserPass' => OrderHoldReason::Credentials,
         'WrongBA' => OrderHoldReason::BackupCodes,
@@ -364,6 +403,84 @@ final class SupplierStateTranslator
         'aborted' => OrderHoldReason::Paused,
         'failed' => null,
         'FailUnassignedFound' => OrderHoldReason::Unassigned,
+    ];
+
+    /**
+     * Curation of supplier sbcStatus codes into ChallengeState cases.
+     *
+     * Placed beside SBC_STATUS_HOLDS so both tables are maintained and read together.
+     * Internal diagnostic codes (401, 495, loop, etc.) are grouped into SignInFailed,
+     * adhering to the owner's rule that customers never read about our plumbing.
+     *
+     * @var array<string, ChallengeState>
+     */
+    public const array SBC_STATUS_CHALLENGE_STATES = [
+        // Progress statuses
+        'entered' => ChallengeState::Queued,
+        'waitingForOtherSolve' => ChallengeState::WaitingPreviousSolve,
+        'started' => ChallengeState::Started,
+        'fetchSBCInfo' => ChallengeState::FetchingChallenge,
+        'fetchChallengeInfo' => ChallengeState::FetchingSquads,
+        'solvingChallenge' => ChallengeState::Solving,
+        'finished' => ChallengeState::Done,
+        'alreadyCompleted' => ChallengeState::Done,
+
+        // Auth / session errors
+        'sessionExpired' => ChallengeState::SessionExpired,
+        'needEmailConfirm' => ChallengeState::SignInFailed,
+        'LoginFailed495' => ChallengeState::SignInFailed,
+        'LoginFailed401' => ChallengeState::SignInFailed,
+        'LoginFailedDeviceBan' => ChallengeState::SignInFailed,
+        'LoginError' => ChallengeState::SignInFailed,
+        'LoginFailed' => ChallengeState::SignInFailed,
+        'loginFailed' => ChallengeState::SignInFailed,
+        'WrongUserPass' => ChallengeState::SignInFailed,
+        '2FADisabled' => ChallengeState::SignInFailed,
+        'no2fa' => ChallengeState::SignInFailed,
+        'No2FA' => ChallengeState::SignInFailed,
+        'WrongBA' => ChallengeState::SignInFailed,
+        'loginLoop' => ChallengeState::SignInFailed,
+
+        // Proxy / connection errors
+        'FailProxyConn' => ChallengeState::Failed,
+        'FailedProxyConnectionError' => ChallengeState::Failed,
+        'FailProxy' => ChallengeState::Failed,
+
+        // Account / setup errors
+        'failedNoClub' => ChallengeState::Failed,
+        'consoleLoggedIn' => ChallengeState::Failed,
+        'FailedPersonaSwitch' => ChallengeState::Failed,
+        'TMLocked' => ChallengeState::Failed,
+
+        // SBC-specific errors
+        'setNotFound' => ChallengeState::Failed,
+        'foundationNotSolved' => ChallengeState::Failed,
+        'challengeDataMissing' => ChallengeState::Failed,
+        'noSolutionFound' => ChallengeState::Failed,
+        'tooExpensive' => ChallengeState::Failed,
+        'clickFailed' => ChallengeState::Failed,
+        'submitFailed' => ChallengeState::Failed,
+        'squadCreateFailed' => ChallengeState::Failed,
+
+        // Player / market errors
+        'playerBuyFailed' => ChallengeState::Failed,
+        'playerNotFound' => ChallengeState::Failed,
+        'playerNotMoved' => ChallengeState::Failed,
+        'clubQueryFailed' => ChallengeState::Failed,
+        'tooManyExchanges' => ChallengeState::Failed,
+        'noPriceFound' => ChallengeState::Failed,
+
+        // Financial / Cooldown errors
+        'noFunds' => ChallengeState::Failed,
+        'OutOfCoins' => ChallengeState::Failed,
+        'tempban' => ChallengeState::Failed,
+        'TempbanCooldown' => ChallengeState::Failed,
+        'dailyReceiverLimit' => ChallengeState::Failed,
+
+        // System errors
+        'aborted' => ChallengeState::Failed,
+        'failed' => ChallengeState::Failed,
+        'FailUnassignedFound' => ChallengeState::Failed,
     ];
 
     /**
@@ -480,10 +597,34 @@ final class SupplierStateTranslator
             return $this->unsupported($current, $unknown, $progress);
         }
 
-        $resolved = $this->resolve($observation->supplier, $status, $accountCheck, $economyState, $phase);
+        $simplifiedRaw = $payload['simplifiedStatus'] ?? null;
+
+        $resolved = $this->resolve(
+            $observation->supplier,
+            $status,
+            $accountCheck,
+            $economyState,
+            $phase,
+            $progress['coinsDelivered'],
+            $progress['coinsOrdered'],
+            is_string($simplifiedRaw) ? $simplifiedRaw : '',
+        );
 
         if ($this->isTerminal($current)) {
-            return $this->state($current, null, [], $resolved->supported, $resolved->observedState, $progress);
+            $terminalPresentation = $current === OrderStatus::Completed
+                ? TrackingPresentation::Completed
+                : TrackingPresentation::Stopped;
+
+            return $this->state(
+                $current,
+                null,
+                [],
+                $resolved->supported,
+                $resolved->observedState,
+                $progress,
+                null,
+                $terminalPresentation,
+            );
         }
 
         return $this->state(
@@ -493,6 +634,8 @@ final class SupplierStateTranslator
             $resolved->supported,
             $resolved->observedState,
             $progress,
+            $resolved->holdTone,
+            $resolved->presentation,
         );
     }
 
@@ -559,6 +702,8 @@ final class SupplierStateTranslator
                 squadsTotal: null,
                 solvesDone: null,
                 solvesTotal: null,
+                holdTone: null,
+                presentation: null,
             );
         }
 
@@ -577,6 +722,8 @@ final class SupplierStateTranslator
                 squadsTotal: null,
                 solvesDone: null,
                 solvesTotal: null,
+                holdTone: null,
+                presentation: null,
             );
         }
 
@@ -622,6 +769,8 @@ final class SupplierStateTranslator
                 squadsTotal: $squadsTotal,
                 solvesDone: $solvesDone,
                 solvesTotal: $solvesTotal,
+                holdTone: null,
+                presentation: null,
             );
         }
 
@@ -638,6 +787,8 @@ final class SupplierStateTranslator
                 squadsTotal: $squadsTotal,
                 solvesDone: $solvesDone,
                 solvesTotal: $solvesTotal,
+                holdTone: null,
+                presentation: $current === OrderStatus::Completed ? TrackingPresentation::Completed : TrackingPresentation::Stopped,
             );
         }
 
@@ -679,6 +830,8 @@ final class SupplierStateTranslator
                 squadsTotal: $squadsTotal,
                 solvesDone: $solvesDone,
                 solvesTotal: $solvesTotal,
+                holdTone: null,
+                presentation: TrackingPresentation::Completed,
             );
         }
 
@@ -697,6 +850,8 @@ final class SupplierStateTranslator
                 squadsTotal: $squadsTotal,
                 solvesDone: $solvesDone,
                 solvesTotal: $solvesTotal,
+                holdTone: null,
+                presentation: TrackingPresentation::Processing,
             );
         }
 
@@ -713,6 +868,8 @@ final class SupplierStateTranslator
                 squadsTotal: $squadsTotal,
                 solvesDone: $solvesDone,
                 solvesTotal: $solvesTotal,
+                holdTone: null,
+                presentation: TrackingPresentation::Processing,
             );
         }
 
@@ -726,6 +883,9 @@ final class SupplierStateTranslator
 
         $actions = $this->sbcActions($supplier, $activeStatus);
 
+        $isInfo = in_array($activeStatus, ['tempban', 'TempbanCooldown', 'dailyReceiverLimit', 'FailProxyConn', 'FailedProxyConnectionError', 'FailProxy'], true);
+        $holdTone = $isInfo ? HoldTone::Info : HoldTone::Action;
+
         return new TranslatedState(
             status: $orderStatus,
             holdReason: $holdReason,
@@ -738,6 +898,8 @@ final class SupplierStateTranslator
             squadsTotal: $squadsTotal,
             solvesDone: $solvesDone,
             solvesTotal: $solvesTotal,
+            holdTone: $holdTone,
+            presentation: TrackingPresentation::NeedsReview,
         );
     }
 
@@ -790,6 +952,16 @@ final class SupplierStateTranslator
         return $this->normaliseChallengeId($key);
     }
 
+    private function isAutomaticRecovery(OrderHoldReason $reason): bool
+    {
+        return in_array($reason, self::AUTOMATIC_RECOVERY_REASONS, true);
+    }
+
+    private function isCustomerAction(OrderHoldReason $reason): bool
+    {
+        return in_array($reason, self::CUSTOMER_ACTION_REASONS, true);
+    }
+
     private function normaliseChallengeId(string $id): ?string
     {
         $normalized = ChallengeIds::normalize([$id]);
@@ -802,17 +974,137 @@ final class SupplierStateTranslator
         return $parsed[0] ?? null;
     }
 
+    public static function challengeState(string $sbcStatus): ChallengeState
+    {
+        return self::SBC_STATUS_CHALLENGE_STATES[$sbcStatus] ?? ChallengeState::Unknown;
+    }
+
+    /**
+     * @return list<SupplierAction>
+     */
+    public static function sbcChallengeActions(?Supplier $supplier, string $sbcStatus): array
+    {
+        if ($supplier !== null && ! $supplier->handlesChallenges()) {
+            return [];
+        }
+
+        $actions = [];
+
+        if (in_array($sbcStatus, self::SBC_EDITABLE_STATUSES, true)) {
+            $actions[] = SupplierAction::EditCredentials;
+        }
+
+        if (in_array($sbcStatus, self::SBC_RETRYABLE_STATUSES, true)) {
+            $actions[] = SupplierAction::RetryChallenge;
+        }
+
+        return $actions;
+    }
+
+    public function resolveHoldTone(string $status, string $accountCheck, string $economyState): ?HoldTone
+    {
+        if ($economyState === self::ECONOMY_STATE_DEACTIVATED) {
+            return null;
+        }
+
+        if ($this->in(self::CUSTOMER_ACTION_ACCOUNT_CHECKS, $accountCheck)) {
+            return HoldTone::Action;
+        }
+
+        if ($this->in(self::CUSTOMER_ACTION_ECONOMY_STATES, $economyState)) {
+            return HoldTone::Action;
+        }
+
+        if ($this->in(self::SYSTEM_INFO_ECONOMY_STATES, $economyState)) {
+            return HoldTone::Info;
+        }
+
+        if ($this->isStopped($status)) {
+            return HoldTone::Action;
+        }
+
+        return null;
+    }
+
+    public function resolvePresentation(
+        string $status,
+        string $accountCheck,
+        string $economyState,
+        ?int $coinsDelivered = null,
+        ?int $coinsOrdered = null,
+        string $simplifiedStatus = '',
+    ): TrackingPresentation {
+        $isStopped = $this->isStopped($status);
+        $isFinished = $this->isFinished($status);
+
+        $hasCustomerAction = $this->in(self::CUSTOMER_ACTION_ACCOUNT_CHECKS, $accountCheck)
+            || $this->in(self::CUSTOMER_ACTION_ECONOMY_STATES, $economyState);
+
+        // 1. Tempban/system cooldown states that display as 'Processing' (ui.js:425-442)
+        if ($economyState === 'tempbanCooldown'
+            || $economyState === 'listingTempban'
+            || $economyState === 'dailyReceiverLimit'
+        ) {
+            $presentation = TrackingPresentation::Processing;
+            // The tracker's third condition, easy to drop and load-bearing: an order can
+            // report transfersInProgress while its simplified status says error, and that is
+            // not something to render as "transferring" (ui.js:443).
+        } elseif ($economyState === 'transfersInProgress' && ! $hasCustomerAction && mb_strtolower($simplifiedStatus) !== 'error') {
+            $presentation = TrackingPresentation::Transferring;
+        } elseif ($economyState === 'transferCycleComplete' && ! $hasCustomerAction && ! $isFinished && ! $isStopped) {
+            $presentation = TrackingPresentation::TransferringPartDone;
+        } elseif (($economyState === 'customerHasPlayer' || $economyState === 'customerListedPlayer') && ! $hasCustomerAction && ! $isFinished && ! $isStopped) {
+            $presentation = TrackingPresentation::Preparing;
+        } elseif (in_array($accountCheck, ['entered', 'started', 'userPassVerified', 'correctBA'], true) && ! $hasCustomerAction && ! $isFinished && ! $isStopped) {
+            $presentation = TrackingPresentation::LoggingIn;
+        } elseif ($isFinished) {
+            $presentation = TrackingPresentation::Completed;
+        } elseif ($isStopped) {
+            $presentation = TrackingPresentation::Stopped;
+        } elseif ($hasCustomerAction) {
+            $presentation = TrackingPresentation::NeedsReview;
+        } else {
+            $presentation = TrackingPresentation::Processing;
+        }
+
+        // Trailing override: ui.js:542: if (remaining <= 0 && !isFinished && !isStopped)
+        if ($coinsOrdered !== null
+            && $coinsOrdered > 0
+            && $coinsDelivered !== null
+            && ($coinsOrdered - $coinsDelivered) <= 0
+            && ! $isFinished
+            && ! $isStopped
+        ) {
+            return TrackingPresentation::Finishing;
+        }
+
+        return $presentation;
+    }
+
     private function resolve(
         Supplier $supplier,
         string $status,
         string $accountCheck,
         string $economyState,
         ?DeliveryPhase $phase,
+        ?int $coinsDelivered = null,
+        ?int $coinsOrdered = null,
+        string $simplifiedStatus = '',
     ): TranslatedState {
         $observed = $this->observedCode($status, $accountCheck, $economyState);
+        $holdTone = $this->resolveHoldTone($status, $accountCheck, $economyState);
+        $presentation = $this->resolvePresentation($status, $accountCheck, $economyState, $coinsDelivered, $coinsOrdered, $simplifiedStatus);
 
         if ($this->isFinished($status) && $phase !== DeliveryPhase::Coins) {
-            return new TranslatedState(OrderStatus::Completed, null, [], true, $observed);
+            return new TranslatedState(
+                OrderStatus::Completed,
+                null,
+                [],
+                true,
+                $observed,
+                holdTone: $holdTone,
+                presentation: TrackingPresentation::Completed,
+            );
         }
 
         if (isset(self::ACCOUNT_CHECK_HOLDS[$accountCheck])) {
@@ -824,6 +1116,8 @@ final class SupplierStateTranslator
                 $economyState,
                 $phase,
                 $observed,
+                $holdTone,
+                $presentation,
             );
         }
 
@@ -837,14 +1131,16 @@ final class SupplierStateTranslator
                     $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::InProgress),
                     true,
                     $observed,
+                    holdTone: $holdTone,
+                    presentation: $presentation,
                 );
             }
 
-            return $this->hold($hold, $supplier, $status, $accountCheck, $economyState, $phase, $observed);
+            return $this->hold($hold, $supplier, $status, $accountCheck, $economyState, $phase, $observed, $holdTone, $presentation);
         }
 
         if ($economyState === self::ECONOMY_STATE_DEACTIVATED) {
-            return $this->deactivated($supplier, $status, $accountCheck, $economyState, $phase, $observed);
+            return $this->deactivated($supplier, $status, $accountCheck, $economyState, $phase, $observed, $holdTone, $presentation);
         }
 
         if ($this->isStopped($status)) {
@@ -854,6 +1150,8 @@ final class SupplierStateTranslator
                 $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::WaitingForCustomer),
                 true,
                 $observed,
+                holdTone: $holdTone,
+                presentation: $presentation,
             );
         }
 
@@ -863,6 +1161,8 @@ final class SupplierStateTranslator
             $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::InProgress),
             true,
             $observed,
+            holdTone: $holdTone,
+            presentation: $presentation,
         );
     }
 
@@ -878,6 +1178,8 @@ final class SupplierStateTranslator
         string $economyState,
         ?DeliveryPhase $phase,
         ?string $observed,
+        ?HoldTone $holdTone = null,
+        ?TrackingPresentation $presentation = null,
     ): TranslatedState {
         if ($this->isAutomaticRecovery($hold)) {
             return new TranslatedState(
@@ -886,6 +1188,8 @@ final class SupplierStateTranslator
                 $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::InProgress),
                 true,
                 $observed,
+                holdTone: $holdTone,
+                presentation: $presentation,
             );
         }
 
@@ -896,22 +1200,14 @@ final class SupplierStateTranslator
                 $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::WaitingForCustomer),
                 true,
                 $observed,
+                holdTone: $holdTone,
+                presentation: $presentation,
             );
         }
 
         // A reason in neither set has no known customer demand; keeping the
         // order moving is the only safe reading.
-        return new TranslatedState(OrderStatus::InProgress, $hold, [], true, $observed);
-    }
-
-    private function isAutomaticRecovery(OrderHoldReason $reason): bool
-    {
-        return in_array($reason, self::AUTOMATIC_RECOVERY_REASONS, true);
-    }
-
-    private function isCustomerAction(OrderHoldReason $reason): bool
-    {
-        return in_array($reason, self::CUSTOMER_ACTION_REASONS, true);
+        return new TranslatedState(OrderStatus::InProgress, $hold, [], true, $observed, holdTone: $holdTone, presentation: $presentation);
     }
 
     private function deactivated(
@@ -921,6 +1217,8 @@ final class SupplierStateTranslator
         string $economyState,
         ?DeliveryPhase $phase,
         ?string $observed,
+        ?HoldTone $holdTone = null,
+        ?TrackingPresentation $presentation = null,
     ): TranslatedState {
         if ($this->isStopped($status)) {
             return new TranslatedState(
@@ -929,10 +1227,12 @@ final class SupplierStateTranslator
                 $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::WaitingForCustomer),
                 true,
                 $observed,
+                holdTone: $holdTone,
+                presentation: $presentation,
             );
         }
 
-        return new TranslatedState(OrderStatus::InProgress, OrderHoldReason::Paused, [], true, $observed);
+        return new TranslatedState(OrderStatus::InProgress, OrderHoldReason::Paused, [], true, $observed, holdTone: $holdTone, presentation: $presentation);
     }
 
     /**
@@ -1030,21 +1330,7 @@ final class SupplierStateTranslator
      */
     private function sbcActions(Supplier $supplier, string $sbcStatus): array
     {
-        if (! $supplier->handlesChallenges()) {
-            return [];
-        }
-
-        $actions = [];
-
-        if (in_array($sbcStatus, self::SBC_EDITABLE_STATUSES, true)) {
-            $actions[] = SupplierAction::EditCredentials;
-        }
-
-        if (in_array($sbcStatus, self::SBC_RETRYABLE_STATUSES, true)) {
-            $actions[] = SupplierAction::RetryChallenge;
-        }
-
-        return $actions;
+        return self::sbcChallengeActions($supplier, $sbcStatus);
     }
 
     private function isKnownSbcStatus(string $status): bool
@@ -1082,7 +1368,7 @@ final class SupplierStateTranslator
      */
     private function unsupported(OrderStatus $current, ?string $observed, array $progress): TranslatedState
     {
-        return $this->state($current, null, [], false, $observed, $progress);
+        return $this->state($current, null, [], false, $observed, $progress, null, null);
     }
 
     /**
@@ -1096,6 +1382,8 @@ final class SupplierStateTranslator
         bool $supported,
         ?string $observedState,
         array $progress,
+        ?HoldTone $holdTone = null,
+        ?TrackingPresentation $presentation = null,
     ): TranslatedState {
         return new TranslatedState(
             $status,
@@ -1109,6 +1397,8 @@ final class SupplierStateTranslator
             $progress['squadsTotal'],
             $progress['solvesDone'],
             $progress['solvesTotal'],
+            $holdTone,
+            $presentation,
         );
     }
 

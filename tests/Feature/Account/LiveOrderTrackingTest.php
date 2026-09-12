@@ -3,13 +3,16 @@
 use App\Account\Presenters\ItemTracking;
 use App\Enums\DeliveryPhase;
 use App\Enums\FulfillmentStatus;
+use App\Enums\HoldTone;
 use App\Enums\OrderHoldReason;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
+use App\Enums\TrackingPresentation;
 use App\Models\FulfillmentJob;
+use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
@@ -395,7 +398,6 @@ test('two items on one order: automated placed item carries tracking while manua
     $response->assertInertia(fn (Assert $page) => $page
         ->has('order.items', 2)
         ->where('order.items.0.id', $coinsItem->public_id)
-        ->where('order.items.0.tracking.supplier', 'utt')
         ->where('order.items.0.tracking.phase', null)
         ->where('order.items.0.tracking.supported', true)
         ->where('order.items.0.tracking.observedAt', '2026-09-12T11:00:00+00:00')
@@ -409,6 +411,7 @@ test('two items on one order: automated placed item carries tracking while manua
             'solvesTotal' => null,
         ])
         ->where('order.items.1.id', $manualItem->public_id)
+        ->has('order.items.0.tracking')
         ->where('order.items.1.tracking', null)
     );
 });
@@ -430,7 +433,6 @@ test('tracking carries delivery phase and supported false accurately', function 
         ->assertOk();
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('order.items.0.tracking.supplier', 'fft')
         ->where('order.items.0.tracking.phase', 'challenge')
         ->where('order.items.0.tracking.supported', false)
         ->where('order.items.0.tracking.observedAt', '2026-09-12T14:00:00+00:00')
@@ -446,6 +448,8 @@ test('ItemTracking presenter direct invocation returns expected shape', function
         'supplier' => Supplier::Fft,
         'delivery_phase' => DeliveryPhase::Coins,
         'hold_reason' => OrderHoldReason::EaServers,
+        'presentation' => TrackingPresentation::NeedsReview,
+        'hold_tone' => HoldTone::Action,
         'allowed_actions' => ['retry_challenge'],
         'observation_supported' => true,
         'observed_at' => CarbonImmutable::parse('2026-09-12 15:00:00', 'UTC'),
@@ -460,13 +464,22 @@ test('ItemTracking presenter direct invocation returns expected shape', function
     $tracking = ItemTracking::for($item, 'en');
 
     expect($tracking)->toBe([
-        'supplier' => 'fft',
+        'kind' => 'coins',
         'phase' => 'coins',
+        'presentation' => 'needs_review',
+        'headline' => 'Action Required',
+        'subline' => 'Please check the details below',
         'holdReason' => 'ea_servers',
         'holdMessage' => 'EA servers refused the sign-in for now. We are retrying and will update you as soon as it works.',
+        'holdTone' => 'action',
+        'completedAt' => null,
         'actions' => ['retry_challenge'],
         'supported' => true,
         'observedAt' => '2026-09-12T15:00:00+00:00',
+        'accountCoins' => [
+            'amount' => null,
+            'state' => 'unknown',
+        ],
         'progress' => [
             'coinsDelivered' => 100_000,
             'coinsOrdered' => 200_000,
@@ -475,5 +488,121 @@ test('ItemTracking presenter direct invocation returns expected shape', function
             'solvesDone' => null,
             'solvesTotal' => null,
         ],
+        'challenges' => null,
+        'coverage' => null,
     ]);
+});
+
+test('accountCoins distinguishes known amount, preparing (-1), and unknown', function (mixed $coinsCust, ?int $expectedAmount, string $expectedState): void {
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+
+    trackingJob($item, [
+        'observation' => $coinsCust !== null ? ['coinsCustomerAccount' => $coinsCust] : [],
+    ]);
+
+    $tracking = ItemTracking::for($item, 'en');
+
+    expect($tracking['accountCoins'])->toBe([
+        'amount' => $expectedAmount,
+        'state' => $expectedState,
+    ]);
+})->with([
+    'known balance' => [150_000, 150_000, 'known'],
+    'zero balance' => [0, 0, 'known'],
+    'preparing' => [-1, null, 'preparing'],
+    'absent' => [null, null, 'unknown'],
+]);
+
+test('coinsOrdered falls back to item configuration when fulfillment job has no observation', function (): void {
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+    $item->update([
+        'configuration' => [
+            'coins_quantity' => 750_000,
+        ],
+    ]);
+
+    trackingJob($item, [
+        'coins_ordered' => null,
+        'coins_delivered' => null,
+    ]);
+
+    $tracking = ItemTracking::for($item, 'en');
+
+    expect($tracking['progress']['coinsOrdered'])->toBe(750_000)
+        ->and($tracking['progress']['coinsDelivered'])->toBeNull();
+});
+
+test('challenge list target indices are 0-based integer positions and un-returned challenges are marked unknown', function (): void {
+    $challengeId1 = '1803b7a6-0000-0000-0000-00000064265f';
+    $challengeId2 = '2b8e38f6-1111-2222-3333-444455556666';
+    $challengeId3 = '3c9f49a7-2222-3333-4444-555566667777';
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Sbc);
+
+    $job = trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observation' => [
+            $challengeId1 => [
+                'sbcStatus' => 'finished',
+                'challengesDone' => 7,
+                'totalChallenges' => 7,
+                'timesSolved' => 2,
+                'timesToSolve' => 2,
+                'costCoins' => 450_000,
+            ],
+            // challengeId2 is not returned in observation
+            $challengeId3 => [
+                'sbcStatus' => 'solvingChallenge',
+                'challengesDone' => 3,
+                'totalChallenges' => 7,
+                'timesSolved' => 1,
+                'timesToSolve' => 2,
+                'costCoins' => 120_000,
+            ],
+        ],
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId1, $challengeId2, $challengeId3],
+        'idempotency_key' => 'placement-test-challenge-list',
+        'placed_at' => now(),
+    ]);
+
+    $tracking = ItemTracking::for($item, 'en');
+
+    expect($tracking['kind'])->toBe('challenge')
+        ->and($tracking['coverage'])->toBe(['answered' => 2, 'requested' => 3])
+        ->and($tracking['challenges'])->toHaveCount(3)
+        // Target 0: challengeId1
+        ->and($tracking['challenges'][0]['target'])->toBe(0)
+        ->and($tracking['challenges'][0]['state'])->toBe('done')
+        ->and($tracking['challenges'][0]['stateLabel'])->toBe('Completed')
+        ->and($tracking['challenges'][0]['squads'])->toBe(['done' => 7, 'total' => 7])
+        ->and($tracking['challenges'][0]['solves'])->toBe(['done' => 2, 'total' => 2])
+        ->and($tracking['challenges'][0]['coinsUsed'])->toBe(450_000)
+        // Target 1: challengeId2 (un-returned)
+        ->and($tracking['challenges'][1]['target'])->toBe(1)
+        ->and($tracking['challenges'][1]['state'])->toBe('unknown')
+        ->and($tracking['challenges'][1]['stateLabel'])->toBe('Unknown')
+        ->and($tracking['challenges'][1]['squads'])->toBe(['done' => null, 'total' => null])
+        ->and($tracking['challenges'][1]['solves'])->toBe(['done' => null, 'total' => null])
+        ->and($tracking['challenges'][1]['coinsUsed'])->toBeNull()
+        ->and($tracking['challenges'][1]['actions'])->toBe([])
+        // Target 2: challengeId3
+        ->and($tracking['challenges'][2]['target'])->toBe(2)
+        ->and($tracking['challenges'][2]['state'])->toBe('solving')
+        ->and($tracking['challenges'][2]['stateLabel'])->toBe('Solving squad')
+        ->and($tracking['challenges'][2]['squads'])->toBe(['done' => 3, 'total' => 7])
+        ->and($tracking['challenges'][2]['solves'])->toBe(['done' => 1, 'total' => 2])
+        ->and($tracking['challenges'][2]['coinsUsed'])->toBe(120_000);
 });

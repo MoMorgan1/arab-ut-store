@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Enums\DeliveryPhase;
 use App\Enums\FulfillmentStatus;
+use App\Enums\HoldTone;
 use App\Enums\OrderHoldReason;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
+use App\Enums\TrackingPresentation;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Supplier|null $supplier
  * @property DeliveryPhase|null $delivery_phase
  * @property OrderHoldReason|null $hold_reason
+ * @property TrackingPresentation|null $presentation
+ * @property HoldTone|null $hold_tone
  * @property array<string, mixed>|null $observation
  * @property array<int, mixed>|null $allowed_actions
  * @property bool $observation_supported
@@ -44,6 +48,8 @@ class FulfillmentJob extends DomainModel
             'supplier' => Supplier::class,
             'delivery_phase' => DeliveryPhase::class,
             'hold_reason' => OrderHoldReason::class,
+            'presentation' => TrackingPresentation::class,
+            'hold_tone' => HoldTone::class,
             'observation' => 'array',
             'allowed_actions' => 'array',
             'observation_supported' => 'boolean',
