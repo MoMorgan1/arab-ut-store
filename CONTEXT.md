@@ -92,6 +92,12 @@ customer bought and the coins the Challenge consumes travel together because the
 one account in one session. This is the delivery mechanism, not an optimisation, and the
 phase order is load-bearing: a Challenge that starts before its funding has landed fails.
 
+"One account in one session" is the condition, not an assumption that can be skipped.
+Credentials are collected per Order Item, so two Items on one Order may name two different
+accounts, or two different platforms; combining their shipments is only correct when they
+name the same account on the same platform going to the same Supplier. Anything else is two
+shipments.
+
 One purchased Challenge Item can require the Supplier to solve the same Challenge several
 times.
 

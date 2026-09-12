@@ -17,19 +17,28 @@ Challenge delivery, both of which this document depends on.
   The design is approved by use and is not reopened here; the canvas pass is for identity only.
 - **Technology**: nothing new on the server. Laravel actions, the existing database queue and
   minute cron, Inertia/React pages, the store's own tokens. No Redis, no daemon, no new service.
-- **Existing data**: `fulfillment_jobs` and `fulfillment_attempts` already exist with the right
-  columns (`supplier`, `supplier_order_id`, unique `idempotency_key`, `attempt_count`,
-  `next_poll_at`, `deadline_at`, `last_error_code`, `actual_cost_halalah`, `claimed_at`,
-  `completed_at`) and **nothing in `app/` writes them**. Seven `OrderStatus` values and
-  seventeen `OrderHoldReason` values exist with Arabic copy pinned by parity tests.
-  `order_item_secrets` holds EA credentials encrypted. `notification_deliveries` exists unused.
+- **Existing data**: `fulfillment_jobs` already exists with the placement columns this needs
+  (`supplier`, `supplier_order_id`, unique `idempotency_key`, `attempt_count`, `next_poll_at`,
+  `deadline_at`, `last_error_code`, `actual_cost_halalah`, `claimed_at`, `completed_at`), and
+  `fulfillment_attempts` beside it with its own schema. **No code creates or updates either**;
+  the only write path that exists is a delete, in
+  `app/Actions/Orders/PurgeDeadCancelledOrders.php:167`. What the table does *not* have is
+  anywhere to keep a supplier observation — no progress counters, no observation timestamp, no
+  phase, no structured hold or action fields — so a migration is part of this work, not an
+  assumption it can be skipped. Seven `OrderStatus` values and seventeen `OrderHoldReason` values
+  exist in both locales; the parity tests assert membership and non-empty translations, they do
+  not pin the exact wording. `order_item_secrets` holds EA credentials encrypted.
+  `notification_deliveries` exists with no sender.
 - **Accounts and access**: FFT and UTT API credentials move into the store's `.env`. The keys in
   use today are burned — committed to the tracker's git history and to an n8n export — and are
   rotated before anything ships.
 - **Constraints**: Hostinger shared hosting. One-minute cron, `queue:work --stop-when-empty
   --max-time=55`, no supervisor and no daemon (`routes/console.php:31-41`), session driver
-  `database`, Redis forbidden. FC 27 is not yet taking orders and FC 26 is ending, so there is
-  no live traffic to migrate and no parallel-running requirement.
+  `database`, Redis forbidden. FC 27 is not yet taking orders and FC 26 is ending, so by the
+  owner's account there is no live traffic to migrate and no parallel-running requirement. That
+  is an operational statement, not something this repo can prove: before the Sheet writer is
+  removed, confirm against the supplier dashboards and the Sheet that no unresolved job and no
+  paid order without a reference is outstanding, and keep a manual recovery path for any that is.
 - **Success**: a customer whose automated order stops is told so without opening anything, can
   fix it themselves in one screen, and never sees a Google Sheet, a second domain, or a second
   status vocabulary.
@@ -55,9 +64,20 @@ and removes the Sheet from the path permanently.
 1. **n8n places, Laravel tracks.** n8n keeps the mature `Fulfillment v14` behaviour: it receives
    a paid order, places it at FFT or UTT, and **chooses which supplier** at placement time
    (it already prices against both). Laravel owns everything after placement.
-2. **n8n reports the reference back.** On a successful placement n8n calls an authenticated
-   store endpoint with the supplier and the supplier order id. That row lands in
-   `fulfillment_jobs`. The Google Sheet leaves the fulfillment path.
+2. **n8n reports the reference back.** On a successful placement n8n calls an authenticated store
+   endpoint that binds the supplier and the supplier order id to the order item, landing a
+   `fulfillment_jobs` row. The Google Sheet leaves the fulfillment path.
+
+   **Retrying a failed placement and alerting Mohamed stay inside n8n**, where they already work
+   (owner, 2026-09-12: "الـ n8n كده كده لما بيفشل بيعيد التحقق وبينبهني وكل ده موجود"). The store
+   does not rebuild that. Two store-side obligations remain, and they are not the same thing:
+
+   - **The callback is idempotent**, keyed so that n8n retrying it is a no-op and a reference
+     already bound to a different item is rejected. n8n retrying is normal, not exceptional.
+   - **The store alarms on silence.** An automated, paid order item with no placement row after a
+     bounded wait is surfaced to Mohamed. This covers the case n8n cannot see: it placed
+     successfully and its callback never arrived. Without it that order is paid for and invisible
+     to everyone, which is precisely the failure the Sheet used to make loud.
 3. **Laravel calls FFT and UTT directly** for status reads and for customer self-service
    actions. Supplier credentials live in the store's `.env` and are validated on read the way
    `PublishOrderPaidEvent::configuration()` validates the n8n publisher.
@@ -68,15 +88,30 @@ and removes the Sheet from the path permanently.
    spine — they drive lists, receipts, cashback, admin permissions and the legal transition
    matrix. Underneath them the tracking page shows the supplier's own detail, the required
    action, and the progress numbers. One vocabulary with a detail layer, not two vocabularies.
-5. **`refunded` is no longer folded into `cancelled` for the customer.** `OrderStatus::forCustomer()`
-   keeps folding `Received` into `InProgress` and stops folding `Refunded`. A customer who paid
-   and was paid back sees تم الاسترجاع, because ملغي reads as "this never happened".
+5. **`refunded` is no longer folded into `cancelled` for the customer.** A customer who paid and
+   was paid back sees تم الاسترجاع, because ملغي reads as "this never happened". Both enums fold
+   it today — `OrderStatus::forCustomer()` and `OrderItemStatus::forCustomer():16` — and the live
+   order page reads both (`app/Account/Queries/ReadLiveOrder.php:92`, `:143`), so both change.
+   The cancellation wording in `lang/{ar,en}/orders.php:8` needs revising with it, and the raw
+   status must keep driving the financial logic untouched. The frontend already supports the
+   value: the TypeScript union, both locales' labels, the closed-page branch and the CSS all
+   carry `refunded` already.
 6. **Progress is not a status.** Coins delivered of coins ordered, challenges solved of
    challenges requested, and the ETA badge are their own concept and are never expressed as an
    `OrderStatus`.
-7. **The seventeen hold-reason texts get a copy pass.** They all end in "ثم أخبرنا", which was
-   right when a human had to intervene. With self-service they must end in the button the
-   customer is about to press. Mohamed reviews the seventeen before they ship.
+7. **The hold-reason copy is split from the action copy.** The reason text says what happened;
+   the action copy says what to press. Today several reasons end in "ثم أخبرنا" — right when a
+   human had to intervene, wrong once the customer has a button — but not all of them do:
+   `credentials` already asks for an update, and `ea_servers`, `store_stock`, `maintenance` and
+   `connection` correctly describe automatic recovery with nothing for the customer to do
+   (`lang/ar/orders.php:20`, `:21`, `:26`, `:32`, `:35`). Rewriting all seventeen around a button
+   would be wrong: it would attach an action to states that have none, and to manual-service
+   orders that have no supplier at all. So the action copy becomes contextual and the reason text
+   changes only where it actually says "tell us". Mohamed reviews the changed ones.
+
+   Note that existing hold messages are frozen into `order_status_history` at transition time by
+   design (`app/Admin/Actions/TransitionAdminOrder.php:149`), so editing a translation does not
+   rewrite what a customer was already told. That is intended and stays.
 8. **Manual services show status only.** Objectives, Rivals and FUT Champions have no supplier
    and no progress feed; they show their `OrderStatus` and nothing resembling a step timeline.
 
@@ -102,10 +137,20 @@ and removes the Sheet from the path permanently.
 
 ### Freshness
 
-13. **Read on open and sweep on cron.** Opening the page triggers a live supplier read cached
-    about sixty seconds. Separately a minute-cron sweep walks non-terminal jobs, detects stalls,
-    and drives the customer notification. The first keeps the page honest; the second is what
-    lets a customer be told their order stopped without looking.
+13. **The page renders stored state and refreshes asynchronously.** It never blocks on a
+    supplier. The page already reloads itself every thirty seconds
+    (`resources/js/pages/account/live-order.tsx:34`), so a supplier call inside the render is not
+    a call "on open" — it is a call every thirty seconds per viewer, at up to twelve seconds
+    each, inside `LiveOrderController`'s synchronous path. One slow supplier would then hold the
+    page hostage and one outage would queue every viewer behind it.
+
+    So: render the last stored observation immediately with its age, and trigger the refresh
+    through a bounded separate request, de-duplicated by a per-job lock so simultaneous viewers
+    cause one supplier call and not many. A sixty-second cache alone does not prevent a
+    thundering herd on expiry.
+
+    Separately a cron sweep walks non-terminal jobs, detects stalls, and drives the customer
+    notification. That is what lets a customer be told their order stopped without looking.
 14. **Notifications are sent by the store**, not by n8n: the store is what noticed the change,
     it already has Whapi wired for OTP, and `notification_deliveries` exists for exactly this
     de-duplication. The message catalogue is ported from Mohamed's existing n8n order-status
@@ -113,14 +158,22 @@ and removes the Sheet from the path permanently.
 
 ### Failure
 
-15. **A failed placement retries, then escalates to Mohamed.** Bounded attempts with backoff on
-    the `fulfillment_jobs` row, then an operational alert. The customer keeps seeing قيد التنفيذ
-    throughout, because a supplier being down is not something they can act on. Only failures
-    the customer can actually fix move the item to `waiting_for_customer`.
+15. **A failed placement is n8n's to retry and escalate** (see decision 2). What the store owns is
+    the customer's view of it: قيد التنفيذ throughout, because a supplier being down is not
+    something a customer can act on. Only failures the customer can actually fix move the item to
+    `waiting_for_customer`.
+
+16. **A supplier observation never overrides a human.** The translation layer produces a proposed
+    status; applying it is a separate, transactional reconciliation that locks the order and its
+    items the way `TransitionAdminOrder` does, respects an admin's manual hold, refuses to move a
+    terminal order, and aggregates item states to the order conservatively. Completion side
+    effects — cashback, the review invitation — must fire exactly once whichever path completes
+    the order. And a supplier reporting a cancelled job never means the customer's payment was
+    refunded; `refunded` still comes only from a verified refund.
 
 ### Operations
 
-16. **An Admin fulfillment screen comes after the base works** — every item currently at a
+17. **An Admin fulfillment screen comes after the base works** — every item currently at a
     supplier in one place, with age, stall, failure, actual cost and a retry control. Built in
     the existing Admin with its permissions and audit, not as a separate surface. A queue screen
     over an empty table is worth nothing, so it follows the two slices above it.
@@ -145,6 +198,21 @@ Inputs it must cover, all present in the tracker today: FFT `status`, `accountCh
 `mapUTTtoFFTFormat`); and the SBC `sbcStatus` set. Supplier codes are stored on the job for
 diagnosis and are never rendered to a customer.
 
+**An unknown supplier code is not "in progress".** The tracker's tables are evidence of what the
+suppliers did, not a guarantee of what they can still return, and suppliers add codes without
+telling us. Mapping an unrecognised code to `in_progress` would silently clear a real customer
+hold or walk a finished order backwards. An unknown code instead **keeps the last known canonical
+state**, marks the observation unsupported, disables every action it cannot vouch for, and raises
+an alert so the map gets extended. The same applies to a supplier response that arrives
+malformed.
+
+**`actionable` is a boolean; the set of offered actions is not.** Which buttons appear depends on
+canonical state, the supplier's own capability for that state, the delivery phase, and
+authorisation — the tracker itself keeps edit and resume permissions separate and gates SBC edits
+on a narrower list still. The layer therefore yields an explicit set of allowed actions, and every
+one of them is re-authorised server-side when pressed. A single boolean deciding what a customer
+may do to their EA account is not enough.
+
 ## Explicitly out of scope
 
 - Rebuilding or redesigning the tracking UI. It is ported.
@@ -160,7 +228,10 @@ These are live today and are not gated on any decision above.
 
 - Rotate the FFT and UTT API keys. Both are in the tracker's committed git history
   (`REVIEW_2026-07-03.md:78-90`) and one is in an n8n export
-  (`automation/n8n/sbc-catalog-v1/README.md`).
+  (`automation/n8n/sbc-catalog-v1/README.md`). The new keys go to **every** authorised consumer,
+  not only the store: n8n still places orders and still runs the coins-pricing and SBC-catalog
+  workflows against these suppliers. Rotating into the store alone would break the placement path
+  this design depends on. Sanitise both exports before committing them.
 - Close the tracker's write endpoints (`mode=update`, `mode=resume`, `mode=sbc-retry`,
   `mode=sbc-edit`) and `admin-links.php`, which serves HTTP 200 unauthenticated when no
   credential file exists and is the issuer of the tokens those endpoints trust.
