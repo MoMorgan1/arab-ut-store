@@ -124,6 +124,27 @@ variables, not Supplier fields.
 and `amountTotal: 3000000` against `amountProcessed: 3000150`. Progress is not bounded by the
 amount ordered, so anything rendering a percentage has to survive more than 100%.
 
+**Challenge status is bulk, keyed by Challenge id, and counts two different things.** Read live on
+2026-09-12 from `sbcStatusBulkAPI`, which takes a LIST of Challenge ids - not an order id - and
+answers with one object per id. A real completed Challenge order:
+
+    challengesDone: 7      totalChallenges: 7       challengesSubmitted: 14
+    timesSolved: 2         timesToSolve: 2
+    sbcStatus: finished    costCoins: 546650        setId: 702
+
+Two pairs, and they answer different questions. `challengesDone` / `totalChallenges` is progress
+**within one solve** - the seven challenges that make up the set. `timesSolved` / `timesToSolve`
+is how many times the whole Challenge was solved, which is what the customer bought. The order
+above was two solves of a seven-challenge set, hence `challengesSubmitted: 14`.
+
+**The customer-facing pair is `timesSolved` / `timesToSolve`.** Showing the other one reports
+"7 of 7" to somebody who ordered two solves, and reads as complete after the first.
+
+`sbcStatus` is its own status vocabulary, separate from the coins `status`. `account` carries the
+customer's email and must not be stored. The id we must keep per Item is the Challenge id itself
+(returned as `sbcSolveID`), and one Item can carry several - the store has nowhere to put them
+today, because the old tracker read them from the Google Sheet.
+
 **A Challenge order is not readable from the coins status endpoint.** Asking `orderStatusAPI` for
 an SBC order answers HTTP 404 with the plain-text body `notFound` - not JSON, and not an error
 about the order being missing. Challenge status has its own endpoint (`sbcStatusBulkAPI`).
