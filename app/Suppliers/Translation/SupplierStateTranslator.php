@@ -7,6 +7,7 @@ use App\Enums\OrderHoldReason;
 use App\Enums\OrderStatus;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
+use App\Suppliers\ChallengeIds;
 use App\Suppliers\RawSupplierObservation;
 
 /**
@@ -310,7 +311,7 @@ final class SupplierStateTranslator
         // Auth / session errors
         'WrongUserPass' => OrderHoldReason::Credentials,
         'WrongBA' => OrderHoldReason::BackupCodes,
-        'sessionExpired' => OrderHoldReason::ActiveSession,
+        'sessionExpired' => OrderHoldReason::EaServers,
         'needEmailConfirm' => OrderHoldReason::Credentials,
         'LoginFailed495' => OrderHoldReason::EaServers,
         'LoginFailed401' => OrderHoldReason::EaServers,
@@ -474,30 +475,90 @@ final class SupplierStateTranslator
      * A challenge observation uses an entirely separate vocabulary from coins tracking;
      * keeping its own entry point prevents either path from accepting the other's codes.
      *
-     * @param  array<string, mixed>  $counters
+     * @param  list<string>  $requestedIds
+     * @param  array<array-key, mixed>  $bulk  Decoded supplier JSON: an entry can be
+     *                                         anything, and a numeric key arrives as an int.
      */
     public function translateChallenge(
         Supplier $supplier,
-        string $sbcStatus,
-        array $counters,
+        array $requestedIds,
+        array $bulk,
         OrderStatus $current,
     ): TranslatedState {
-        $status = trim($sbcStatus);
+        $normalizedRequested = [];
+        foreach ($requestedIds as $reqId) {
+            $norm = $this->normaliseChallengeId((string) $reqId);
+            if ($norm !== null && ! in_array($norm, $normalizedRequested, true)) {
+                $normalizedRequested[] = $norm;
+            }
+        }
 
-        $squadsDone = $this->count($counters['challengesDone'] ?? $counters['squadsDone'] ?? null);
-        $squadsTotal = $this->count($counters['totalChallenges'] ?? $counters['squadsTotal'] ?? null);
-        $solvesDone = $this->count($counters['timesSolved'] ?? $counters['solvesDone'] ?? null);
-        $solvesTotal = $this->count($counters['timesToSolve'] ?? $counters['solvesTotal'] ?? null);
+        $returned = [];
+        foreach ($bulk as $key => $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
 
-        // Validation comes first: an unknown challenge status fails closed immediately,
-        // leaving the current status untouched with supported=false and no allowed actions.
-        if ($status === '' || ! $this->isKnownSbcStatus($status)) {
+            $norm = $this->normaliseChallengeId((string) $key);
+            if ($norm !== null && in_array($norm, $normalizedRequested, true)) {
+                $returned[$norm] = $entry;
+            }
+        }
+
+        // 1. Nothing came back for any requested id. Fail closed: supported: false,
+        // no actions, $current unchanged, all counters null. An empty answer is not zero progress.
+        if ($returned === []) {
             return new TranslatedState(
                 status: $current,
                 holdReason: null,
                 allowedActions: [],
                 supported: false,
-                observedState: $status === '' ? null : $status,
+                observedState: null,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: null,
+                squadsTotal: null,
+                solvesDone: null,
+                solvesTotal: null,
+            );
+        }
+
+        // 2. Pick the challenge being worked now: the first returned entry that is not finished,
+        // falling back to the last returned entry when all of them are.
+        $activeChallenge = null;
+        $lastReturned = null;
+
+        foreach ($returned as $entry) {
+            $lastReturned = $entry;
+            $rawStatus = $entry['sbcStatus'] ?? null;
+            $status = is_string($rawStatus) ? trim($rawStatus) : '';
+
+            if (! $this->isSbcFinished($status)) {
+                $activeChallenge = $entry;
+                break;
+            }
+        }
+
+        $activeChallenge ??= $lastReturned;
+
+        // Check the type before using rather than casting
+        $activeRawStatus = $activeChallenge['sbcStatus'] ?? null;
+        $activeStatus = is_string($activeRawStatus) ? trim($activeRawStatus) : '';
+
+        // 4. Counters come from the active entry
+        $squadsDone = $this->count($activeChallenge['challengesDone'] ?? $activeChallenge['squadsDone'] ?? null);
+        $squadsTotal = $this->count($activeChallenge['totalChallenges'] ?? $activeChallenge['squadsTotal'] ?? null);
+        $solvesDone = $this->count($activeChallenge['timesSolved'] ?? $activeChallenge['solvesDone'] ?? null);
+        $solvesTotal = $this->count($activeChallenge['timesToSolve'] ?? $activeChallenge['solvesTotal'] ?? null);
+
+        // Validation comes first: an unknown or empty challenge status on the active entry fails closed immediately
+        if ($activeStatus === '' || ! $this->isKnownSbcStatus($activeStatus)) {
+            return new TranslatedState(
+                status: $current,
+                holdReason: null,
+                allowedActions: [],
+                supported: false,
+                observedState: $activeStatus === '' ? null : $activeStatus,
                 coinsDelivered: null,
                 coinsOrdered: null,
                 squadsDone: $squadsDone,
@@ -513,7 +574,7 @@ final class SupplierStateTranslator
                 holdReason: null,
                 allowedActions: [],
                 supported: true,
-                observedState: $status,
+                observedState: $activeStatus,
                 coinsDelivered: null,
                 coinsOrdered: null,
                 squadsDone: $squadsDone,
@@ -523,13 +584,38 @@ final class SupplierStateTranslator
             );
         }
 
-        if ($this->isSbcFinished($status)) {
+        // 3. Completion requires every requested id to be present and finished.
+        // If any requested id is missing from the response, the status is InProgress no matter what
+        // the returned entries say. If any requested challenge is missing from FFT's bulk response,
+        // it may still be running at the supplier; completing the order prematurely would pay out
+        // cashback and invite reviews on an incomplete order.
+        $allRequestedPresent = true;
+        foreach ($normalizedRequested as $reqId) {
+            if (! isset($returned[$reqId])) {
+                $allRequestedPresent = false;
+                break;
+            }
+        }
+
+        $allReturnedFinished = true;
+        foreach ($returned as $entry) {
+            $entryRawStatus = $entry['sbcStatus'] ?? null;
+            $entryStatus = is_string($entryRawStatus) ? trim($entryRawStatus) : '';
+            if (! $this->isSbcFinished($entryStatus)) {
+                $allReturnedFinished = false;
+                break;
+            }
+        }
+
+        $everyRequestedPresentAndFinished = $allRequestedPresent && $allReturnedFinished;
+
+        if ($everyRequestedPresentAndFinished) {
             return new TranslatedState(
                 status: OrderStatus::Completed,
                 holdReason: null,
                 allowedActions: [],
                 supported: true,
-                observedState: $status,
+                observedState: $activeStatus,
                 coinsDelivered: null,
                 coinsOrdered: null,
                 squadsDone: $squadsDone,
@@ -539,13 +625,31 @@ final class SupplierStateTranslator
             );
         }
 
-        if ($this->isSbcSafe($status)) {
+        // If the active returned entry looks finished but not all requested challenges are present
+        // and finished, the order must remain InProgress.
+        if ($this->isSbcFinished($activeStatus)) {
             return new TranslatedState(
                 status: OrderStatus::InProgress,
                 holdReason: null,
                 allowedActions: [],
                 supported: true,
-                observedState: $status,
+                observedState: $activeStatus,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: $squadsDone,
+                squadsTotal: $squadsTotal,
+                solvesDone: $solvesDone,
+                solvesTotal: $solvesTotal,
+            );
+        }
+
+        if ($this->isSbcSafe($activeStatus)) {
+            return new TranslatedState(
+                status: OrderStatus::InProgress,
+                holdReason: null,
+                allowedActions: [],
+                supported: true,
+                observedState: $activeStatus,
                 coinsDelivered: null,
                 coinsOrdered: null,
                 squadsDone: $squadsDone,
@@ -558,19 +662,19 @@ final class SupplierStateTranslator
         // Failure status: customer action reasons move order to WaitingForCustomer;
         // automatic recovery reasons keep it InProgress. If no honest match exists,
         // the reason stays null and the order stays InProgress.
-        $holdReason = self::SBC_STATUS_HOLDS[$status] ?? null;
+        $holdReason = self::SBC_STATUS_HOLDS[$activeStatus] ?? null;
         $orderStatus = ($holdReason !== null && $this->isCustomerAction($holdReason))
             ? OrderStatus::WaitingForCustomer
             : OrderStatus::InProgress;
 
-        $actions = $this->sbcActions($supplier, $status);
+        $actions = $this->sbcActions($supplier, $activeStatus);
 
         return new TranslatedState(
             status: $orderStatus,
             holdReason: $holdReason,
             allowedActions: $actions,
             supported: true,
-            observedState: $status,
+            observedState: $activeStatus,
             coinsDelivered: null,
             coinsOrdered: null,
             squadsDone: $squadsDone,
@@ -578,6 +682,49 @@ final class SupplierStateTranslator
             solvesDone: $solvesDone,
             solvesTotal: $solvesTotal,
         );
+    }
+
+    /**
+     * Whether the bulk response answered for at least one challenge we asked about.
+     *
+     * The caller needs this before applying anything: a response that names none of our
+     * ids told us nothing, and storing "we learned nothing" over "here is what we last
+     * learned" is a straight loss. It lives here so the id comparison has exactly one
+     * implementation, shared with translateChallenge().
+     *
+     * @param  list<string>  $requestedIds
+     * @param  array<array-key, mixed>  $bulk
+     */
+    public function challengeResponseAnswersRequest(array $requestedIds, array $bulk): bool
+    {
+        $requested = [];
+        foreach ($requestedIds as $id) {
+            $norm = $this->normaliseChallengeId((string) $id);
+            if ($norm !== null) {
+                $requested[$norm] = true;
+            }
+        }
+
+        foreach (array_keys($bulk) as $key) {
+            $norm = $this->normaliseChallengeId((string) $key);
+            if ($norm !== null && isset($requested[$norm])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normaliseChallengeId(string $id): ?string
+    {
+        $normalized = ChallengeIds::normalize([$id]);
+        if ($normalized !== []) {
+            return $normalized[0];
+        }
+
+        $parsed = ChallengeIds::parse([$id]);
+
+        return $parsed[0] ?? null;
     }
 
     private function resolve(

@@ -279,7 +279,7 @@ final class ApplySupplierObservation
         if ($isChallenge) {
             $job->delivery_phase = DeliveryPhase::Challenge;
 
-            if ($job->completed_at !== null && $state->status !== OrderStatus::Completed) {
+            if (! $orderIsTerminal && $job->completed_at !== null && $state->status !== OrderStatus::Completed) {
                 $job->completed_at = null;
                 $job->next_poll_at = now();
                 if ($job->status === FulfillmentStatus::Completed) {

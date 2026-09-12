@@ -14,6 +14,7 @@ use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -89,17 +90,17 @@ test('test 14: a challenge-phase job reads through observeChallenges with the pl
     Http::fake([
         'https://fft.example.test/sbcStatusBulkAPI' => Http::response([
             $challengeId1 => [
-                'sbcStatus' => 'finished',
-                'challengesDone' => 7,
-                'totalChallenges' => 7,
-                'timesSolved' => 2,
-                'timesToSolve' => 2,
-            ],
-            $challengeId2 => [
                 'sbcStatus' => 'solvingChallenge',
                 'challengesDone' => 3,
                 'totalChallenges' => 7,
                 'timesSolved' => 1,
+                'timesToSolve' => 2,
+            ],
+            $challengeId2 => [
+                'sbcStatus' => 'finished',
+                'challengesDone' => 7,
+                'totalChallenges' => 7,
+                'timesSolved' => 2,
                 'timesToSolve' => 2,
             ],
         ]),
@@ -238,4 +239,151 @@ test('test 17: SupplierUnavailable from the bulk read returns the stored trackin
     expect($tracking)->toBe($expected)
         ->and($tracking['progress']['squadsDone'])->toBe(2)
         ->and($tracking['progress']['squadsTotal'])->toBe(4);
+});
+
+test('test 18: a requested id missing from response while every returned entry is finished leaves order InProgress and does not fire completion', function (): void {
+    $challengeId1 = '1803b7a6-0000-0000-0000-00000064265f';
+    $challengeId2 = '2b8e38f6-1111-2222-3333-444455556666';
+
+    [$order, $item, $job] = createTrackingContext(
+        serviceType: ServiceType::Sbc,
+        deliveryPhase: DeliveryPhase::Challenge,
+    );
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId1, $challengeId2],
+        'idempotency_key' => 'placement-test-18',
+        'placed_at' => now(),
+    ]);
+
+    // Supplier answers only challengeId1 (finished); challengeId2 is absent
+    Http::fake([
+        'https://fft.example.test/sbcStatusBulkAPI' => Http::response([
+            $challengeId1 => [
+                'sbcStatus' => 'finished',
+                'challengesDone' => 7,
+                'totalChallenges' => 7,
+                'timesSolved' => 2,
+                'timesToSolve' => 2,
+            ],
+        ]),
+    ]);
+
+    $tracking = app(RefreshItemTracking::class)->execute($item, 'en');
+
+    expect($order->fresh()->status)->toBe(OrderStatus::InProgress)
+        ->and($order->fresh()->completed_at)->toBeNull()
+        ->and($item->fresh()->status)->toBe(OrderItemStatus::InProgress)
+        ->and($job->fresh()->status)->toBe(FulfillmentStatus::InProgress)
+        ->and($job->fresh()->completed_at)->toBeNull();
+});
+
+test('test 19: an empty response on a completed job leaves completed_at, job status, and stored observation untouched, and calls no writer', function (): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+    $completedAt = CarbonImmutable::parse('2026-09-12 10:00:00');
+    $initialObservation = [$challengeId => ['sbcStatus' => 'finished', 'challengesDone' => 7, 'totalChallenges' => 7]];
+
+    [$order, $item, $job] = createTrackingContext(
+        serviceType: ServiceType::Sbc,
+        deliveryPhase: DeliveryPhase::Challenge,
+        jobAttributes: [
+            'status' => FulfillmentStatus::Completed,
+            'completed_at' => $completedAt,
+            'observation' => $initialObservation,
+        ],
+    );
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId],
+        'idempotency_key' => 'placement-test-19',
+        'placed_at' => now(),
+    ]);
+
+    Http::fake([
+        'https://fft.example.test/sbcStatusBulkAPI' => Http::response([]),
+    ]);
+
+    Log::shouldReceive('warning')
+        ->once()
+        ->withArgs(function (string $message, array $context) use ($job, $challengeId): bool {
+            return str_contains($message, 'Bulk challenge response contained no requested challenge IDs')
+                && ($context['job_id'] ?? null) === $job->id
+                && in_array($challengeId, $context['challenge_ids'] ?? [], true);
+        });
+
+    $expected = ItemTracking::for($item, 'en');
+    $tracking = app(RefreshItemTracking::class)->execute($item, 'en');
+
+    $freshJob = $job->fresh();
+    expect($tracking)->toBe($expected)
+        ->and($freshJob->completed_at?->toDateTimeString())->toBe($completedAt->toDateTimeString())
+        ->and($freshJob->status)->toBe(FulfillmentStatus::Completed)
+        ->and($freshJob->observation)->toBe($initialObservation);
+});
+
+test('test 20: a response missing one of three ids still applies the counters of the active returned entry', function (): void {
+    $challengeId1 = '1803b7a6-0000-0000-0000-00000064265f';
+    $challengeId2 = '2b8e38f6-1111-2222-3333-444455556666';
+    $challengeId3 = '3c9f49a7-2222-3333-4444-555566667777';
+
+    [$order, $item, $job] = createTrackingContext(
+        serviceType: ServiceType::Sbc,
+        deliveryPhase: DeliveryPhase::Challenge,
+    );
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId1, $challengeId2, $challengeId3],
+        'idempotency_key' => 'placement-test-20',
+        'placed_at' => now(),
+    ]);
+
+    // Supplier answers id1 (finished) and id2 (solving); id3 is missing
+    Http::fake([
+        'https://fft.example.test/sbcStatusBulkAPI' => Http::response([
+            $challengeId1 => [
+                'sbcStatus' => 'finished',
+                'challengesDone' => 7,
+                'totalChallenges' => 7,
+                'timesSolved' => 2,
+                'timesToSolve' => 2,
+            ],
+            $challengeId2 => [
+                'sbcStatus' => 'solvingChallenge',
+                'challengesDone' => 4,
+                'totalChallenges' => 7,
+                'timesSolved' => 1,
+                'timesToSolve' => 2,
+            ],
+        ]),
+    ]);
+
+    $tracking = app(RefreshItemTracking::class)->execute($item, 'en');
+
+    $freshJob = $job->fresh();
+    expect($tracking)->not->toBeNull()
+        ->and($tracking['progress'])->toBe([
+            'coinsDelivered' => null,
+            'coinsOrdered' => null,
+            'squadsDone' => 4,
+            'squadsTotal' => 7,
+            'solvesDone' => 1,
+            'solvesTotal' => 2,
+        ])
+        ->and($freshJob->squads_done)->toBe(4)
+        ->and($freshJob->squads_total)->toBe(7)
+        ->and($freshJob->solves_done)->toBe(1)
+        ->and($freshJob->solves_total)->toBe(2)
+        ->and($order->fresh()->status)->toBe(OrderStatus::InProgress);
 });

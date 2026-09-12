@@ -118,16 +118,25 @@ final class RefreshItemTracking
                     return ItemTracking::for($item, $locale);
                 }
 
+                // A response naming none of our ids told us nothing. The comparison lives in
+                // the translator so there is one implementation of it, not two that can drift.
+                if (! $this->translator->challengeResponseAnswersRequest($challengeIds, $bulk)) {
+                    Log::warning('Bulk challenge response contained no requested challenge IDs for fulfillment job {job_id}', [
+                        'job_id' => $job->id,
+                        'challenge_ids' => $challengeIds,
+                    ]);
+
+                    return ItemTracking::for($item, $locale);
+                }
+
                 $job->forceFill(['last_viewed_at' => CarbonImmutable::now()])->save();
 
-                $activeChallenge = $this->findActiveChallenge($bulk);
-                $sbcStatus = (string) ($activeChallenge['sbcStatus'] ?? '');
                 $orderStatus = $order instanceof Order ? $order->status : OrderStatus::InProgress;
 
                 $translated = $this->translator->translateChallenge(
                     $job->supplier,
-                    $sbcStatus,
-                    $activeChallenge ?? [],
+                    $challengeIds,
+                    $bulk,
                     $orderStatus,
                 );
 
@@ -182,33 +191,5 @@ final class RefreshItemTracking
         } finally {
             $lock->release();
         }
-    }
-
-    /**
-     * Finds the challenge being worked now: the first one in the map that is not
-     * finished, falling back to the last if all are.
-     *
-     * The columns are a summary for lists and sweeps, while the per-challenge detail
-     * lives in the observation for a reader that wants all of it.
-     *
-     * @param  array<string, array<string, mixed>>  $bulk
-     * @return array<string, mixed>|null
-     */
-    private function findActiveChallenge(array $bulk): ?array
-    {
-        $last = null;
-
-        // FftClient::observeChallenges() drops any non-array value before returning,
-        // so every entry here is a challenge object.
-        foreach ($bulk as $challenge) {
-            $last = $challenge;
-            $status = (string) ($challenge['sbcStatus'] ?? '');
-
-            if ($status !== 'finished' && $status !== 'alreadyCompleted') {
-                return $challenge;
-            }
-        }
-
-        return $last;
     }
 }

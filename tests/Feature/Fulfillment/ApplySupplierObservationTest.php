@@ -725,7 +725,7 @@ it('stores only allowlisted supplier keys and masks addresses in the prose that 
         ->and($stored['accountCheckLong'])->toBe('login failed for f...@example.com');
 });
 
-it('re-opens polling without un-completing earlier phase when challenge observation arrives on completed coins job (Rule 8)', function (): void {
+it('re-opens polling and resets job completion while preserving earlier coins progress counters when challenge observation arrives on completed coins job (Rule 8)', function (): void {
     $completedAt = CarbonImmutable::parse('2026-09-12 11:00:00');
 
     [$order, $item, $job] = createObservationContext(
@@ -847,6 +847,11 @@ it('never moves a completed order backwards when a challenge observation arrives
     expect($order->fresh()->status)->toBe(OrderStatus::Completed)
         ->and($item->fresh()->status)->toBe(OrderItemStatus::Completed)
         ->and(OrderStatusHistory::query()->count())->toBe(0);
+
+    $freshJob = $job->fresh();
+    expect($freshJob->status)->toBe(FulfillmentStatus::Completed)
+        ->and($freshJob->completed_at?->toDateTimeString())->toBe($completedAt->toDateTimeString())
+        ->and($freshJob->next_poll_at)->toBeNull();
 });
 
 it('test 9: challenge observations are stored as a map keyed by challenge id, each filtered by the allowlist', function (): void {
