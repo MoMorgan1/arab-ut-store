@@ -207,3 +207,24 @@ times.
 
 > The letters SBC also name the Saudi Business Center certificate badge in the footer.
 > Unrelated. Never let the two meet in one identifier.
+
+## The tracker's code is the specification. Its comments are not.
+
+`track.arab-ut.com` is the behavioural specification for the store's tracking screen, and it is
+followed by porting its **conditions**. Its comments describe intentions the implementation does not
+carry out, and a comment ported as code produces a defect that reads as deliberate.
+
+The case that settled it, 2026-09-13. `ui.js:292` says:
+
+    // deactivated = completely hidden from customer (no action box at all)
+
+The code does no such thing. `deactivated` is simply absent from all three classification sets, and
+the box's visibility is `hasAction || isStopped || isInfoBox || isCriticalAccountError` — while
+`getActionMessage()` reads the account check *before* the economy state. So `wrongUserPass` beside
+`deactivated` shows a full red box. Ported as an early return, that comment silently removed the
+action box from three approved artboards.
+
+The same file carries a "Definitive classification of all API states" block that reads no less
+authoritative. Treat every comment there as a pointer to the lines worth reading, never as the rule.
+When a comment states a behaviour, find the code that implements it; if nothing does, the behaviour
+does not exist, and the commit should say so.

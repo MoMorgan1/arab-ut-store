@@ -575,6 +575,56 @@ drawn in the store's tokens. Mohamed approves or edits on the canvas; his edits 
 Then the port into Inertia/React with the store's tokens and Thmanyah, the ring re-expressed,
 `prefers-reduced-motion` respected. Not a copy of the tracker's 146KB stylesheet.
 
+**C3a round two — what the third review found, 2026-09-13.** The widened payload went through an
+implementer, a reviewer and a final read-only review. The last one found seven defects and I verified
+every one against the tracker source before acting; an eighth is mine. Three of them mean an approved
+artboard cannot render, so none of this is optional.
+
+- **`deactivated` was suppressing the action box.** The tracker's comment says `deactivated` is
+  "completely hidden from customer"; its code says no such thing. `getActionMessage()` reads the
+  account check **before** the economy state, and the box shows on
+  `hasAction || isStopped || isInfoBox || isCriticalAccountError` (`ui.js:770`). Artboards 2, 2-ب and
+  4 all declare `economyState: deactivated` beside a customer-action account check and all three draw
+  a red box; our early return drew none. **The tracker's comments are not the specification — its
+  code is.**
+- **A finished non-coins phase pinned `Completed`** over whatever the cascade said. The three
+  cooldown branches carry no `isFinished` guard and precede the finished branch, so `finished` +
+  `tempbanCooldown` reads `جاري المعالجة` in the tracker.
+- **An unusable observation erased a good headline.** `unsupported()` returns a null presentation and
+  the writer assigned it unconditionally, so one unparseable poll turned `Transferring` into
+  `في الانتظار`. Six lines below, the progress counters already carry the opposite rule with a
+  comment explaining exactly why. The rule now covers presentation and tone as well.
+- **The challenge path asked the wrong supplier.** `fulfillment_jobs.supplier` mirrors the *first*
+  placement by design; a challenge placement is always FFT and coins can be UTT. So a UTT-coins order
+  with FFT challenges lost every card action **and was never polled for challenges at all**
+  (`RefreshItemTracking.php:119`). Both now use the challenge placement's supplier.
+- **Challenge cards resurrected actions a terminal order had removed**, because the per-challenge
+  loop recomputed them from the observation with no terminal guard.
+- **A lang string named the supplier** — `بانتظار بدء المعالجة لدى المزوّد`. The standing rule, broken
+  in the most visible place there is.
+- **The optimistic window is not reconstructible from `presentation`.** The tracker clears its grace
+  window on a four-part predicate (`ui.js:243-248`), and every branch of it can be suppressed by a
+  message or a preceding cooldown, so `Processing` is reachable with the predicate both true and
+  false. It travels as one curated boolean, `workStarted`. Without it React either drops the window
+  early or holds a stale "جاري تشغيل الطلب" over an order that has visibly moved.
+- **The three cooldown states shared one subline.** The tracker gives them one headline and three
+  different sublines, each telling the customer something different. Ported exactly, per
+  "اعتمد نفس الموقع الحالي".
+
+**Two copy decisions taken here, both corrections rather than product changes:**
+
+- A **cancelled or refunded** order read `متوقف مؤقتاً` — "temporarily paused" — because every
+  non-completed terminal status collapsed into `Stopped`. A refunded order is not paused; the money
+  is back. `Cancelled` and `Refunded` are now their own cases with their own copy.
+- **`belowMinTransfer`** drew an amber box with nothing in it: the tone comes from the code and the
+  text comes from the hold reason, and that state deliberately had no reason. The tracker has real
+  text for it, so it gets a reason — `below_minimum` — and the text.
+
+**The one thing worth carrying forward:** three consecutive reviews each found a real defect in the
+same cascade, and each was the last review at the time. The lesson is not that the reviewers were
+good; it is that a hand-ported ordered cascade whose branches are not mutually exclusive cannot be
+verified by reading it. Every branch now has a test that pins its **order**, not just its condition.
+
 **C4. A separate presenter for the bearer link** (Claude). The account payload is not fit to serve
 a capability URL: it carries payment breakdowns, review actions and purchase analytics
 (`ReadLiveOrder.php:95`, `:119`, `:181`), and the frontend fires a `purchase` event whenever
