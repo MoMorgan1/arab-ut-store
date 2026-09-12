@@ -283,7 +283,7 @@ final readonly class RepriceCart
 
     private function isManualService(ServiceType $service): bool
     {
-        return $service->isManual();
+        return $service->isBoosterConfigured();
     }
 
     private function quotedAt(): string

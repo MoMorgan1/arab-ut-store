@@ -30,15 +30,14 @@ use App\Suppliers\RawSupplierObservation;
  * showResumeStates lists, because those answer a different question: what the
  * customer can usefully press. A Resume next to an automatic wait means "try
  * now instead of waiting for the sweep", which the tracker's own texts ask for.
- * The two silent codes are AUTOMATIC_SILENT_CODES.
  */
 final class SupplierStateTranslator
 {
     /**
      * Hold reasons the system recovers from on its own. They decide the status
      * only: an order holding on one of these is not blocked on the customer, so
-     * it stays InProgress. Actions stay independent, see
-     * AUTOMATIC_SILENT_CODES for the two codes that offer none.
+     * it stays InProgress. Actions stay independent, coming purely from the
+     * tracker's action lists.
      *
      * @var list<OrderHoldReason>
      */
@@ -49,22 +48,6 @@ final class SupplierStateTranslator
         OrderHoldReason::NoPlayer,
         OrderHoldReason::Maintenance,
         OrderHoldReason::Paused,
-    ];
-
-    /**
-     * Automatic-recovery codes whose tracker text asks for no press at all, so
-     * they keep no actions even though showResumeStates lists Resume:
-     * insufficientFunds means OUR float at the supplier is empty ("رصيد المتجر
-     * غير كافي ... يرجى التواصل معنا", ui.js:60-61) and resuming before a top-up
-     * just fails again; calcErrorMaintenance promises an automatic retry
-     * ("سنعاود المحاولة تلقائياً", ui.js:97). Do not "restore consistency" by
-     * deleting these entries.
-     *
-     * @var list<string>
-     */
-    private const array AUTOMATIC_SILENT_CODES = [
-        'insufficientFunds',
-        'calcErrorMaintenance',
     ];
 
     /**
@@ -254,7 +237,6 @@ final class SupplierStateTranslator
     /**
      * Union of showResumeStates in ui.js. Automatic-recovery codes keep their
      * Resume here: the button means "try now instead of waiting for the sweep".
-     * Only AUTOMATIC_SILENT_CODES are filtered out.
      *
      * @var list<string>
      */
@@ -358,7 +340,6 @@ final class SupplierStateTranslator
         if (isset(self::ACCOUNT_CHECK_HOLDS[$accountCheck])) {
             return $this->hold(
                 self::ACCOUNT_CHECK_HOLDS[$accountCheck],
-                $accountCheck,
                 $supplier,
                 $status,
                 $accountCheck,
@@ -381,7 +362,7 @@ final class SupplierStateTranslator
                 );
             }
 
-            return $this->hold($hold, $economyState, $supplier, $status, $accountCheck, $economyState, $phase, $observed);
+            return $this->hold($hold, $supplier, $status, $accountCheck, $economyState, $phase, $observed);
         }
 
         if ($economyState === self::ECONOMY_STATE_DEACTIVATED) {
@@ -409,12 +390,10 @@ final class SupplierStateTranslator
 
     /**
      * A known hold reason decides the order's status. Actions stay independent:
-     * automatic recovery keeps whatever the tracker lists offer for the source
-     * code, unless it is one of AUTOMATIC_SILENT_CODES.
+     * automatic recovery keeps whatever the tracker lists offer for the code.
      */
     private function hold(
         OrderHoldReason $hold,
-        string $source,
         Supplier $supplier,
         string $status,
         string $accountCheck,
@@ -426,9 +405,7 @@ final class SupplierStateTranslator
             return new TranslatedState(
                 OrderStatus::InProgress,
                 $hold,
-                $this->in(self::AUTOMATIC_SILENT_CODES, $source)
-                    ? []
-                    : $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::InProgress),
+                $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::InProgress),
                 true,
                 $observed,
             );

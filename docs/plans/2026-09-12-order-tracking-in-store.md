@@ -26,6 +26,20 @@ twenty-five issues in the first draft. Awaiting owner approval before any brief 
 - EA credentials ride in the placement payload; the durable outbox row stays secret-free.
 - Phone is the primary viewport; verify 390px first. No input under `1rem`.
 
+Added 2026-09-12, after the first implementation round:
+
+- **The customer controls everything.** Adopt the tracker's button sets as they are, for every
+  hold reason. The "we will retry and update you" wording came from Salla's constraints; on the
+  tracking link the customer has always had the controls, and that is what the owner wants kept.
+  So the reason's class still decides the canonical status, but the actions come from the tracker's
+  `showEditStates` / `showResumeStates` with no exceptions carved out.
+- **Manual orders take everything**: pick an existing customer or add one, pick an existing
+  product or add one, and so on through the form. Not a narrowed subset.
+- **Objectives is a manual service.** `CONTEXT.md` was right and the enum was wrong.
+- **The activation gate is documentation, not a blocker right now**: the store is taking no orders
+  at all while FIFA 26 winds down, so there is nothing to strand. It becomes real again the day
+  orders resume - see the gate section below.
+
 ## Blocked on Mohamed
 
 - Export of `Fulfillment v14` and of the order-status workflow.
@@ -228,9 +242,15 @@ codes that resolve to it:
 `dailyReceiverLimit` and the stopped-status fallback, though not via `tempbanCooldown`,
 `listingTempban` or `deactivated`, which offer nothing).
 
-The tracker's own texts for these ask the customer to press resume - "جرّب تشغيل الطلب مرة ثانية
-بعد قليل" - so the button is not an accident. Either our text stops promising automatic recovery,
-or the button goes. Mohamed decides which.
+**Resolved by the owner, 2026-09-12: the text changes, not the button.** Keep every button the
+tracker offers, for every reason, and revise the Arabic so it stops promising automatic recovery
+where a control exists. The Salla-era wording was written for a page with no controls on it; the
+tracking link has always given the customer the actions, and full customer control is the point.
+
+One case to write carefully rather than differently: `store_stock` comes from the supplier telling
+us OUR balance is short, so pressing resume cannot succeed until we top up. It keeps its button
+per this decision - the text has to set the expectation that it may need a second try shortly,
+instead of implying the press will fix it.
 
 *Our text asks for something the offered buttons do not do:*
 `credentials` asks the customer to correct the order form, but the three 2FA codes resolving to it
@@ -334,10 +354,13 @@ same signed link. Needs: a `manual` value on `orders.channel` (today only `store
 permission of its own, and staff audit on every creation. Reuse `PlaceOrder` rather than writing a
 second checkout — that constraint is in the Admin skill's non-negotiables and it applies here.
 
-Money makes this consequential, so the form's behaviour gets owner approval before it is built:
-which services it may create, whether it can create a customer or only pick an existing one, and
-whether a manual order earns cashback and loyalty spend (it should not, by the same reasoning that
-excludes `salla_import`).
+**Owner decision, 2026-09-12: the form takes everything.** Pick an existing customer or add a new
+one; pick an existing product or add one; and the same pattern through the rest of the form. No
+narrowed subset of services.
+
+Still open, because money is involved and the owner has not ruled on it: whether a manual order
+earns cashback and loyalty spend. It should not, by the same reasoning that excludes
+`salla_import`, but that is a recommendation and not yet a decision.
 
 **G2. Retire the tracker.** Once G1 and C are live and verified: confirm no unresolved supplier
 job is outstanding, redirect `track.arab-ut.com` at the store, update the assistant prompts
@@ -385,7 +408,11 @@ and verified. Disable every execution-data save mode on the credential-bearing w
 The placement endpoint ships before the reconciliation that makes its second phase observable, so
 the order of switch-on is a correctness requirement rather than a preference.
 
-**`N8N_FULFILLMENT_KEY` and `N8N_FULFILLMENT_SECRET` must stay unset until D3 and the B5
+**Owner note, 2026-09-12: the store is currently taking no orders at all, so nothing can be
+stranded today and this gate is not blocking anyone.** It is written down because it stops being
+free the moment orders resume, and that day will not announce itself.
+
+**`N8N_FULFILLMENT_KEY` and `N8N_FULFILLMENT_SECRET` should stay unset until D3 and the B5
 phase-progression fix are live.** While they are unset the route answers 401 before the controller
 runs - `VerifyN8nFulfillmentSignature::handle()` returns `unauthorized()` ahead of
 `$next($request)` when the key is not a non-empty string or the secret is under 32 characters - so

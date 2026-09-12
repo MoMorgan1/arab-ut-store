@@ -322,9 +322,12 @@ test('an automatic-recovery hold keeps the order moving even when the status say
         DeliveryPhase::Challenge,
     );
 
+    // The status still says the customer is not blocked, but the Resume button
+    // stays: the owner's rule is that the tracking link keeps every control the
+    // tracker offers, and here it means "try now" rather than "you must act".
     expect($translated->status)->toBe(OrderStatus::InProgress)
         ->and($translated->holdReason)->toBe(OrderHoldReason::StoreStock)
-        ->and($translated->allowedActions)->toBe([]);
+        ->and($translated->allowedActions)->toBe([SupplierAction::Resume]);
 });
 
 test('a customer-action hold keeps the tracker actions when the status says stopped', function (): void {
@@ -380,4 +383,39 @@ test('no supplier signal can ever produce Cancelled or Refunded', function (): v
     }
 
     expect($forbidden)->toBe([]);
+});
+
+test('no supplier code is denied its tracker actions because its hold is automatic', function (): void {
+    // The owner's rule, 2026-09-12: the customer keeps every control the tracker
+    // offers. A previous round carved out two codes that showed no button at all,
+    // and this test exists so that carve-out cannot come back quietly - it fails
+    // the moment any code the tracker lists for Resume returns an empty set.
+    $translator = new SupplierStateTranslator;
+    $states = require __DIR__.'/../../Fixtures/Suppliers/fft-states.php';
+
+    $silent = [];
+
+    foreach (['accountCheck', 'economyState'] as $field) {
+        foreach ($states[$field] as $code => $expected) {
+            if ($expected['actions'] === []) {
+                continue;
+            }
+
+            $translated = $translator->translate(
+                fftTranslatorObservation([
+                    'status' => '',
+                    'accountCheck' => $field === 'accountCheck' ? $code : '',
+                    'economyState' => $field === 'economyState' ? $code : '',
+                ]),
+                OrderStatus::InProgress,
+                null,
+            );
+
+            if ($translated->allowedActions === []) {
+                $silent[] = $field.':'.$code;
+            }
+        }
+    }
+
+    expect($silent)->toBe([]);
 });

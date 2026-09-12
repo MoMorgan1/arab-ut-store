@@ -16,7 +16,8 @@ use App\Enums\SupplierAction;
  * The axes are independent: the hold reason decides the status (automatic
  * recovery stays InProgress, customer action waits in WaitingForCustomer),
  * while actions come from the tracker's showEditStates/showResumeStates lists,
- * except the two silent automatic codes (insufficientFunds, calcErrorMaintenance).
+ * with no code carved out: the owner's rule is that the customer keeps every control the
+ * tracker offers, so an automatic-recovery reason still shows Resume where ui.js shows it.
  *
  * The `combinations` table covers interactions between the axes: an unknown
  * code always wins over a finished-looking status, unknown codes are reported
@@ -48,7 +49,7 @@ return [
         'consoleLoggedIn' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::ActiveSession, 'actions' => [SupplierAction::Resume]],
         'unassignedItemsPresent' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Unassigned, 'actions' => [SupplierAction::Resume]],
         'LoginFailedDeviceBan' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::AccountBanned, 'actions' => [SupplierAction::EditCredentials, SupplierAction::Resume]],
-        'insufficientFunds' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::StoreStock, 'actions' => []],
+        'insufficientFunds' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::StoreStock, 'actions' => [SupplierAction::Resume]],
         '2FADisabled' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Credentials, 'actions' => [SupplierAction::Resume]],
         'no2fa' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Credentials, 'actions' => [SupplierAction::Resume]],
         'No2FA' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Credentials, 'actions' => [SupplierAction::Resume]],
@@ -68,12 +69,12 @@ return [
         'FailedReceiverDeviceBan' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::AccountBanned, 'actions' => [SupplierAction::EditCredentials, SupplierAction::Resume]],
         'FailedSessionExpiredCustomerLoggedIn?' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::ActiveSession, 'actions' => [SupplierAction::Resume]],
         'FailedTLfullReceiver' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::TransferListFull, 'actions' => [SupplierAction::Resume]],
-        'insufficientFunds' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::StoreStock, 'actions' => []],
+        'insufficientFunds' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::StoreStock, 'actions' => [SupplierAction::Resume]],
         'FailWebAppNotYetUnlocked' => ['status' => OrderStatus::WaitingForCustomer, 'hold' => OrderHoldReason::Credentials, 'actions' => [SupplierAction::EditCredentials, SupplierAction::Resume]],
         'tempbanCooldown' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Paused, 'actions' => []],
         'listingTempban' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Paused, 'actions' => []],
         'dailyReceiverLimit' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Paused, 'actions' => [SupplierAction::Resume]],
-        'calcErrorMaintenance' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Maintenance, 'actions' => []],
+        'calcErrorMaintenance' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Maintenance, 'actions' => [SupplierAction::Resume]],
         'FailedProxyConnectionError' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Connection, 'actions' => [SupplierAction::Resume]],
         'FailProxyUnavailable' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Connection, 'actions' => [SupplierAction::Resume]],
         'noSuitableSender' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::NoPlayer, 'actions' => [SupplierAction::Resume]],

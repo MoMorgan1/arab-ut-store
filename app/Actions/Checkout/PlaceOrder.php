@@ -588,7 +588,7 @@ final readonly class PlaceOrder
 
     private function isManualService(ServiceType $service): bool
     {
-        return $service->isManual();
+        return $service->isBoosterConfigured();
     }
 
     private function requiredSecret(CartItem $item): CartItemSecret
