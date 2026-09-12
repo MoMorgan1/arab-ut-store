@@ -40,6 +40,31 @@ Added 2026-09-12, after the first implementation round:
   at all while FIFA 26 winds down, so there is nothing to strand. It becomes real again the day
   orders resume - see the gate section below.
 
+## Objectives is not sellable, and that is accepted for now
+
+Owner decision, 2026-09-12: Objectives is not needed at the moment, so this stays as it is.
+
+**Do not "fix" this by reverting the required-secret change in `PlaceOrder`.** That would restore
+a worse bug, not repair a feature.
+
+The facts, because I got them wrong once already and wrote the wrong version into a commit
+message. Every service that carries EA credentials has its own add-to-cart action that collects
+them: `AddCoinsToCart`, `AddSbcToCart`, `AddRivalsToCart`, `AddFutChampionsToCart`. Objectives goes
+through the generic `AddCatalogItemToCart`, which collects nothing. The cart then *displays* that
+credentials are needed - `CartController::credentialsKind()` returns `'sbc'` for Objectives by
+default - but no path anywhere collects them, and `CartItemCredentialsController` is limited to
+Rivals and FutChampions. So Objectives is the only credential-bearing service with no way to
+supply credentials.
+
+That is why the credentials were being dropped at checkout: `PlaceOrder` had nothing to save. It
+has always been this way; requiring the secret did not create the gap, it made it visible and
+moved the failure before payment instead of after it. Today a customer reaching checkout is
+stopped, and shown the generic "cart or prices changed" message, which cannot help them.
+
+Making Objectives work needs an `AddObjectivesToCart` path collecting credentials the way the SBC
+path does, a cart-side entry point, and `CartItemCredentialsController` widened to accept it. That
+is a new interface, so it goes through a `/design` canvas before code, per `CLAUDE.md`.
+
 ## Blocked on Mohamed
 
 - Export of `Fulfillment v14` and of the order-status workflow.
