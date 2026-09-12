@@ -3,6 +3,7 @@
 namespace App\Http\Responses;
 
 use App\Account\AccountOverviewUrl;
+use App\Auth\AdminMfaSession;
 use App\Auth\TrustedDeviceRegistry;
 use App\Enums\UserRole;
 use App\Models\User;
@@ -15,6 +16,7 @@ final class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
     public function __construct(
         private readonly AccountOverviewUrl $accountOverviewUrl,
         private readonly TrustedDeviceRegistry $trustedDevices,
+        private readonly AdminMfaSession $mfaSession,
     ) {}
 
     public function toResponse($request): Response
@@ -23,7 +25,7 @@ final class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
         $user = $request->user();
 
         if ($request->hasSession()) {
-            $request->session()->put('auth.two_factor_confirmed_at', now()->timestamp);
+            $this->mfaSession->stampChallenge($request);
         }
 
         $target = $user !== null && in_array($user->role, [UserRole::Admin, UserRole::Staff], true)

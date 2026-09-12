@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\RedirectIfTwoFactorAuthenticatable;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Auth\AdminMfaSession;
 use App\Auth\TrustedDeviceRegistry;
 use App\Enums\UserRole;
 use App\Http\Middleware\EnsureActiveUser;
@@ -264,15 +265,30 @@ class FortifyServiceProvider extends ServiceProvider
     /**
      * A trusted device is a standing bypass of the TOTP challenge, so anything
      * that invalidates the second factor - or that account recovery would go
-     * through - must drop every remembered device with it.
+     * through - must drop every remembered device with it. The same events
+     * stamp the account so session markers minted before them are refused
+     * everywhere, which reaches browsers this request cannot clear.
      */
     private function revokeTrustedDevicesOnCredentialChange(): void
     {
         $forget = function (object $event): void {
             $user = $event->user ?? null;
 
-            if ($user instanceof User) {
-                app(TrustedDeviceRegistry::class)->forgetAll($user);
+            if (! $user instanceof User) {
+                return;
+            }
+
+            app(TrustedDeviceRegistry::class)->forgetAll($user);
+
+            // The timestamp is the only revocation signal sessions this
+            // request cannot reach will ever see; stamping it after forgetting
+            // the devices keeps both from drifting apart.
+            $user->forceFill(['mfa_invalidated_at' => now()])->save();
+
+            $request = app()->bound('request') ? app('request') : null;
+
+            if ($request instanceof Request && $request->hasSession()) {
+                app(AdminMfaSession::class)->forget($request);
             }
         };
 
