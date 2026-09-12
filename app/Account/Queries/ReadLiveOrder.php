@@ -3,6 +3,7 @@
 namespace App\Account\Queries;
 
 use App\Account\Presenters\AccountMoney;
+use App\Account\Presenters\ItemTracking;
 use App\Account\Presenters\ServiceArtwork;
 use App\Enums\OrderStatus;
 use App\Enums\ServiceType;
@@ -73,6 +74,20 @@ final class ReadLiveOrder
                         ->with(['product' => fn ($products) => $products
                             ->select(['id'])
                             ->with('media')]),
+                    'fulfillmentJob' => fn ($jobs) => $jobs->select([
+                        'id',
+                        'order_item_id',
+                        'supplier',
+                        'delivery_phase',
+                        'hold_reason',
+                        'allowed_actions',
+                        'observation_supported',
+                        'observed_at',
+                        'coins_delivered',
+                        'coins_ordered',
+                        'challenges_solved',
+                        'challenges_requested',
+                    ]),
                 ])
                 ->withExists('secret')
                 ->withExists('squadImage')
@@ -148,6 +163,7 @@ final class ReadLiveOrder
                     ),
                     'credentialsPresent' => (bool) $item->getAttribute('secret_exists'),
                     'manualFulfillment' => $this->manualFulfillment($item, (string) $order->getAttribute('order_number'), $locale),
+                    'tracking' => ItemTracking::for($item, $locale),
                 ])
                 ->values()
                 ->all(),
