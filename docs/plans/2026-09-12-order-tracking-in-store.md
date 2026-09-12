@@ -13,6 +13,13 @@ twenty-five issues in the first draft. Awaiting owner approval before any brief 
   of `Fulfillment v14`, not a rebuild.
 - n8n places, picks the supplier, retries a failed placement and alerts Mohamed — all of that
   already works and is not rebuilt here.
+- **n8n also polls the suppliers**, on a schedule, from the VPS it already runs on. Laravel calls
+  a supplier only when a customer presses a button.
+- `Fulfillment v14` is restructured **by phase** — `ship-coins`, `solve-challenge`,
+  `poll-open-jobs` — not by product, because a Challenge order ships coins too.
+- The purchase budget comes from the store in the placement request; `ArabUT Price Settings`
+  goes with the other Sheets.
+- `Customer Notifier` is absorbed into the store; its message catalogue is kept.
 - The Google Sheet leaves the fulfillment path.
 - Seven `OrderStatus` values stay; supplier detail, allowed actions and progress sit under them.
 - Session 30 days; signed per-order link never expires; its actions stop at a terminal state.
@@ -35,8 +42,10 @@ Not "each slice ships independently" — that claim was wrong. The real dependen
 - B0 (persistence) precedes everything that stores an observation.
 - B5 (reconciliation) precedes C, because C displays what B5 decides.
 - C's action boxes are inert until D1 exists; ship them disabled or behind a flag.
-- Real end-to-end placement needs B4 **and** the adapted workflow; nothing reaches customers
-  before that path passes an end-to-end acceptance run.
+- Real end-to-end placement needs B4 **and** F2/F3; nothing reaches customers before that path
+  passes an end-to-end acceptance run.
+- F1 needs B3's `open-jobs` and `observations` endpoints before it can do anything, and C shows
+  nothing real until F1 is feeding it. B3 → F1 → C is the critical path.
 
 ---
 
@@ -92,11 +101,13 @@ placement state, supplier observation, canonical item status, customer presentat
 with the existing `FulfillmentStatus` enum (`app/Enums/FulfillmentStatus.php:7`), which has
 `failed` and no `refunded` and is not the same ladder as `OrderItemStatus`.
 
-**B1. Supplier clients.** `FftClient` and `UttClient` behind one interface. Config in
-`config/services.php` with `.env.example` parity and a `configuration()` guard that throws rather
-than half-works, following `PublishOrderPaidEvent.php:82-102`. House timeouts `connectTimeout(5)`
-/ `timeout(12)`. No shared outbound limiter or circuit breaker exists anywhere in this codebase —
-add a per-supplier one plus outage backoff, because page refreshes and the sweep hit the same API.
+**B1. Supplier clients — for customer actions only.** `FftClient` and `UttClient` behind one
+interface, covering the endpoints a customer action needs: credential correction, resume, retry.
+Not polling — that is n8n's (F1). Config in `config/services.php` with `.env.example` parity and a
+`configuration()` guard that throws rather than half-works, following
+`PublishOrderPaidEvent.php:82-102`. House timeouts `connectTimeout(5)` / `timeout(12)`. No shared
+outbound limiter or circuit breaker exists anywhere in this codebase — add a per-supplier one plus
+outage backoff, because a customer hammering a retry button must not become a supplier problem.
 
 **B2. Translation layer.** One supplier observation → `{OrderStatus, OrderHoldReason|null, allowed
 actions}`. Rules that are not negotiable:
@@ -110,15 +121,22 @@ actions}`. Rules that are not negotiable:
 Source lists: `C:\xampp\htdocs\track\assets\js\ui.js` and `includes/functions.php:1330-1445`,
 transcribed into a fixture. Test every known code, plus an unknown one, plus a regression attempt.
 
-**B3. Placement callback endpoint.** `POST /api/automation/v1/fulfillment/placements` — n8n
-reports `{order_item_public_id, supplier, supplier_order_id}`. **Pick one existing HMAC
-convention explicitly and say which**: the routes do not share one. Coins pricing and base catalog
-sign `timestamp\neventId\nrawBody`; SBC catalog inserts `n8n-sbc\n` before the body
-(`VerifyN8nSbcCatalogSignature.php:17`); SBC pricing read signs
-`timestamp\nGET\n<path>\n` with no event header. Adopt the first. Specify SHA-256 hex, the
-existing ±300-second window, its own key and 32-char secret, and its own named limiter. Idempotent
-by key so n8n's retries are no-ops; a reference already bound to a different item is rejected;
-a reused key with different data is a conflict, not an overwrite.
+**B3. The three endpoints n8n needs.** All on one HMAC convention — **and say which**, because the
+existing routes do not share one: coins pricing and base catalog sign
+`timestamp\neventId\nrawBody`; SBC catalog inserts `n8n-sbc\n` before the body
+(`VerifyN8nSbcCatalogSignature.php:17`); SBC pricing read signs `timestamp\nGET\n<path>\n` with no
+event header. Adopt the first. SHA-256 hex, the existing ±300-second window, each route its own
+key, 32-char secret and named limiter.
+
+1. `POST /api/automation/v1/fulfillment/placements` — `{order_item_public_id, supplier,
+   supplier_order_id}`. Idempotent by key so n8n's retries are no-ops; a reference already bound
+   to another item is rejected; a reused key with different data is a conflict, not an overwrite.
+2. `POST /api/automation/v1/fulfillment/observations` — a batch of supplier observations from the
+   sweep. Validated, then handed to B5. Rejects an observation older than the one already stored
+   for that job, so a late batch cannot walk state backwards.
+3. `GET /api/automation/v1/fulfillment/open-jobs` — what the sweep should look at: job id,
+   supplier, supplier order id, phase, and when it was last observed. Paginated and capped. The
+   signature covers the method and path, since there is no body.
 
 **B4. Outbound placement request.** The real gap in the first draft: today both payment paths
 publish only identifiers, locale, currency, total and item count (`PlaceOrder.php:331`,
@@ -187,24 +205,22 @@ silently disagree with the supplier while the page says success. Rate limited pe
 **D2. Signed per-order link.** A random token bound to one order, stored hashed, never expiring,
 serving the C4 presenter. Read for the life of the order; actions refuse once terminal.
 
-**D3. Sweep and notify.** Its own scheduled command, and its own budget — the 55-second figure in
-the first draft was wrong: that limit belongs to `queue:work`, not to scheduled commands, which
-run before it with no such cap (`routes/console.php:23`, `:42`). Therefore:
+**D3. Stall detection and notification.** No polling here — that moved to n8n (F1). What the store
+does is cheap and needs no HTTP:
 
-- An explicit wall-clock deadline inside the command, not an assumed one.
-- A conservative start: three worst-case calls per tick, raised only after measuring real latency
-  and confirming supplier quotas. At a twelve-second timeout, four calls consume 48 seconds.
-- Oldest-due-first selection, `next_poll_at` advanced on **failure as well as success**, jittered
-  backoff, `Retry-After` honoured.
-- A real lease with crash recovery, not bare `withoutOverlapping()` — whose default lock lasts a
-  day, exactly what the queue comment at `routes/console.php:47` warns against.
-- Notification sending separated from polling.
+- **Stall detection is a query**, not a call: an open job whose newest observation is older than
+  the cadence expected for its phase is stalled. A scheduled command runs it and it touches only
+  the database, so the shared-hosting minute is irrelevant to it.
+- **Notification** is one Whapi call per message, driven by what B5 reconciled. Message catalogue
+  ported from `Customer Notifier`.
 
-Notification de-duplication needs a durable transition identifier and a unique delivery claim;
+De-duplication needs a durable transition identifier and a unique delivery claim.
 `notification_deliveries` has no unique constraint for order-plus-state today
 (`2026_08_08_000004:99`), and keying on "order and state" alone would swallow a second item's
-problem and a genuine recurrence after recovery. Whapi's OTP sender is a bare HTTP call
-(`WhapiVerificationSender.php:29`), not delivery machinery — that part is new.
+problem and a genuine recurrence after recovery. `Customer Notifier`'s own de-duplication is worse
+still — `$getWorkflowStaticData` with a six-hour window, which does not survive an n8n restart —
+so this is a replacement, not a port. Whapi's OTP sender is a bare HTTP call
+(`WhapiVerificationSender.php:29`), not delivery machinery; that part is new.
 
 ---
 
@@ -220,6 +236,31 @@ release rollback only and says nothing about external state; rolling Laravel bac
 writer is gone needs its own note.
 
 ---
+
+## Slice F — the n8n side (Mohamed's instance, Claude writes the workflows)
+
+Baseline committed at `automation/n8n/fulfillment-v14/workflow-v14-salla.json` (117 nodes) and
+`automation/n8n/customer-notifier-v2/workflow-v2-salla.json`. Every change below is committed as a
+new file beside them, never edited in place, so the Salla baseline stays readable.
+
+**F1. `poll-open-jobs`.** New, and the one that replaces the three wait-loops. Schedule trigger →
+`GET open-jobs` from the store → group by supplier → read status (`sbcStatusBulkAPI` is a bulk
+call, so challenges batch; coins are one call each) → `POST observations` back. No state of its
+own, no wait nodes, executions measured in seconds. Set its concurrency to 1, as
+`automation/n8n/sbc-catalog-v1/README.md` already warns for that instance.
+
+**F2. `ship-coins`.** v14's placement path, kept: UTT stocks, FFT cooldown,
+`Supplier Decision Engine`, then `buyCoinsAPI` or `addOrderPublic`. The budget arrives in the
+request instead of being read from a sheet. Ends by reporting the reference to the store. Remove
+every Sheets, Supabase, Salla and WhatsApp node on this path.
+
+**F3. `solve-challenge`.** v14's SBC path from `availableSBCsAPI` through `SBC: Match & Validate`,
+`SBC: Supplier Decision` and `newSBCAPI` / `Submit Solve`, triggered by the store once the
+shipment has landed rather than by an in-workflow poll. Same removals.
+
+**F4. Retire.** Delete `Customer Notifier` and v14's `Forward Status Update` node once D3 is live
+and verified. Disable every execution-data save mode on the credential-bearing workflows first
+(the ADR's condition), and verify with synthetic credentials before any real order runs through.
 
 ## Gates
 

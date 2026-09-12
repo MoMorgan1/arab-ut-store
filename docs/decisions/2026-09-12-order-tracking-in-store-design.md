@@ -78,9 +78,25 @@ and removes the Sheet from the path permanently.
      bounded wait is surfaced to Mohamed. This covers the case n8n cannot see: it placed
      successfully and its callback never arrived. Without it that order is paid for and invisible
      to everyone, which is precisely the failure the Sheet used to make loud.
-3. **Laravel calls FFT and UTT directly** for status reads and for customer self-service
-   actions. Supplier credentials live in the store's `.env` and are validated on read the way
-   `PublishOrderPaidEvent::configuration()` validates the n8n publisher.
+3. **n8n polls the suppliers; Laravel calls them only when a customer presses something.**
+   Revised 2026-09-12 after measuring both machines. The two jobs have opposite shapes:
+
+   - **Polling** is high-volume, continuous, and entirely network wait. It runs on the VPS that
+     already hosts n8n — Hostinger KVM 2, 2 vCPU and 8 GB, idling at 1.2–2.6% CPU and 25% memory
+     over the last twenty-nine hours, up 220 days. A schedule-triggered workflow asks the store
+     what is open, reads the suppliers, and posts observations back.
+   - **Customer actions** — correct credentials, resume, retry — are rare, user-triggered, and
+     need an answer while the customer is looking at the screen. Laravel calls the supplier
+     directly for these.
+
+   The store remains the source of truth either way: n8n reads suppliers and reports, it does not
+   hold state. What this avoids is the real bottleneck: the store is on shared hosting with a
+   one-minute cron, where every supplier call holds a PHP process for up to twelve seconds. Fifty
+   live orders checked every two minutes is about twenty-five calls a minute, which does not fit
+   one sequential cron tick at poor supplier latency — while a nearly idle VPS sits beside it.
+
+   Supplier credentials therefore live in **both** n8n and the store's `.env`, validated on read
+   the way `PublishOrderPaidEvent::configuration()` validates the n8n publisher.
 
 ### What the customer sees
 
@@ -144,13 +160,18 @@ and removes the Sheet from the path permanently.
     each, inside `LiveOrderController`'s synchronous path. One slow supplier would then hold the
     page hostage and one outage would queue every viewer behind it.
 
-    So: render the last stored observation immediately with its age, and trigger the refresh
-    through a bounded separate request, de-duplicated by a per-job lock so simultaneous viewers
-    cause one supplier call and not many. A sixty-second cache alone does not prevent a
-    thundering herd on expiry.
+    So: render the last stored observation immediately, with its age. The observations arrive
+    from the n8n sweep (decision 3), not from the render path, so the page's thirty-second reload
+    is a database read and costs nothing outside.
 
-    Separately a cron sweep walks non-terminal jobs, detects stalls, and drives the customer
-    notification. That is what lets a customer be told their order stopped without looking.
+    The sweep is a **schedule-triggered** workflow, not the wait-in-execution loop v14 uses today.
+    That matters twice over: it keeps each n8n execution seconds long instead of hours — the whole
+    reason the current workflow is hard to debug — and it is what lets a customer be told their
+    order stopped without opening anything.
+
+    Stall detection stays in the store, because it is a query over observation age, not an HTTP
+    call: an open job whose last observation is older than its expected cadence is stalled, and
+    the store can see that without talking to anyone.
 14. **Notifications are sent by the store**, not by n8n: the store is what noticed the change,
     it already has Whapi wired for OTP, and `notification_deliveries` exists for exactly this
     de-duplication. The message catalogue is ported from Mohamed's existing n8n order-status
@@ -177,6 +198,48 @@ and removes the Sheet from the path permanently.
     supplier in one place, with age, stall, failure, actual cost and a retry control. Built in
     the existing Admin with its permissions and audit, not as a separate surface. A queue screen
     over an empty table is worth nothing, so it follows the two slices above it.
+
+## What happens to the two n8n workflows
+
+Both exports are committed under `automation/n8n/` as the Salla-era baseline:
+`fulfillment-v14/workflow-v14-salla.json` (117 nodes, ~64KB of JavaScript) and
+`customer-notifier-v2/workflow-v2-salla.json`.
+
+**`Fulfillment v14` shrinks by roughly eighty per cent, and the shrinking is a consequence of the
+decisions above rather than a separate refactor.** What leaves: the three polling loops (five wait
+nodes, three evaluate code nodes, three prepare-poll nodes, and the IF branches around them — the
+loops are replaced by decision 13's schedule trigger); ten Google Sheets nodes; six Supabase
+nodes; eight Salla `updateStatus` nodes; and twenty-three of its forty HTTP calls, which are
+WhatsApp sends the store now owns. What stays is the part that is genuinely about suppliers —
+stock, cooldown, prediction, the two supplier-decision engines and `SBC: Match & Validate`, about
+21KB of the 64KB.
+
+**It is restructured by phase, not by product.** Splitting it into a coins workflow and a
+challenge workflow would duplicate the coins logic, because a Challenge order ships coins too
+(owner, 2026-09-12; see the Challenges section of `CONTEXT.md`). So:
+
+| Workflow | Trigger | Job |
+| --- | --- | --- |
+| `ship-coins` | the store, on a paid automated item | pick a supplier, place the shipment, report the reference |
+| `solve-challenge` | the store, once the shipment has landed | submit the challenge, report the reference |
+| `poll-open-jobs` | schedule | ask the store what is open, read the suppliers, post observations back |
+
+The store therefore exposes three endpoints to n8n: one to receive a placement reference, one to
+receive observations, and one read for "what is open". All on the existing HMAC scheme.
+
+**The purchase budget comes from the store, and `ArabUT Price Settings` goes with the rest of the
+Sheets.** v14 reads that sheet to decide the maximum it will pay a supplier, with a stale-sheet
+alert bolted on (`Read Price Settings`, `Price Fallback?`, `WA: Price Fallback`). The store
+already owns pricing — the `coins-pricing-v2` workflow feeds it and `ApplyCoinsPricingRun` stores
+it — so the budget travels in the placement request and the second price source disappears.
+
+**`Customer Notifier` is absorbed entirely.** Its status detection matches Salla's Arabic status
+names by substring, which has nothing to map onto after the migration; its de-duplication lives
+in `$getWorkflowStaticData` and so does not survive an n8n restart; and it logs to Supabase. All
+three are replaced by the canonical status, `notification_deliveries`, and our own database. What
+is worth keeping is its message catalogue, which is good and already speaks in terms of buttons
+("افتح رابط طلبك واضغط زر تشغيل الطلب") rather than "reply to us" — consistent with decision 7.
+The `Forward Status Update` node that chains v14 into it goes too.
 
 ## The translation layer
 
