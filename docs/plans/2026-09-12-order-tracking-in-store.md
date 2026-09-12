@@ -40,6 +40,40 @@ Added 2026-09-12, after the first implementation round:
   at all while FIFA 26 winds down, so there is nothing to strand. It becomes real again the day
   orders resume - see the gate section below.
 
+Decided 2026-09-12, briefing the C3 canvas:
+
+- **The tracking lives inside the existing order page.** No separate route, no order-number box, no
+  order-history list: the customer is signed in, and a WhatsApp link reaches the same page through a
+  signed link. Whether the tracking sits inside each item's details or in one block above the invoice
+  is on the canvas as a pair for the owner to pick.
+- **Tabs only when an order has both kinds** - coins and challenges. A single-kind order shows none.
+- **Opening the page is the refresh.** One supplier read fires on page open; after that the page shows
+  stored state. No manual refresh button - the owner's words: "`تلقائي بس لما يرفرش الموقع مثلا يسال
+  المورد على طول`". The tracker's `متصل` connection dot therefore becomes the age of the last
+  observation, since the browser holds no supplier connection.
+- **A challenge is named and pictured from the product the customer bought.** The tracker kept its own
+  name and image map keyed by FFT's `setId` because it could only see an order number; the store has
+  the order item.
+- **The credentials sheet is email, password and the three backup codes.** The email is **editable**,
+  which reverses the tracker's locked field and its "message us on WhatsApp" note: in the store the
+  customer is signed in, and a wrong email is a case the page should handle. The tracker's five
+  operational fields - platform, Persona ID, price limit, sort mode and the after-update action
+  (`index.php:576-635`) - are not shown to the customer. Price limit and sort mode govern what the
+  bot pays for players, so they touch our cost; platform is already known from the order. Resuming a
+  stopped order stays on the standalone button.
+- **The optimistic window is not a ten-second timer.** The owner: "we are not tied to the ten
+  seconds - you said you have something better, I am fine with it." So port the tracker's condition:
+  hold until the grace deadline passes or a poll shows the state actually moved, whichever is first.
+- **`جاري إنهاء طلبك` is a pass-through, not a resting state.** Waiting for the players to sell takes
+  30 seconds to two minutes normally and 15 minutes at the very worst. Design it as brief.
+- **The ETA baseline stays as the tracker has it.**
+- **`الكوينز في الحساب` is read when the supplier opens the account** and can see the balance, which
+  is why it is unknown before then rather than zero.
+- **Manual services get a screen of their own.** The tracker has none, so this is designed rather than
+  ported; the owner asked for whatever design suits. It needs a progress figure that nothing records
+  today, so an admin surface to enter it is implied.
+- **The WhatsApp link stays in n8n**, inside the fulfillment automation. The store does not send it.
+
 ## Objectives is not sellable, and that is accepted for now
 
 Owner decision, 2026-09-12: Objectives is not needed at the moment, so this stays as it is.
