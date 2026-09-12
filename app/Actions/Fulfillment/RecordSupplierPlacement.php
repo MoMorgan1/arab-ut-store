@@ -122,11 +122,12 @@ final class RecordSupplierPlacement
             // Only a job with no placements at all can carry a hand-built or
             // pre-migration mirror; once a placement exists, the mirror is
             // just the first placement's advertisement and never blocks a
-            // later phase.
+            // later phase. A mirror missing either identity column is
+            // half-written and unbound: treating it as bound compares a null
+            // reference against every incoming one and refuses forever.
             $mirrorBound = ! $job->placements()->exists()
-                && ($job->supplier !== null
-                    || $job->supplier_order_id !== null
-                    || $job->delivery_phase !== null);
+                && $job->supplier !== null
+                && $job->supplier_order_id !== null;
 
             if ($mirrorBound
                 && ($job->supplier !== $supplier
@@ -161,8 +162,9 @@ final class RecordSupplierPlacement
                 'last_error' => null,
                 'idempotency_key' => 'fulfillment-placement:'.$publicId,
             ]);
-        } elseif ($job->supplier === null && $job->supplier_order_id === null) {
-            // The job holds no first placement yet; adopt this one's identity.
+        } elseif ($job->supplier === null || $job->supplier_order_id === null) {
+            // The job holds no complete first-placement identity yet, whether
+            // it is untouched or half-written; adopt this one's identity.
             // Later phases leave the mirror alone: it advertises the first
             // placement, while the placements table holds the full record.
             $job->forceFill([

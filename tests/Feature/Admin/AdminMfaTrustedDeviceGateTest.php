@@ -291,6 +291,31 @@ it('treats a marker without a counter as valid only while the account has no rev
     $this->get('/admin')->assertRedirect('/admin/confirm-2fa');
 });
 
+it('refuses a bare marker for an account whose counter starts above zero', function (): void {
+    ['user' => $admin] = adminMfaGateUser();
+    $admin->forceFill(['mfa_revocation' => 1])->save();
+
+    // Sessions minted before the counter existed carry no key, which reads as
+    // zero; starting existing accounts at one strands those grants on their
+    // next request instead of inheriting the new thirty-day lifetime.
+    $this->actingAs($admin)
+        ->withSession(['auth.two_factor_confirmed_at' => now()->getTimestamp()])
+        ->get('/admin')
+        ->assertRedirect('/admin/confirm-2fa');
+});
+
+it('starts the revocation counter at one for accounts that predate the column', function (): void {
+    $migration = require database_path('migrations/2026_09_12_000004_replace_mfa_invalidated_at_with_counter.php');
+
+    $existing = User::factory()->create();
+
+    $migration->down();
+    $migration->up();
+
+    expect($existing->fresh()->mfa_revocation)->toBe(1)
+        ->and(User::factory()->create()->mfa_revocation)->toBe(0);
+});
+
 it('keeps admin access after confirming two factor on the admin screen', function (): void {
     ['user' => $admin, 'secret' => $secret] = adminMfaGateUser();
 

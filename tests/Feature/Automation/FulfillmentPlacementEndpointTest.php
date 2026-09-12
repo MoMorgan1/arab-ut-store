@@ -131,6 +131,31 @@ it('mirrors a plain coins placement on the job and records its phase', function 
         ->and($placement->idempotency_key)->toBe('fulfillment-placement:'.$item->public_id.':coins');
 });
 
+it('completes a half-written job mirror instead of refusing forever', function (array $mirror) {
+    $item = paidOrderItem();
+    $reference = 'FFT-HALF-8837410';
+
+    $job = FulfillmentJob::factory()->create(array_replace([
+        'order_item_id' => $item->id,
+        'delivery_phase' => null,
+    ], $mirror));
+
+    signedFulfillmentPlacement(placementPayload($item, ['supplier_order_id' => $reference]))
+        ->assertOk()
+        ->assertJsonPath('data.acknowledged', true);
+
+    $job->refresh();
+
+    expect($job->supplier)->toBe(Supplier::Fft)
+        ->and($job->supplier_order_id)->toBe($reference)
+        ->and($job->delivery_phase)->toBe(DeliveryPhase::Coins)
+        ->and($job->placements()->count())->toBe(1)
+        ->and(FulfillmentPlacement::sole()->supplier_order_id)->toBe($reference);
+})->with([
+    'supplier without a reference' => [['supplier' => Supplier::Fft]],
+    'reference without a supplier' => [['supplier_order_id' => 'FFT-HALF-ORPHAN']],
+]);
+
 it('treats an identical retry as a no-op that grants nothing', function () {
     $item = paidOrderItem();
     $payload = placementPayload($item);

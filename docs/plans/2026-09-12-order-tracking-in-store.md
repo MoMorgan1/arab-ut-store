@@ -380,6 +380,22 @@ shipment has landed rather than by an in-workflow poll. Same removals.
 and verified. Disable every execution-data save mode on the credential-bearing workflows first
 (the ADR's condition), and verify with synthetic credentials before any real order runs through.
 
+## Activation gate
+
+The placement endpoint ships before the reconciliation that makes its second phase observable, so
+the order of switch-on is a correctness requirement rather than a preference.
+
+**`N8N_FULFILLMENT_KEY` and `N8N_FULFILLMENT_SECRET` must stay unset until D3 and the B5
+phase-progression fix are live.** While they are unset the route answers 401 before the controller
+runs - `VerifyN8nFulfillmentSignature::handle()` returns `unauthorized()` ahead of
+`$next($request)` when the key is not a non-empty string or the secret is under 32 characters - so
+the endpoint is inert by default and no placement can be recorded. Verified 2026-09-12.
+
+That inertness is what makes deferring the phase-progression gap safe. Set those two keys and the
+endpoint starts acknowledging challenge placements that nothing will ever poll: a challenge would
+run at the supplier while the job reads as finished. So the two environment variables are the
+switch, and D3 plus B5 are its preconditions.
+
 ## Gates
 
 `npm run ci:check` and `composer test` both pass, run by the lead rather than reported by a
