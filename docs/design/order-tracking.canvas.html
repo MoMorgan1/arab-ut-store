@@ -12,9 +12,10 @@
                Comments explain WHY values were selected, not WHAT they are.
                ============================================================ */
             :root {
-                /* Inherit store identity tokens so preview surfaces match production dark mode */
+                /* Store brand tokens */
                 --arabut-gold: #d4a843;
                 --arabut-gold-bright: #e4b756;
+                --arabut-gold-dim: #b88725;
                 --arabut-navy: #14110e;
                 --arabut-navy-raised: #1c1814;
                 --arabut-navy-deep: #080705;
@@ -25,9 +26,7 @@
                 --arabut-success: #78d59e;
                 --arabut-warning: #f59e0b;
 
-                /* Button tokens replicated from resources/css/app.css:15636 to guarantee authentic sheen and tactile lift.
-                   We cannot append .track-btn--primary to the selector list in app.css because AGENTS.md and the brief
-                   strictly forbid modifying files outside docs/design/order-tracking.canvas.html. */
+                /* Button tokens replicated from resources/css/app.css */
                 --btn-radius: 0.75rem;
                 --btn-gold: linear-gradient(180deg, #f0ca70 0%, #d4a843 56%, #b88725 100%);
                 --btn-gold-hover: linear-gradient(180deg, #f7d78a 0%, #e4b756 56%, #c5922c 100%);
@@ -36,11 +35,15 @@
                 --btn-shade: inset 0 -1px 0 rgb(0 0 0 / 18%);
                 --btn-glow: 0 10px 24px -12px rgb(212 168 67 / 80%);
                 --btn-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+                /* Tracker motion easings */
+                --ease: cubic-bezier(0.4, 0, 0.2, 1);
+                --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+                --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
             }
 
             body {
                 margin: 0;
-                /* Subtle radial bloom creates depth behind artboards without competing with card contrast */
                 background:
                     radial-gradient(circle at 20% 0%, rgb(212 168 67 / 7%), transparent 40%),
                     radial-gradient(circle at 80% 60%, rgb(212 168 67 / 4%), transparent 50%),
@@ -50,7 +53,6 @@
                 -webkit-font-smoothing: antialiased;
             }
 
-            /* Responsive flex container allowing horizontal artboard review with consistent gutters */
             .canvas {
                 display: flex;
                 flex-wrap: wrap;
@@ -77,10 +79,24 @@
 
             .canvas__intro p {
                 margin: 0;
-                max-width: 80ch;
+                max-width: 85ch;
                 color: var(--arabut-muted);
                 line-height: 1.65;
                 font-size: 0.95rem;
+            }
+
+            .canvas__rule-banner {
+                margin-top: 0.85rem;
+                padding: 0.65rem 1rem;
+                border-radius: 0.75rem;
+                border: 1px solid rgb(212 168 67 / 35%);
+                background: rgb(212 168 67 / 10%);
+                color: var(--arabut-gold-bright);
+                font-size: 0.86rem;
+                font-weight: 750;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
             }
 
             .art {
@@ -124,11 +140,21 @@
                 line-height: 1.55;
             }
 
+            .art__fixture {
+                display: inline-block;
+                padding: 0.2rem 0.45rem;
+                background: rgb(255 255 255 / 6%);
+                border-radius: 0.35rem;
+                font-family: monospace;
+                font-size: 0.75rem;
+                color: var(--arabut-gold-bright);
+                direction: ltr;
+            }
+
             .art--full .art__notes {
                 max-width: 1440px;
             }
 
-            /* 390px fixed width matches iPhone reference frame to verify Arabic typography wrapping */
             .phone {
                 position: relative;
                 width: 390px;
@@ -152,7 +178,6 @@
                 gap: 1rem;
             }
 
-            /* 1440px desktop frame named track-desk per brief instruction */
             .track-desk {
                 position: relative;
                 width: 1440px;
@@ -171,15 +196,7 @@
                 gap: 1.5rem;
             }
 
-            /* ============================================================
-               Store invoice surroundings reproduction.
-               Matches exact strings from lang/ar/account.php.
-               ============================================================ */
-            .account-live-order {
-                display: grid;
-                gap: 1rem;
-            }
-
+            /* Invoice surroundings */
             .account-live-order__back {
                 display: inline-flex;
                 align-items: center;
@@ -231,7 +248,6 @@
                 font-size: 0.75rem;
             }
 
-            /* Step track using lang/ar/account.php:125-127 strings */
             .account-order-track {
                 display: grid;
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -354,8 +370,7 @@
             }
 
             /* ============================================================
-               PROPOSED ORDER TRACKING COMPONENT (`track-*`)
-               Every new proposed class strictly uses the `track-` prefix.
+               TRACKING COMPONENT (`track-*`) & PORTED MOTION
                ============================================================ */
 
             .track-container {
@@ -364,7 +379,82 @@
                 margin-top: 0.4rem;
             }
 
-            /* Dual Tabs with inline SVG icons per tracker specification */
+            /* Ported keyframes from styles.css */
+            @keyframes bar-sheen {
+                0% { transform: translateX(-120%); }
+                55%, 100% { transform: translateX(120%); }
+            }
+
+            @keyframes ring-breathe {
+                0%, 100% { opacity: 0.5; transform: scale(1); }
+                50% { opacity: 1; transform: scale(1.07); }
+            }
+
+            @keyframes glow-pulse {
+                0% { transform: scale(0.95); opacity: 0.1; }
+                50% { transform: scale(1.1); opacity: 0.25; }
+                100% { transform: scale(0.95); opacity: 0.1; }
+            }
+
+            @keyframes status-pulse-kf {
+                0% { transform: scale(1); }
+                40% { transform: scale(1.18); }
+                100% { transform: scale(1); }
+            }
+
+            @keyframes premium-rise {
+                from { opacity: 0; transform: translateY(14px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            @keyframes slideUpBounce {
+                0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+                60% { transform: translateY(-5px) scale(1.02); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            @keyframes scaleIn {
+                from { transform: scale(0); }
+                to { transform: scale(1); }
+            }
+
+            @keyframes modal-emerge {
+                from { opacity: 0; transform: translateY(18px) scale(0.93); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+
+            @keyframes shimmer {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+            }
+
+            @keyframes shimmer-load {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+
+            @keyframes pulse-dot {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(228, 183, 86, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(228, 183, 86, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(228, 183, 86, 0); }
+            }
+
+            @keyframes ambient-drift {
+                from { transform: translate3d(-2%, -1%, 0) scale(1); }
+                to { transform: translate3d(2%, 2%, 0) scale(1.08); }
+            }
+
+            @keyframes track-spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+
+            /* Dual Tabs */
             .track-tabs {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
@@ -414,7 +504,7 @@
                 height: 0.45rem;
                 border-radius: 50%;
                 background: #e4b756;
-                box-shadow: 0 0 0 2px rgb(8 8 8 / 80%), 0 0 6px rgb(228 183 86 / 80%);
+                animation: pulse-dot 2s infinite;
             }
 
             .track-card {
@@ -427,6 +517,7 @@
                 box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), 0 0.85rem 2rem rgb(0 0 0 / 25%);
                 display: grid;
                 gap: 1.1rem;
+                animation: premium-rise 0.5s var(--ease-out-quint);
             }
 
             .track-header {
@@ -445,7 +536,7 @@
                 font-weight: 600;
             }
 
-            /* 76px status ring geometry with exact SVG progress arc */
+            /* Living canvas status ring geometry */
             .track-ring-wrapper {
                 position: relative;
                 width: 76px;
@@ -454,12 +545,38 @@
                 place-items: center;
             }
 
+            .track-ring-wrapper::after {
+                content: '';
+                position: absolute;
+                inset: -6px;
+                border-radius: 50%;
+                background: radial-gradient(circle, var(--arabut-gold) 0%, transparent 70%);
+                opacity: 0.15;
+                filter: blur(8px);
+                animation: glow-pulse 3s infinite;
+                pointer-events: none;
+            }
+
+            .track-ring-wrapper.has-canvas-ring .track-ring-svg {
+                display: none;
+            }
+
+            .track-ring-canvas {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1;
+                pointer-events: none;
+            }
+
+            /* CSS fallback conic/svg ring */
             .track-ring-svg {
                 position: absolute;
                 inset: 0;
                 width: 76px;
                 height: 76px;
-                transform: rotate(-90deg); /* Start arc at 12 o'clock */
+                transform: rotate(-90deg);
             }
 
             .track-ring-bg {
@@ -471,52 +588,14 @@
                 transition: stroke-dashoffset 300ms ease;
             }
 
-            .track-ring-bar--gold {
-                stroke: var(--arabut-gold-bright);
-            }
+            .track-ring-bar--gold { stroke: var(--arabut-gold-bright); }
+            .track-ring-bar--green { stroke: var(--arabut-success); }
+            .track-ring-bar--red { stroke: var(--arabut-danger); }
+            .track-ring-bar--amber { stroke: var(--arabut-warning); }
 
-            .track-ring-bar--green {
-                stroke: var(--arabut-success);
-            }
-
-            .track-ring-bar--red {
-                stroke: var(--arabut-danger);
-            }
-
-            .track-ring-bar--amber {
-                stroke: var(--arabut-warning);
-            }
-
-            /* Indeterminate spinner animation strictly for total <= 0 && ringActive */
             .track-ring-svg--spinning {
                 transform-origin: center;
                 animation: track-spin 1.4s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
-            }
-
-            .track-ring--pulse {
-                animation: track-pulse 2.2s ease-in-out infinite;
-            }
-
-            @keyframes track-spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-
-            @keyframes track-pulse {
-                0%, 100% { opacity: 0.45; transform: scale(0.97); }
-                50% { opacity: 1; transform: scale(1.03); }
-            }
-
-            /* Guard all animations with WCAG reduced-motion standard */
-            @media (prefers-reduced-motion: reduce) {
-                .track-ring-svg--spinning,
-                .track-ring--pulse,
-                .track-btn,
-                .track-progress__fill,
-                .track-ring-bar {
-                    animation: none !important;
-                    transition: none !important;
-                }
             }
 
             .track-ring-icon {
@@ -530,6 +609,10 @@
                 background: rgb(28 24 20 / 94%);
                 border: 1px solid var(--arabut-line);
                 color: var(--arabut-gold-bright);
+            }
+
+            .track-ring-icon.status-pulse {
+                animation: status-pulse-kf 0.5s var(--ease-out-quint);
             }
 
             .track-ring-icon--red {
@@ -579,7 +662,7 @@
                 font-weight: 600;
             }
 
-            /* Progress Bar Section */
+            /* Progress Bar Section with Ported Sheen */
             .track-progress {
                 display: grid;
                 gap: 0.45rem;
@@ -612,11 +695,23 @@
             }
 
             .track-progress__fill {
+                position: relative;
                 height: 100%;
                 border-radius: 999px;
                 background: linear-gradient(90deg, #d4a843, #f5d37c);
                 box-shadow: 0 0 8px rgb(212 168 67 / 60%);
-                transition: width 300ms ease;
+                transition: width 0.9s var(--ease);
+                overflow: hidden;
+            }
+
+            /* Ported bar-sheen traveling highlight */
+            .track-progress__fill::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+                transform: translateX(-120%);
+                animation: bar-sheen 2.6s var(--ease) infinite;
             }
 
             .track-progress__fill--green {
@@ -624,7 +719,6 @@
                 box-shadow: 0 0 8px rgb(74 222 128 / 50%);
             }
 
-            /* Honest waiting placeholder */
             .track-progress__bar--waiting {
                 background: repeating-linear-gradient(
                     -45deg,
@@ -679,6 +773,7 @@
                 border-radius: 0.75rem;
                 background: rgb(8 7 5 / 55%);
                 box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+                animation: slideUpBounce 0.4s var(--ease-out-quint);
             }
 
             .track-stat__label {
@@ -705,6 +800,7 @@
                 gap: 0.75rem;
                 border-radius: 0.85rem;
                 padding: 0.95rem;
+                animation: scaleIn 0.35s var(--ease-out-quint);
             }
 
             .track-action-box--red {
@@ -729,13 +825,8 @@
                 font-weight: 850;
             }
 
-            .track-action-box--red .track-action-box__head {
-                color: var(--arabut-danger);
-            }
-
-            .track-action-box--amber .track-action-box__head {
-                color: var(--arabut-warning);
-            }
+            .track-action-box--red .track-action-box__head { color: var(--arabut-danger); }
+            .track-action-box--amber .track-action-box__head { color: var(--arabut-warning); }
 
             .track-action-box__head svg {
                 width: 1.15rem;
@@ -757,7 +848,7 @@
                 margin-top: 0.25rem;
             }
 
-            /* Buttons: WCAG 2.5.5 touch target minimum 44px */
+            /* Buttons: 44px touch target */
             .track-btn {
                 display: inline-flex;
                 width: 100%;
@@ -904,6 +995,13 @@
                 grid-template-columns: 1fr;
             }
 
+            .track-challenge__actions {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                margin-top: 0.25rem;
+            }
+
             /* Credentials Bottom Sheet */
             .track-sheet-scrim {
                 position: relative;
@@ -931,6 +1029,7 @@
                 display: grid;
                 gap: 0.9rem;
                 box-sizing: border-box;
+                animation: modal-emerge 0.45s var(--ease-out-expo) both;
             }
 
             .track-sheet__handle {
@@ -993,7 +1092,6 @@
                 font-weight: 750;
             }
 
-            /* 1rem (16px) minimum strictly prevents iOS Safari zoom */
             .track-sheet input {
                 width: 100%;
                 height: 3rem;
@@ -1041,6 +1139,7 @@
                 padding: 0.95rem;
                 display: grid;
                 gap: 0.75rem;
+                animation: premium-rise 0.4s var(--ease-out-quint);
             }
 
             .track-manual-card__head {
@@ -1216,6 +1315,17 @@
                 font-size: 0.85rem;
                 color: var(--arabut-ink);
             }
+
+            /* Accessibility: WCAG reduced motion standard */
+            @media (prefers-reduced-motion: reduce) {
+                *,
+                *::before,
+                *::after {
+                    animation-duration: 0.001ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: 0.001ms !important;
+                }
+            }
         </style>
     </head>
     <body>
@@ -1223,9 +1333,12 @@
             <header class="canvas__intro">
                 <h1>تتبع الطلبات داخل المتجر · Order Tracking Canvas</h1>
                 <p>
-                    لوحة مراجعة تصاميم تتبع الطلبات داخل صفحة الفاتورة لمتجر Arab UT (الجولة الثانية).
-                    تم نقل كافة الشاشات والحالات بنظام حلقة التقدم الصريحة والتمييز الدقيق بين الحالات الحمراء والعنبرية حسب أكواد المزود، وتطبيق قرارات المالك الصريحة لحقول تعديل البيانات وخيارات الهيكلة، مع إدراج شاشات الخدمات اليدوية والحالات العابرة.
+                    لوحة مراجعة تصاميم تتبع الطلبات داخل صفحة الفاتورة لمتجر Arab UT (الجولة الثالثة: حلقة الكانفاس الحية ومؤثرات الحركة الأصلية، مع الضبط التام لأكواد المزود وتطهير شاشات العميل من التفاصيل البرمجية).
                 </p>
+                <div class="canvas__rule-banner">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.2rem; height: 1.2rem; flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>قاعدة دائمة: العميل لا يقرأ أبداً عن آلياتنا التقنية (المزود، الاستعلام، الآلي، النظام) — التفاصيل التشغيلية لا تعني العميل وشرح الآلية يكشف الصياغة الآلية.</span>
+                </div>
             </header>
 
             <!-- ============ ARTBOARD 1: Coins In Progress (Transferring 62%) ============ -->
@@ -1237,7 +1350,7 @@
                 <div class="phone" id="art-1">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1272,14 +1385,14 @@
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
                                     </button>
 
-                                    <!-- Proposed Tracking Card -->
+                                    <!-- Tracking Card with Living Gold Ring -->
                                     <div class="track-container">
                                         <div class="track-card">
                                             <span class="track-freshness">آخر تحديث قبل دقيقة</span>
 
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <!-- Progress ring: circumference 213.63px, 62% offset = 81.18px -->
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="62" data-mode="progress" data-active="true">
+                                                    <!-- Fallback SVG for when canvas is unavailable -->
                                                     <svg class="track-ring-svg" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--gold" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="81.18" stroke-linecap="round" />
@@ -1304,7 +1417,7 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Arithmetic check: 1,140,000 remaining / 11,100 baseline speed = 102.7 min ≈ 1 hour 43 min -->
+                                            <!-- Arithmetic check: 1,140,000 / 11,100 = 102.7 min -> ceil = 103 min = 1 hour 43 min -->
                                             <div class="track-eta">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                 <span>الوقت المتبقي: 1 ساعة و 43 دقيقة تقريباً</span>
@@ -1332,20 +1445,21 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    طلب كوينز قيد النقل (62%): حلقة التقدم ترسم قوس النسبة الفعلي (62%) بدقة المتجهات، وسم الوقت التقديري يعكس سرعة النقل القياسية (11,100 كوينز/دقيقة) ليتطابق مع المتبقي (ساعة و 43 دقيقة)، وتعديل رابط الرجوع ووسم العمل الحر لمطابقة نصوص المتجر الرسمية.
+                    <span class="art__fixture">status: in_progress, accountCheck: correctBA, economyState: transfersInProgress</span><br />
+                    حلقة كانفاس الذهبية الحية تعمل ببريق متوهج وشرارات ذهبية متطايرة وشريط تقدم متلألئ (bar-sheen). التقدير الزمني 103 دقيقة (1 ساعة و 43 دقيقة).
                 </p>
             </section>
 
-            <!-- ============ ARTBOARD 2: Action Required (Wrong Credentials) ============ -->
+            <!-- ============ ARTBOARD 2: Action Required (wrongPersona: Two Buttons) ============ -->
             <section class="art">
                 <div class="art__caption">
-                    <span>2 ·</span><bdi>مطلوب إجراء — بيانات الدخول</bdi>
-                    <span class="art__tag">390px · Action Required</span>
+                    <span>2 ·</span><bdi>مطلوب إجراء — بيانات الحساب (زرّان)</bdi>
+                    <span class="art__tag">390px · wrongPersona</span>
                 </div>
                 <div class="phone" id="art-2">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1383,8 +1497,7 @@
                                             <span class="track-freshness">آخر تحديث قبل دقيقة</span>
 
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <!-- Red still ring with preserved 62% progress arc -->
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="62" data-mode="danger" data-active="false">
                                                     <svg class="track-ring-svg" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke="rgb(255 180 169 / 20%)" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--red" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="81.18" stroke-linecap="round" />
@@ -1399,14 +1512,14 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Red Action Box for Credentials Error -->
+                                            <!-- Red Action Box for wrongPersona -->
                                             <div class="track-action-box track-action-box--red">
                                                 <div class="track-action-box__head">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                                     <span>مطلوب إجراء:</span>
                                                 </div>
                                                 <p class="track-action-box__body">
-                                                    تعذّر تسجيل الدخول بالإيميل أو كلمة المرور المرسلة. تأكد من البيانات ثم حدّثها في نموذج بيانات الطلب.
+                                                    تعذّر تسجيل الدخول بالشخصية المحددة في الحساب. تأكد من البيانات ثم حدّثها في نموذج بيانات الطلب.
                                                 </p>
                                                 <div class="track-action-box__actions">
                                                     <button class="track-btn track-btn--primary" type="button">
@@ -1414,7 +1527,7 @@
                                                         تعديل بيانات الطلب
                                                     </button>
                                                     <button class="track-btn track-btn--secondary" type="button">
-                                                        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                                         تشغيل الطلب
                                                     </button>
                                                 </div>
@@ -1422,7 +1535,6 @@
 
                                             <div class="track-progress">
                                                 <div class="track-progress__meta">
-                                                    <!-- Percent string separated cleanly from state -->
                                                     <span class="track-progress__pct" style="color: var(--arabut-danger);">62%</span>
                                                     <span class="track-progress__count">1,860,000 / 3,000,000 كوينز</span>
                                                 </div>
@@ -1453,7 +1565,123 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    توقف الطلب بسبب خطأ بيانات الدخول: الحلقة حمراء وثابتة، وحذف كلمة «(متوقف)» من النسبة المئوية لأن العنوان يحمل الحالة، مع الإبقاء على كلا الزرين بارتفاع لمس 44px.
+                    <span class="art__fixture">status: transfersInProgress, accountCheck: wrongPersona, economyState: deactivated</span><br />
+                    حالة wrongPersona مشمولة في showEditStates و showResumeStates معاً، فتُظهر الزرين وتتبع سبب credentials بتوافق تام.
+                </p>
+            </section>
+
+            <!-- ============ ARTBOARD 2-ب: Action Required (wrongUserPass: Edit Only) ============ -->
+            <section class="art">
+                <div class="art__caption">
+                    <span>2-ب ·</span><bdi>مطلوب إجراء — إيميل/رمز خطأ (تعديل فقط)</bdi>
+                    <span class="art__tag">390px · wrongUserPass</span>
+                </div>
+                <div class="phone" id="art-2b">
+                    <div class="phone__pad">
+                        <a class="account-live-order__back" href="#">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            العودة إلى طلباتي
+                        </a>
+
+                        <section class="account-invoice">
+                            <header class="account-invoice__head">
+                                <div class="account-invoice__brand">
+                                    <p>فاتورة شراء · Arab UT</p>
+                                    <h2><bdi>AUT-2026-9812</bdi></h2>
+                                    <span class="account-invoice__meta">12 سبتمبر 2026 · رقم العمل الحر FL-621205220</span>
+                                </div>
+                            </header>
+
+                            <ol aria-label="حالة الطلب" class="account-order-track">
+                                <li data-state="done"><span aria-hidden="true"></span>استلمنا الطلب</li>
+                                <li aria-current="step" data-state="now"><span aria-hidden="true"></span>قيد التنفيذ</li>
+                                <li data-state="next"><span aria-hidden="true"></span>مكتمل</li>
+                            </ol>
+
+                            <ol class="account-invoice__items">
+                                <li class="account-invoice__item">
+                                    <img alt="" height="56" width="56" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='12' fill='%231c1814'/><circle cx='28' cy='28' r='16' fill='%23d4a843' fill-opacity='0.15' stroke='%23d4a843' stroke-width='1.5'/><text x='28' y='33' font-size='14' font-weight='900' fill='%23e4b756' text-anchor='middle' font-family='sans-serif'>FC</text></svg>" />
+                                    <div class="account-invoice__item-main">
+                                        <h3>3,000,000 كوينز FC 27</h3>
+                                        <span>بلايستيشن 5 · 1 عنصر</span>
+                                    </div>
+                                    <strong class="account-invoice__item-total">180.00 ر.س</strong>
+                                    <button aria-expanded="true" class="account-invoice__item-more" type="button">
+                                        إخفاء التفاصيل
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
+                                    </button>
+
+                                    <!-- Tracking Card with Single Edit Button -->
+                                    <div class="track-container">
+                                        <div class="track-card">
+                                            <span class="track-freshness">آخر تحديث قبل دقيقة</span>
+
+                                            <div class="track-header">
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="0" data-mode="danger" data-active="false">
+                                                    <svg class="track-ring-svg" viewBox="0 0 76 76">
+                                                        <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke="rgb(255 180 169 / 20%)" stroke-width="3" />
+                                                        <circle class="track-ring-bar track-ring-bar--red" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="213.63" stroke-linecap="round" />
+                                                    </svg>
+                                                    <div class="track-ring-icon track-ring-icon--red">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                    </div>
+                                                </div>
+                                                <div class="track-copy">
+                                                    <h4 class="track-headline">يرجى مراجعة حالة الطلب</h4>
+                                                    <p class="track-subline">راجع تفاصيل المشكلة تحت</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="track-action-box track-action-box--red">
+                                                <div class="track-action-box__head">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                                    <span>مطلوب إجراء:</span>
+                                                </div>
+                                                <p class="track-action-box__body">
+                                                    تعذّر تسجيل الدخول بالإيميل أو كلمة المرور المرسلة. يرجى تصحيح البيانات للمتابعة.
+                                                </p>
+                                                <div class="track-action-box__actions">
+                                                    <button class="track-btn track-btn--primary" type="button">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                                        تعديل بيانات الطلب
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="track-progress">
+                                                <div class="track-progress__meta">
+                                                    <span class="track-progress__pct" style="color: var(--arabut-danger);">0%</span>
+                                                    <span class="track-progress__count">0 / 3,000,000 كوينز</span>
+                                                </div>
+                                                <div class="track-progress__bar">
+                                                    <div class="track-progress__fill" style="width: 0%; background: var(--arabut-danger);"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="track-stats">
+                                                <div class="track-stat">
+                                                    <span class="track-stat__label">تم الشحن</span>
+                                                    <strong class="track-stat__val">0</strong>
+                                                </div>
+                                                <div class="track-stat">
+                                                    <span class="track-stat__label">المتبقي</span>
+                                                    <strong class="track-stat__val">3,000,000</strong>
+                                                </div>
+                                                <div class="track-stat">
+                                                    <span class="track-stat__label">الكوينز في الحساب</span>
+                                                    <strong class="track-stat__val track-stat__val--amber">قيد التجهيز</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ol>
+                        </section>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <span class="art__fixture">status: transfersInProgress, accountCheck: wrongUserPass, economyState: deactivated</span><br />
+                    حالة wrongUserPass موجودة في showEditStates وليست في showResumeStates، فتعرض زر التعديل فقط دون زر استئناف غير مجدٍ.
                 </p>
             </section>
 
@@ -1466,7 +1694,7 @@
                 <div class="phone" id="art-3">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1504,8 +1732,7 @@
                                             <span class="track-freshness">آخر تحديث قبل دقيقة</span>
 
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <!-- Ring continues spinning because isInfoBox keeps system active -->
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="0" data-mode="warning" data-indeterminate="true" data-active="true">
                                                     <svg class="track-ring-svg track-ring-svg--spinning" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--amber" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="60 153.63" stroke-linecap="round" />
@@ -1515,13 +1742,11 @@
                                                     </div>
                                                 </div>
                                                 <div class="track-copy">
-                                                    <!-- Default state headline preserved because isInfoBox is true -->
                                                     <h4 class="track-headline">جاري المعالجة</h4>
                                                     <p class="track-subline">طلبك قيد التنفيذ</p>
                                                 </div>
                                             </div>
 
-                                            <!-- Amber Info Box with verbatim no_player string from lang/ar/orders.php:34 -->
                                             <div class="track-action-box track-action-box--amber">
                                                 <div class="track-action-box__head">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -1531,9 +1756,8 @@
                                                     لم نجد لاعبًا مناسبًا في السوق لإتمام الشحن الآن. نتابع السوق ونستأنف قريبًا.
                                                 </p>
                                                 <div class="track-action-box__actions">
-                                                    <!-- noSuitableSender is in the tracker's resume set, so button is retained -->
                                                     <button class="track-btn track-btn--primary" type="button">
-                                                        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                                         تشغيل الطلب
                                                     </button>
                                                 </div>
@@ -1560,7 +1784,6 @@
                                                 </div>
                                                 <div class="track-stat">
                                                     <span class="track-stat__label">الكوينز في الحساب</span>
-                                                    <!-- accountCoins === -1 renders "قيد التجهيز" in amber per ui.js:727 -->
                                                     <strong class="track-stat__val track-stat__val--amber">قيد التجهيز</strong>
                                                 </div>
                                             </div>
@@ -1572,7 +1795,8 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    حالة عنبرية حقيقية (no_player الناتجة عن كود noSuitableSender): صندوق عنبري بعنوان «معلومة:»، الجملة مطابقة حرفياً لملف orders.php، العنوان يبقى «جاري المعالجة / طلبك قيد التنفيذ» مع استمرار دوران الحلقة لأن وجود صندوق المعلومة لا يُلغي نشاط الحالة، مع بقاء زر «تشغيل الطلب» لأن الكود مشمول في صلاحيات الاستئناف بالتراكر.
+                    <span class="art__fixture">status: in_progress, accountCheck: started, economyState: noSuitableSender</span><br />
+                    حالة عنبرية نظامية (isInfoBox): العنوان يبقى «جاري المعالجة / طلبك قيد التنفيذ» والحلقة تدور بشكل مستمر، وزر تشغيل الطلب متاح وفق صلاحيات الاستئناف بالتراكر.
                 </p>
             </section>
 
@@ -1580,12 +1804,12 @@
             <section class="art">
                 <div class="art__caption">
                     <span>4 ·</span><bdi>مطلوب إجراء — خوادم EA</bdi>
-                    <span class="art__tag">390px · Red Action Box</span>
+                    <span class="art__tag">390px · loginFailed</span>
                 </div>
                 <div class="phone" id="art-4">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1623,8 +1847,7 @@
                                             <span class="track-freshness">آخر تحديث قبل دقيقة</span>
 
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <!-- Red still ring -->
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="0" data-mode="danger" data-active="false">
                                                     <svg class="track-ring-svg" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke="rgb(255 180 169 / 20%)" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--red" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="213.63" stroke-linecap="round" />
@@ -1634,24 +1857,23 @@
                                                     </div>
                                                 </div>
                                                 <div class="track-copy">
-                                                    <!-- Red branch headline triggered because loginFailed is customerActionAccountCheck -->
                                                     <h4 class="track-headline">يرجى مراجعة حالة الطلب</h4>
                                                     <p class="track-subline">راجع تفاصيل المشكلة تحت</p>
                                                 </div>
                                             </div>
 
-                                            <!-- Red Action Box with verbatim ea_servers string from lang/ar/orders.php:26 -->
                                             <div class="track-action-box track-action-box--red">
                                                 <div class="track-action-box__head">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                                     <span>مطلوب إجراء:</span>
                                                 </div>
+                                                <!-- Candidate wording proposal: avoids false auto-recovery promises -->
                                                 <p class="track-action-box__body">
-                                                    خوادم EA رفضت تسجيل الدخول في الوقت الحالي. نعيد المحاولة، وسنحدّثك فور نجاحها.
+                                                    تعذّر الدخول للحساب الآن، وغالباً ضغط في سيرفرات EA. اضغط «تشغيل الطلب» للمحاولة مرة ثانية.
                                                 </p>
                                                 <div class="track-action-box__actions">
                                                     <button class="track-btn track-btn--primary" type="button">
-                                                        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                                         تشغيل الطلب
                                                     </button>
                                                 </div>
@@ -1689,20 +1911,21 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    حالة خوادم EA (الواردة عبر loginFailed): الصندوق أحمر لأن كود المزود ينتمي لقائمة customerActionAccountChecks، العنوان يقرأ «يرجى مراجعة حالة الطلب / راجع تفاصيل المشكلة تحت»، والحلقة حمراء وثابتة. تنبيه معلق للمالك: النص يعد العميل بمحاولة تلقائية ومع ذلك يظهر زر «تشغيل الطلب» أسفله مباشرة — هذا التناقض قرار معلق أمام المالك للبت في صياغته.
+                    <span class="art__fixture">status: transfersInProgress, accountCheck: loginFailed, economyState: deactivated</span><br />
+                    حالة loginFailed: تقرر الإبقاء على زر «تشغيل الطلب» وفق قرار الخطة (C2). الصياغة المقترحة المعروضة لاعتماد المالك: «تعذّر الدخول للحساب الآن، وغالباً ضغط في سيرفرات EA. اضغط «تشغيل الطلب» للمحاولة مرة ثانية» لتلافي الوعد بالاستئناف التلقائي مع وجود الزر.
                 </p>
             </section>
 
             <!-- ============ ARTBOARD 5: Completed Successfully ============ -->
             <section class="art">
                 <div class="art__caption">
-                    <span>5 ·</span><bdi>مكتمل بنجاح</bdi>
-                    <span class="art__tag">390px · Completed</span>
+                    <span>5 ·</span><bdi>مكتمل بنجاح (مع انفجار الكوينز)</bdi>
+                    <span class="art__tag">390px · Completed Burst</span>
                 </div>
                 <div class="phone" id="art-5">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1715,7 +1938,6 @@
                                 </div>
                             </header>
 
-                            <!-- All three steps marked completed -->
                             <ol aria-label="حالة الطلب" class="account-order-track">
                                 <li data-state="done"><span aria-hidden="true"></span>استلمنا الطلب</li>
                                 <li data-state="done"><span aria-hidden="true"></span>قيد التنفيذ</li>
@@ -1739,8 +1961,7 @@
                                     <div class="track-container">
                                         <div class="track-card">
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <!-- 100% full green ring -->
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="100" data-mode="success" data-active="false" data-burst="true">
                                                     <svg class="track-ring-svg" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke="rgb(120 213 158 / 20%)" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--green" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="0" stroke-linecap="round" />
@@ -1751,7 +1972,6 @@
                                                 </div>
                                                 <div class="track-copy">
                                                     <h4 class="track-headline" style="color: var(--arabut-success);">مكتمل بنجاح</h4>
-                                                    <!-- Sub-line verbatim matching tracker specification -->
                                                     <p class="track-subline">تم شحن الكوينز بالكامل
 
 1. تقدر تدخل اللعبة من السوني فوراً وتستمتع
@@ -1772,7 +1992,6 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Stat row collapses to 2 columns because "المتبقي" disappears when zero -->
                                             <div class="track-stats track-stats--two-col">
                                                 <div class="track-stat">
                                                     <span class="track-stat__label">تم الشحن</span>
@@ -1791,7 +2010,8 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    حالة الاكتمال: حلقة خضراء كاملة (100%)، العبارة تذكر منصة العميل (السوني)، خانة «المتبقي» اختفت تماماً ليتحول صف الإحصائيات إلى عمودين، وشارة الوقت المتبقي أُزيلت لانتهاء العملية.
+                    <span class="art__fixture">status: finished, accountCheck: correctBA, economyState: null, platform: ps5</span><br />
+                    حلقة خضراء كاملة تطلق انفجار الاكتمال (burst): موجة صادمة متلاشية وتدفق قطع كوينز ذهبية متساقطة. عمود المتبقي يختفي فوراً عند الصفر.
                 </p>
             </section>
 
@@ -1804,7 +2024,7 @@
                 <div class="phone" id="art-6">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1846,7 +2066,6 @@
                                                     <img class="track-challenge__thumb" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='10' fill='%23221d17'/><path d='M28 10l14 6v12c0 9-6 15-14 18-8-3-14-9-14-18V16z' fill='%23d4a843' fill-opacity='0.25' stroke='%23e4b756' stroke-width='1.5'/><text x='28' y='32' font-size='10' font-weight='900' fill='%23e4b756' text-anchor='middle' font-family='sans-serif'>93 POTM</text></svg>" />
                                                     <div class="track-challenge__meta">
                                                         <div class="track-challenge__status-row">
-                                                            <!-- Status chip: solving (gold, gear) -->
                                                             <span class="track-challenge__chip track-challenge__chip--gold">
                                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
                                                                 جاري حل التشكيلة
@@ -1857,7 +2076,6 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Progress block: squads solved -->
                                                 <div class="track-progress">
                                                     <div class="track-progress__meta">
                                                         <span style="color: var(--arabut-muted); font-size: 0.78rem;">التقدم</span>
@@ -1868,7 +2086,6 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Both counters visible because repeat count is 2 (amount >= 2 per ui.js:1102) -->
                                                 <div class="track-challenge__stats">
                                                     <div class="track-stat">
                                                         <span class="track-stat__label">تكرار التحدي</span>
@@ -1888,20 +2105,21 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    تحدي SBC قيد الحل (التكرار = 2): يظهر عداد تكرار التحدي (1 / 2) لأن عدد التكرارات 2 فأكثر، بجانب عداد التشكيلات (3 / 7) والكوينز المصروفة، مع شريحة الحالة الذهبية وزر المساعدة.
+                    <span class="art__fixture">sbcStatus: solvingChallenge, challengesDone: 3, totalChallenges: 7, timesSolved: 1, timesToSolve: 2</span><br />
+                    يظهر عداد التكرار (1 / 2) لأن العدد المطلوب &gt;= 2 (ui.js:1102). شريحة حل التشكيلة الذهبية مع زر المساعدة (?)، ولا توجد أزرار إجراء لأن التحدي نشط.
                 </p>
             </section>
 
-            <!-- ============ ARTBOARD 7: Challenge Stopped (Repeat count = 1 -> Repeat counter hidden) ============ -->
+            <!-- ============ ARTBOARD 7: Challenge Stopped on 401 (Retry Only) ============ -->
             <section class="art">
                 <div class="art__caption">
-                    <span>7 ·</span><bdi>تحدي متوقف</bdi>
-                    <span class="art__tag">390px · Repeat Hidden</span>
+                    <span>7 ·</span><bdi>تحدي متوقف — خطأ 401 (إعادة المحاولة فقط)</bdi>
+                    <span class="art__tag">390px · LoginFailed401</span>
                 </div>
                 <div class="phone" id="art-7">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -1933,7 +2151,7 @@
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
                                     </button>
 
-                                    <!-- Challenge Stopped on 401 -->
+                                    <!-- Challenge Stopped on 401: Retry Only -->
                                     <div class="track-container">
                                         <div class="track-card">
                                             <span class="track-freshness">آخر تحديث قبل دقيقة</span>
@@ -1943,35 +2161,14 @@
                                                     <img class="track-challenge__thumb" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='10' fill='%23221d17'/><path d='M28 10l14 6v12c0 9-6 15-14 18-8-3-14-9-14-18V16z' fill='%23ffb4a9' fill-opacity='0.25' stroke='%23ffb4a9' stroke-width='1.5'/><text x='28' y='32' font-size='10' font-weight='900' fill='%23ffb4a9' text-anchor='middle' font-family='sans-serif'>ZIDANE</text></svg>" />
                                                     <div class="track-challenge__meta">
                                                         <div class="track-challenge__status-row">
-                                                            <!-- Red status chip: login failed 401 -->
                                                             <span class="track-challenge__chip track-challenge__chip--red">
-                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                                                 فشل الدخول (401)
                                                             </span>
-                                                            <button class="track-challenge__help" title="معلومات التحدي" type="button">?</button>
+                                                            <!-- Status explanation is behind the ? button per ui.js:1078, not an inline box -->
+                                                            <button class="track-challenge__help" title="معلومات عن الحالة" type="button">?</button>
                                                         </div>
                                                         <a class="track-challenge__name" dir="ltr" href="#">Zinedine Zidane Icon SBC</a>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Action Box with verbatim credentials sentence -->
-                                                <div class="track-action-box track-action-box--red">
-                                                    <div class="track-action-box__head">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                                        <span>مطلوب إجراء:</span>
-                                                    </div>
-                                                    <p class="track-action-box__body">
-                                                        تعذّر تسجيل الدخول بالإيميل أو كلمة المرور المرسلة. تأكد من البيانات ثم حدّثها في نموذج بيانات الطلب.
-                                                    </p>
-                                                    <div class="track-action-box__actions">
-                                                        <button class="track-btn track-btn--primary" type="button">
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-1.5 1.5L16 7l-1.5-1.5-2 2 1.5 1.5-2 2 1.5 1.5-3 3a5 5 0 1 1-3.5-8.5l6-6"/></svg>
-                                                            تصحيح البيانات وإعادة المحاولة
-                                                        </button>
-                                                        <button class="track-btn track-btn--secondary" type="button">
-                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-                                                            إعادة المحاولة بنفس البيانات
-                                                        </button>
                                                     </div>
                                                 </div>
 
@@ -1985,12 +2182,19 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Crucial: "تكرار التحدي" is strictly hidden because repeat count = 1 per ui.js:1102 -->
                                                 <div class="track-challenge__stats track-challenge__stats--single">
                                                     <div class="track-stat">
                                                         <span class="track-stat__label">الكوينز المستخدمة</span>
                                                         <strong class="track-stat__val">0</strong>
                                                     </div>
+                                                </div>
+
+                                                <!-- 401 is NOT in ['WrongUserPass', 'WrongBA'], so showCredEdit is FALSE: Retry Only -->
+                                                <div class="track-challenge__actions">
+                                                    <button class="track-btn track-btn--primary" type="button">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                                        إعادة المحاولة
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -2001,7 +2205,111 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    تحدي متوقف لخطأ 401: تم إخفاء مربع «تكرار التحدي» تماماً لأن عدد التكرار 1 (ui.js:1102 يشترط amount &gt;= 2 لإظهاره)، مع شريحة الخطأ الحمراء وزري تصحيح البيانات وإعادة المحاولة بنفس البيانات.
+                    <span class="art__fixture">sbcStatus: LoginFailed401, challengesDone: 0, totalChallenges: 9, timesToSolve: 1</span><br />
+                    حالة LoginFailed401 مشمولة في retryableStatuses ولكنها ليست في WrongUserPass أو WrongBA، فتقتصر على «إعادة المحاولة» فقط وفق ui.js:1070. حُذف صندوق التعليمات المضمن ونُقلت المساعدة لزر (?).
+                </p>
+            </section>
+
+            <!-- ============ ARTBOARD 7-ب: Challenge Stopped on WrongUserPass (Two Buttons) ============ -->
+            <section class="art">
+                <div class="art__caption">
+                    <span>7-ب ·</span><bdi>تحدي متوقف — خطأ بيانات الدخول (زرّان)</bdi>
+                    <span class="art__tag">390px · WrongUserPass</span>
+                </div>
+                <div class="phone" id="art-7b">
+                    <div class="phone__pad">
+                        <a class="account-live-order__back" href="#">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            العودة إلى طلباتي
+                        </a>
+
+                        <section class="account-invoice">
+                            <header class="account-invoice__head">
+                                <div class="account-invoice__brand">
+                                    <p>فاتورة شراء · Arab UT</p>
+                                    <h2><bdi>AUT-2026-9818</bdi></h2>
+                                    <span class="account-invoice__meta">12 سبتمبر 2026 · رقم العمل الحر FL-621205220</span>
+                                </div>
+                            </header>
+
+                            <ol aria-label="حالة الطلب" class="account-order-track">
+                                <li data-state="done"><span aria-hidden="true"></span>استلمنا الطلب</li>
+                                <li aria-current="step" data-state="now"><span aria-hidden="true"></span>قيد التنفيذ</li>
+                                <li data-state="next"><span aria-hidden="true"></span>مكتمل</li>
+                            </ol>
+
+                            <ol class="account-invoice__items">
+                                <li class="account-invoice__item">
+                                    <img alt="" height="56" width="56" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='12' fill='%231c1814'/><circle cx='28' cy='28' r='16' fill='%23ffb4a9' fill-opacity='0.15' stroke='%23ffb4a9' stroke-width='1.5'/><text x='28' y='32' font-size='10' font-weight='900' fill='%23ffb4a9' text-anchor='middle' font-family='sans-serif'>ICON</text></svg>" />
+                                    <div class="account-invoice__item-main">
+                                        <h3>تحدي Zinedine Zidane Icon</h3>
+                                        <span>بلايستيشن 5 · 1 تكرار</span>
+                                    </div>
+                                    <strong class="account-invoice__item-total">290.00 ر.س</strong>
+                                    <button aria-expanded="true" class="account-invoice__item-more" type="button">
+                                        إخفاء التفاصيل
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
+                                    </button>
+
+                                    <!-- Challenge Stopped on WrongUserPass: Both Buttons -->
+                                    <div class="track-container">
+                                        <div class="track-card">
+                                            <span class="track-freshness">آخر تحديث قبل دقيقة</span>
+
+                                            <div class="track-challenge">
+                                                <div class="track-challenge__top">
+                                                    <img class="track-challenge__thumb" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='10' fill='%23221d17'/><path d='M28 10l14 6v12c0 9-6 15-14 18-8-3-14-9-14-18V16z' fill='%23ffb4a9' fill-opacity='0.25' stroke='%23ffb4a9' stroke-width='1.5'/><text x='28' y='32' font-size='10' font-weight='900' fill='%23ffb4a9' text-anchor='middle' font-family='sans-serif'>ZIDANE</text></svg>" />
+                                                    <div class="track-challenge__meta">
+                                                        <div class="track-challenge__status-row">
+                                                            <span class="track-challenge__chip track-challenge__chip--red">
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+                                                                إيميل أو كلمة مرور خاطئة
+                                                            </span>
+                                                            <button class="track-challenge__help" title="معلومات عن الحالة" type="button">?</button>
+                                                        </div>
+                                                        <a class="track-challenge__name" dir="ltr" href="#">Zinedine Zidane Icon SBC</a>
+                                                    </div>
+                                                </div>
+
+                                                <div class="track-progress">
+                                                    <div class="track-progress__meta">
+                                                        <span style="color: var(--arabut-muted); font-size: 0.78rem;">التقدم</span>
+                                                        <span class="track-progress__pct" style="color: var(--arabut-danger);">0 / 9 تشكيلة (0%)</span>
+                                                    </div>
+                                                    <div class="track-progress__bar">
+                                                        <div class="track-progress__fill" style="width: 0%;"></div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="track-challenge__stats track-challenge__stats--single">
+                                                    <div class="track-stat">
+                                                        <span class="track-stat__label">الكوينز المستخدمة</span>
+                                                        <strong class="track-stat__val">0</strong>
+                                                    </div>
+                                                </div>
+
+                                                <!-- WrongUserPass is in ['WrongUserPass', 'WrongBA'] AND retryableStatuses: Both Buttons -->
+                                                <div class="track-challenge__actions">
+                                                    <button class="track-btn track-btn--primary" type="button">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-1.5 1.5L16 7l-1.5-1.5-2 2 1.5 1.5-2 2 1.5 1.5-3 3a5 5 0 1 1-3.5-8.5l6-6"/></svg>
+                                                        تصحيح البيانات وإعادة المحاولة
+                                                    </button>
+                                                    <button class="track-btn track-btn--secondary" type="button">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                                        إعادة المحاولة بنفس البيانات
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ol>
+                        </section>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <span class="art__fixture">sbcStatus: WrongUserPass, challengesDone: 0, totalChallenges: 9, timesToSolve: 1</span><br />
+                    حالة WrongUserPass مشمولة في showCredEdit و retryableStatuses بالتراكر، فتتيح الزرين مع قراءة الزر الثاني «إعادة المحاولة بنفس البيانات» بمطابقة تامة لـ ui.js:1119.
                 </p>
             </section>
 
@@ -2009,12 +2317,12 @@
             <section class="art">
                 <div class="art__caption">
                     <span>8-أ ·</span><bdi>هيكل (أ) — التتبع جوه كل عنصر</bdi>
-                    <span class="art__tag">390px · Tracking In Item</span>
+                    <span class="art__tag">390px · In-Item Tracking</span>
                 </div>
                 <div class="phone" id="art-8a">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -2033,7 +2341,6 @@
                                 <li data-state="next"><span aria-hidden="true"></span>مكتمل</li>
                             </ol>
 
-                            <!-- Structure A: No global tabs. Each item contains its own tracking card -->
                             <ol class="account-invoice__items">
                                 <!-- Item 1: Coins -->
                                 <li class="account-invoice__item">
@@ -2052,7 +2359,7 @@
                                     <div class="track-container">
                                         <div class="track-card">
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="40" data-mode="progress" data-active="true">
                                                     <svg class="track-ring-svg" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--gold" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="128.18" stroke-linecap="round" />
@@ -2075,9 +2382,10 @@
                                                     <div class="track-progress__fill" style="width: 40%;"></div>
                                                 </div>
                                             </div>
+                                            <!-- Arithmetic check: 900,000 / 11,100 = 81.08 min -> Math.ceil = 82 min = 1 hour 22 min -->
                                             <div class="track-eta">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                                <span>الوقت المتبقي: 1 ساعة و 21 دقيقة تقريباً</span>
+                                                <span>الوقت المتبقي: 1 ساعة و 22 دقيقة تقريباً</span>
                                             </div>
                                             <div class="track-stats">
                                                 <div class="track-stat">
@@ -2118,8 +2426,10 @@
                                                     <div class="track-challenge__meta">
                                                         <div class="track-challenge__status-row">
                                                             <span class="track-challenge__chip track-challenge__chip--gold">
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
                                                                 جاري حل التشكيلة
                                                             </span>
+                                                            <button class="track-challenge__help" title="معلومات التحدي" type="button">?</button>
                                                         </div>
                                                         <span class="track-challenge__name" dir="ltr">POTM Mbappé 93 SBC</span>
                                                     </div>
@@ -2142,19 +2452,20 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    هيكل (أ) — التتبع داخل تفاصيل كل عنصر: الميزة أنه لا يحتاج لتبويبات إطلاقاً لأن كل عنصر بطبيعته نوع واحد مستقل. التكلفة: في الطلبات التي تحتوي عدة عناصر يضطر العميل للضغط عدة مرات لفتح تفاصيل كل عنصر ولا يرى تقدم طلبه الشامل بنظرة واحدة.
+                    <span class="art__fixture">مقارنة التوزيع (أ): التتبع مدمج بكل عنصر</span><br />
+                    الميزة: يرى العميل تقدم كل عنصر بجانبه في نفس الصفحة دون تبويبات. التكلفة الواقعية: استهلاك مساحة عمودية أطول في الصفحة عند تعدد العناصر وتكرار البطاقات.
                 </p>
             </section>
 
             <section class="art">
                 <div class="art__caption">
-                    <span>8-ب ·</span><bdi>هيكل (ب) — بلوك تتبع واحد فوق الفاتورة</bdi>
-                    <span class="art__tag">390px · Single Block Above</span>
+                    <span>8-ب ·</span><bdi>هيكل (ب) — بلوك تتبع موحد فوق الفاتورة</bdi>
+                    <span class="art__tag">390px · Unified Block</span>
                 </div>
                 <div class="phone" id="art-8b">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -2173,10 +2484,9 @@
                                 <li data-state="next"><span aria-hidden="true"></span>مكتمل</li>
                             </ol>
 
-                            <!-- Structure B: One Unified Tracking Block Above Items with Dual Tabs & SVG icons -->
+                            <!-- Structure B: Unified Block Above Items with Dual Tabs -->
                             <div class="track-tabs" role="tablist">
                                 <button aria-selected="true" class="track-tab track-tab--active" role="tab" type="button">
-                                    <!-- Coins SVG icon -->
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <ellipse cx="12" cy="7" rx="9" ry="3"/>
                                         <path d="M3 7v6c0 1.66 4.03 3 9 3s9-1.34 9-3V7"/>
@@ -2185,7 +2495,6 @@
                                     <span>شحن الكوينز</span>
                                 </button>
                                 <button aria-selected="false" class="track-tab" role="tab" type="button">
-                                    <!-- SBC Shield SVG icon -->
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M12 2l8 4v6c0 5.25-3.5 10-8 11-4.5-1-8-5.75-8-11V6l8-4z"/>
                                         <path d="M9 12l2 2 4-4"/>
@@ -2195,13 +2504,12 @@
                                 </button>
                             </div>
 
-                            <!-- Single Active Tracking Card -->
+                            <!-- Single Active Tracking Card with same exact data -->
                             <div class="track-card">
                                 <span class="track-freshness">آخر تحديث قبل دقيقة</span>
 
                                 <div class="track-header">
-                                    <div class="track-ring-wrapper">
-                                        <!-- Progress arc at 40%: offset = 128.18px -->
+                                    <div class="track-ring-wrapper" data-track-ring data-percent="40" data-mode="progress" data-active="true">
                                         <svg class="track-ring-svg" viewBox="0 0 76 76">
                                             <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke-width="3" />
                                             <circle class="track-ring-bar track-ring-bar--gold" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="128.18" stroke-linecap="round" />
@@ -2226,10 +2534,9 @@
                                     </div>
                                 </div>
 
-                                <!-- Arithmetic check: 900,000 remaining / 11,100 = 81 min ≈ 1 hour 21 min -->
                                 <div class="track-eta">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                    <span>الوقت المتبقي: 1 ساعة و 21 دقيقة تقريباً</span>
+                                    <span>الوقت المتبقي: 1 ساعة و 22 دقيقة تقريباً</span>
                                 </div>
 
                                 <div class="track-stats">
@@ -2248,7 +2555,7 @@
                                 </div>
                             </div>
 
-                            <!-- Invoice Items List left whole below -->
+                            <!-- Invoice Items List below -->
                             <ol class="account-invoice__items" style="margin-top: 0.5rem;">
                                 <li class="account-invoice__item">
                                     <img alt="" height="56" width="56" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='12' fill='%231c1814'/><circle cx='28' cy='28' r='16' fill='%23d4a843' fill-opacity='0.15' stroke='%23d4a843' stroke-width='1.5'/><text x='28' y='33' font-size='14' font-weight='900' fill='%23e4b756' text-anchor='middle' font-family='sans-serif'>FC</text></svg>" />
@@ -2271,18 +2578,18 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    هيكل (ب) — بلوك تتبع موحد فوق الفاتورة: الميزة أنه يبرز حالة التقدم الحية مباشرة فور فتح الصفحة مع تبويبات واضحة للفرز وأيقونات SVG صريحة. التكلفة: يفصل بطاقة التتبع الحية عن سطر الفاتورة الخاص بالعنصر في الأسفل. الخياران معروضان للمالك للبت فيهما.
+                    <span class="art__fixture">مقارنة التوزيع (ب): بلوك تتبع موحد مع تبويبات</span><br />
+                    الميزة: تركيز كامل على التقدم في الجزء العلوي وواجهة أكثر تراصاً. التكلفة الواقعية: إخفاء تقدم التحدي خلف التبويب الآخر، مما يتطلب ضغطة إضافية للتبديل.
                 </p>
             </section>
 
-            <!-- ============ ARTBOARD 9: Credentials Bottom Sheet (Owner Decision Applied) ============ -->
+            <!-- ============ ARTBOARD 9: Credentials Bottom Sheet ============ -->
             <section class="art">
                 <div class="art__caption">
                     <span>9 ·</span><bdi>تصحيح بيانات الطلب — اللوح السفلي</bdi>
                     <span class="art__tag">390px · Bottom Sheet Modal</span>
                 </div>
                 <div class="phone" id="art-9">
-                    <!-- Dimmed Background Container with Scrim marked aria-hidden -->
                     <div class="track-sheet-scrim">
                         <div class="phone__pad track-sheet-scrim__dimmed" aria-hidden="true">
                             <a class="account-live-order__back" href="#">العودة إلى طلباتي</a>
@@ -2300,9 +2607,7 @@
                             </section>
                         </div>
 
-                        <!-- Proposed Accessible Bottom Sheet Modal -->
                         <div class="track-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-                            <!-- Focus returns to the triggering "تعديل بيانات الطلب" button on close -->
                             <div class="track-sheet__handle"></div>
                             <div class="track-sheet__head">
                                 <div>
@@ -2315,19 +2620,16 @@
                                 </button>
                             </div>
 
-                            <!-- Field 1: Normal Editable Email per Owner's decision (2026-09-12) -->
                             <div class="track-sheet__field">
                                 <label class="track-sheet__label" for="sheet-user-email">البريد الإلكتروني (Email)</label>
                                 <input id="sheet-user-email" type="email" value="mohamed.ea27@gmail.com" />
                             </div>
 
-                            <!-- Field 2: Password -->
                             <div class="track-sheet__field">
                                 <label class="track-sheet__label" for="sheet-ea-pass">كلمة المرور (Password)</label>
                                 <input id="sheet-ea-pass" type="password" value="secret_pass_123" />
                             </div>
 
-                            <!-- Field 3: Three Backup Codes Side by Side (all >= 1rem font to prevent iOS zoom) -->
                             <div class="track-sheet__field">
                                 <label class="track-sheet__label">أكواد النسخ الاحتياطي (Backup Codes)</label>
                                 <div class="track-sheet__codes">
@@ -2336,11 +2638,10 @@
                                     <input aria-label="كود احتياطي 3" maxlength="8" type="text" value="55219083" />
                                 </div>
                                 <p class="track-sheet__lock-note">
-                                    أدخل 3 أكواد احتياطية صالحة، كل كود يجب أن يكون 6 أو 8 أرقام.
+                                    أدخل 3 أكواد احتياطية صالحة، كل كود يتكون من 6 أو 8 أرقام.
                                 </p>
                             </div>
 
-                            <!-- Single Submit Button per Owner's Settlement -->
                             <div style="margin-top: 0.25rem;">
                                 <button class="track-btn track-btn--primary" type="button">
                                     حفظ التغييرات
@@ -2350,20 +2651,20 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    اللوح السفلي لتعديل البيانات وفق قرار المالك (2026-09-12): الإيميل أصبح حقلاً قابلاً للتعديل وحُذف تنبيه الواتساب المقفل، واقتصر النموذج على الحقول الأربعة (الإيميل، كلمة المرور، و3 أكواد) مع استبعاد الحقول التشغيلية الخمسة، وزر إرسال وحيد «حفظ التغييرات» وزر إغلاق علوي.
+                    اللوح السفلي وفق قرار المالك (2026-09-12): الإيميل قابل للتعديل داخل حساب العميل، واستبعاد الحقول التشغيلية الخمسة من واجهة العميل. يدخل بحركة modal-emerge الانسيابية.
                 </p>
             </section>
 
-            <!-- ============ ARTBOARD 10: Honest Unknowns (Not Started / Unsupported) ============ -->
+            <!-- ============ ARTBOARD 10: Placed & Silent / Unsupported Observation ============ -->
             <section class="art">
                 <div class="art__caption">
-                    <span>10 ·</span><bdi>لسه ما بدأ — تمثيل عدم اليقين بأمانة</bdi>
-                    <span class="art__tag">390px · Honest Unknowns</span>
+                    <span>10 ·</span><bdi>الحالات الأولية — التزام الصمت التقني</bdi>
+                    <span class="art__tag">390px · Plumbing Cut Applied</span>
                 </div>
                 <div class="phone" id="art-10">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -2383,12 +2684,12 @@
                             </ol>
 
                             <ol class="account-invoice__items">
-                                <!-- Item 1: Placed with supplier, waiting for initial reply -->
+                                <!-- Item 1: Placed, nothing reported yet -> Default tracker branch (ui.js:419-420) -->
                                 <li class="account-invoice__item">
                                     <img alt="" height="56" width="56" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='12' fill='%231c1814'/><circle cx='28' cy='28' r='16' fill='%23d4a843' fill-opacity='0.15' stroke='%23d4a843' stroke-width='1.5'/><text x='28' y='33' font-size='14' font-weight='900' fill='%23e4b756' text-anchor='middle' font-family='sans-serif'>FC</text></svg>" />
                                     <div class="account-invoice__item-main">
                                         <h3>1,000,000 كوينز FC 27</h3>
-                                        <span>بلايستيشن 5 · بانتظار استجابة المزود</span>
+                                        <span>بلايستيشن 5 · 1 عنصر</span>
                                     </div>
                                     <strong class="account-invoice__item-total">65.00 ر.س</strong>
                                     <button aria-expanded="true" class="account-invoice__item-more" type="button">
@@ -2396,31 +2697,29 @@
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
                                     </button>
 
-                                    <!-- Honest Unknown Card 1: Placed & Silent -->
+                                    <!-- Clean Default Tracker View: No plumbing explanation -->
                                     <div class="track-container">
                                         <div class="track-card">
                                             <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <!-- Indeterminate spinning ring for total <= 0 or waiting initial reply -->
+                                                <div class="track-ring-wrapper" data-track-ring data-percent="0" data-mode="progress" data-indeterminate="true" data-active="true">
                                                     <svg class="track-ring-svg track-ring-svg--spinning" viewBox="0 0 76 76">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--gold" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="60 153.63" stroke-linecap="round" />
                                                     </svg>
-                                                    <div class="track-ring-icon" style="color: var(--arabut-muted);">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>
+                                                    <div class="track-ring-icon" style="color: var(--arabut-gold-bright);">
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
                                                     </div>
                                                 </div>
                                                 <div class="track-copy">
-                                                    <h4 class="track-headline">بانتظار استجابة المزود</h4>
-                                                    <p class="track-subline">تم إرسال الطلب إلى المزود، وننتظر تقرير الحالة الأول لنقل الكوينز...</p>
+                                                    <h4 class="track-headline">جاري المعالجة</h4>
+                                                    <p class="track-subline">طلبك قيد التنفيذ</p>
                                                 </div>
                                             </div>
 
-                                            <!-- Dashed honest waiting placeholder instead of misleading 0/0 -->
                                             <div class="track-progress">
                                                 <div class="track-progress__meta">
                                                     <span style="color: var(--arabut-muted); font-size: 0.78rem;">حالة النقل</span>
-                                                    <span style="color: var(--arabut-muted); font-size: 0.78rem;">بانتظار التقرير الأول</span>
+                                                    <span style="color: var(--arabut-muted); font-size: 0.78rem;">--</span>
                                                 </div>
                                                 <div class="track-progress__bar track-progress__bar--waiting"></div>
                                             </div>
@@ -2436,7 +2735,6 @@
                                                 </div>
                                                 <div class="track-stat">
                                                     <span class="track-stat__label">الكوينز في الحساب</span>
-                                                    <!-- Unknown balance renders "--" per tracker ui.js:729 (dropped "قيد الفحص") -->
                                                     <strong class="track-stat__val" style="color: var(--arabut-muted);">--</strong>
                                                 </div>
                                             </div>
@@ -2444,55 +2742,28 @@
                                     </div>
                                 </li>
 
-                                <!-- Item 2: Supplier cannot be asked at all (supported: false) -->
+                                <!-- Item 2: Observation unsupported (supported: false) -> Card simply omitted! -->
                                 <li class="account-invoice__item">
                                     <img alt="" height="56" width="56" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><rect width='56' height='56' rx='12' fill='%231c1814'/><circle cx='28' cy='28' r='16' fill='%23d4a843' fill-opacity='0.15' stroke='%23d4a843' stroke-width='1.5'/><text x='28' y='33' font-size='14' font-weight='900' fill='%23e4b756' text-anchor='middle' font-family='sans-serif'>FC</text></svg>" />
                                     <div class="account-invoice__item-main">
                                         <h3>500,000 كوينز FC 27</h3>
-                                        <span>Xbox Series X · استعلام غير مدعوم</span>
+                                        <span>Xbox Series X · 1 عنصر</span>
                                     </div>
                                     <strong class="account-invoice__item-total">35.00 ر.س</strong>
-                                    <button aria-expanded="true" class="account-invoice__item-more" type="button">
-                                        إخفاء التفاصيل
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg);"><path d="m6 9 6 6 6-6"/></svg>
-                                    </button>
-
-                                    <!-- Honest Unknown Card 2: Cannot be polled (supported: false) -->
-                                    <div class="track-container">
-                                        <div class="track-card">
-                                            <div class="track-header">
-                                                <div class="track-ring-wrapper">
-                                                    <svg class="track-ring-svg" viewBox="0 0 76 76">
-                                                        <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke="rgb(212 168 67 / 15%)" stroke-width="3" />
-                                                    </svg>
-                                                    <div class="track-ring-icon" style="color: var(--arabut-muted);">
-                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                                    </div>
-                                                </div>
-                                                <div class="track-copy">
-                                                    <h4 class="track-headline">تعذّر الاستعلام من المزود</h4>
-                                                    <p class="track-subline">لم نتمكن من جلب تفاصيل التتبع الآلية لهذا العنصر حالياً. فريق العمل يتابع الطلب مباشرة.</p>
-                                                </div>
-                                            </div>
-
-                                            <div class="track-action-box" style="border: 1px solid var(--arabut-line); background: rgb(8 7 5 / 40%);">
-                                                <p class="track-action-box__body" style="color: var(--arabut-muted); font-size: 0.8rem; text-align: center;">
-                                                    هذا العنصر لا تتوفر له بيانات استعلام آلية من المزود في الوقت الحالي. لا توجد أي أرقام تقدم ولا أزرار معطلة.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <!-- No tracking card rendered below for unsupported observations per Rule 2 -->
                                 </li>
                             </ol>
                         </section>
                     </div>
                 </div>
                 <p class="art__notes">
-                    أمانة تمثيل عدم اليقين: استبدال الكلمة المخترعة «قيد الفحص» بالرمز الرسمي «--» المستخدم في التراكر لحالة الرصيد المجهول، وإعادة الحالة الحقيقية الثانية لعنصر لا يمكن الاستعلام عنه برمجياً من المزود (supported: false) دون أرقام أو أزرار وهمية.
+                    <span class="art__fixture">حالتان بدون تفاصيل سباكة للمستخدم:</span><br />
+                    1. الطلب المرفوع حديثاً (placed, silent): يظهر بالصياغة الافتراضية للتراكر «جاري المعالجة / طلبك قيد التنفيذ» والحلقة تدور دون إقحام أسباب التأخر.<br />
+                    2. الرصد غير المدعوم (supported: false): تُعرض الفاتورة الطبيعية وتُحذف بطاقة التتبع تماماً بدلاً من تبرير العجز التقني للعميل.
                 </p>
             </section>
 
-            <!-- ============ ARTBOARD 11: Manual Services (Brevity Rule Applied) ============ -->
+            <!-- ============ ARTBOARD 11: Manual Services ============ -->
             <section class="art">
                 <div class="art__caption">
                     <span>11 ·</span><bdi>الخدمات اليدوية — بوستينغ</bdi>
@@ -2501,7 +2772,7 @@
                 <div class="phone" id="art-11">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -2544,7 +2815,7 @@
                                     </div>
 
                                     <p class="track-manual-action-hint">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-warning);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-warning);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                         الإجراء التالي: لا تدخل الحساب أثناء اللعب.
                                     </p>
                                 </div>
@@ -2572,7 +2843,7 @@
                                     </div>
 
                                     <p class="track-manual-action-hint">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-warning);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-warning);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                         الإجراء التالي: لا تدخل الحساب أثناء اللعب.
                                     </p>
                                 </div>
@@ -2581,11 +2852,11 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    تصميم بطاقة الخدمات اليدوية احتراماً لقاعدة إيجاز المالك (الرقم، الحالة، الإجراء التالي دون شروحات مطولة): يظهر مسار الرايفلز «القسم 7 ← القسم 4» وموقع الحساب الحالي، وانتصارات الفوت «الانتصارات الحالية: 6». تنبيه معماري: أرقام التقدم الميدانية الحالية غير موجودة حالياً في بنية البيانات وتتطلب واجهة إدارية للبوستر لإدخالها.
+                    الخدمات اليدوية تتبع قاعدة الإيجاز: «قيد اللعب» كمنظور للعميل، دون ذكر أي شيء عن جداول أو طوابير أو كواليس اللعب البشري.
                 </p>
             </section>
 
-            <!-- ============ ARTBOARD 12: Additional Operational States & SBC Vocabulary ============ -->
+            <!-- ============ ARTBOARD 12: Additional Operational States ============ -->
             <section class="art">
                 <div class="art__caption">
                     <span>12 ·</span><bdi>حالات تشغيلية إضافية وقاموس التحديات</bdi>
@@ -2594,7 +2865,7 @@
                 <div class="phone" id="art-12">
                     <div class="phone__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
@@ -2603,10 +2874,10 @@
                             <div class="track-compact-card">
                                 <div class="track-compact-card__top">
                                     <h4 class="track-compact-card__headline">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                         جاري تسجيل الدخول
                                     </h4>
-                                    <span class="art__tag">login</span>
+                                    <span class="art__tag">accCheck: entered/started</span>
                                 </div>
                                 <p class="track-compact-card__subline">جاري تسجيل الدخول بحسابك، ما تحتاج تسوي أي شيء الآن...</p>
                             </div>
@@ -2615,10 +2886,10 @@
                             <div class="track-compact-card">
                                 <div class="track-compact-card__top">
                                     <h4 class="track-compact-card__headline">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><path d="M20 7H4"/><path d="m16 3 4 4-4 4"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><path d="M20 7H4"/><path d="m16 3 4 4-4 4"/></svg>
                                         جاري التحضير للشحن
                                     </h4>
-                                    <span class="art__tag">market prep</span>
+                                    <span class="art__tag">econ: customerHasPlayer</span>
                                 </div>
                                 <p class="track-compact-card__subline">جاري تجهيز عملية نقل الكوينز في السوق...</p>
                             </div>
@@ -2627,22 +2898,22 @@
                             <div class="track-compact-card">
                                 <div class="track-compact-card__top">
                                     <h4 class="track-compact-card__headline">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
                                         جاري النقل
                                     </h4>
-                                    <span class="art__tag">cycle complete</span>
+                                    <span class="art__tag">econ: transferCycleComplete</span>
                                 </div>
                                 <p class="track-compact-card__subline">تم اكتمال جزء من الكوينز، جاري نقل الباقي...</p>
                             </div>
 
-                            <!-- State 4: Finishing up (brief pass-through 30s - 2min) -->
+                            <!-- State 4: Finishing up (pass-through 30s - 2min) -->
                             <div class="track-compact-card" style="border-color: rgb(212 168 67 / 35%);">
                                 <div class="track-compact-card__top">
                                     <h4 class="track-compact-card__headline">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><circle cx="12" cy="12" r="10"/><polyline points="20 6 9 17 4 12"/></svg>
                                         جاري إنهاء طلبك
                                     </h4>
-                                    <span class="art__tag" style="color: var(--arabut-gold-bright);">مرحلة عابرة (نصف دقيقة - دقيقتان)</span>
+                                    <span class="art__tag" style="color: var(--arabut-gold-bright);">remaining &lt;= 0</span>
                                 </div>
                                 <p class="track-compact-card__subline">تم الشحن بالكامل، وجاري إنهاء الطلب. ننتظر بيع اللاعبين قبل ما تقدر تدخل.</p>
                             </div>
@@ -2651,14 +2922,14 @@
                             <div class="track-compact-card track-compact-card--red">
                                 <div class="track-compact-card__top">
                                     <h4 class="track-compact-card__headline" style="color: var(--arabut-danger);">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                         متوقف مؤقتاً
                                     </h4>
-                                    <span class="art__tag" style="border-color: rgb(255 180 169 / 30%); color: var(--arabut-danger);">stopped fallback</span>
+                                    <span class="art__tag" style="border-color: rgb(255 180 169 / 30%); color: var(--arabut-danger);">status: stopped</span>
                                 </div>
-                                <p class="track-compact-card__subline" style="color: var(--arabut-ink);">الطلب متوقف. يمكنك تشغيله مرة أخرى.</p>
+                                <p class="track-compact-card__subline" style="color: var(--arabut-ink);">تم إيقاف الطلب</p>
                                 <button class="track-btn track-btn--secondary" style="margin-top: 0.25rem;" type="button">
-                                    <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                                     تشغيل الطلب
                                 </button>
                             </div>
@@ -2667,19 +2938,12 @@
                             <div class="track-compact-card" style="border-color: rgb(212 168 67 / 35%);">
                                 <div class="track-compact-card__top">
                                     <h4 class="track-compact-card__headline">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--arabut-gold-bright);"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                                         جاري تشغيل الطلب
                                     </h4>
-                                    <span class="art__tag">optimistic grace</span>
+                                    <span class="art__tag">optimisticRetryActive</span>
                                 </div>
-                                <p class="track-compact-card__subline">تم حفظ التغييرات، وجاري إعادة المحاولة الآن. قد يستغرق تحديث الحالة لحظات.</p>
-                            </div>
-
-                            <!-- SBC Header Dashboard Variants -->
-                            <div class="track-compact-card" style="margin-top: 0.5rem;">
-                                <span class="art__tag" style="width: fit-content;">ترويسة لوحة تحديات SBC</span>
-                                <p style="margin: 0.4rem 0 0; font-size: 0.95rem; font-weight: 850;">3 طلب تحديات بناء التشكيلات</p>
-                                <p style="margin: 0.25rem 0 0; font-size: 0.95rem; font-weight: 850; color: var(--arabut-success);">جميع تحديات بناء التشكيلات مكتملة </p>
+                                <p class="track-compact-card__subline">تم حفظ التغييرات، وجاري إعادة محاولة الطلب الآن. قد يستغرق تحديث الحالة لحظات.</p>
                             </div>
 
                             <!-- Full SBC Vocabulary Chips Strip from SBC_STATUS_MAP -->
@@ -2707,7 +2971,7 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    عرض مدمج للحالات التشغيلية العابرة ومفردات التراكر: يشمل حالة «جاري إنهاء طلبك» المؤقتة، وحالة التفاؤل اللحظية «جاري تشغيل الطلب» التي تستمر حتى انقضاء مهلة السماح أو تحرك الحالة فعلياً (isRetryGraceActive)، وترويسة لوحة تحديات SBC المعتمدة وشريط قاموس حالات التحديات الكامل.
+                    شاشات الحالات التشغيلية العابرة متطابقة مع شلال تفرعات ui.js:419-548، متضمنة حالة «جاري إنهاء طلبك» السريعة وحالة التفاؤل اللحظية.
                 </p>
             </section>
 
@@ -2720,11 +2984,10 @@
                 <div class="track-desk" id="art-13">
                     <div class="track-desk__pad">
                         <a class="account-live-order__back" href="#">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                             العودة إلى طلباتي
                         </a>
 
-                        <!-- Single Wide Column matching live-order.tsx (Invented sidebar completely removed) -->
                         <section class="account-invoice" style="max-width: 980px; margin: 0 auto; width: 100%;">
                             <header class="account-invoice__head">
                                 <div class="account-invoice__brand">
@@ -2752,13 +3015,13 @@
                                     </div>
                                     <strong class="account-invoice__item-total" style="font-size: 1.2rem;">180.00 ر.س</strong>
 
-                                    <!-- Tracking Card in Desktop Width -->
+                                    <!-- Tracking Card in Desktop Width with Canvas Ring -->
                                     <div class="track-container" style="margin-top: 1rem;">
                                         <div class="track-card" style="padding: 1.75rem; gap: 1.5rem;">
                                             <span class="track-freshness">آخر تحديث قبل دقيقة</span>
 
                                             <div class="track-header" style="gap: 1rem;">
-                                                <div class="track-ring-wrapper" style="width: 84px; height: 84px;">
+                                                <div class="track-ring-wrapper" style="width: 84px; height: 84px;" data-track-ring data-percent="62" data-mode="progress" data-active="true">
                                                     <svg class="track-ring-svg" viewBox="0 0 76 76" style="width: 84px; height: 84px;">
                                                         <circle class="track-ring-bg" cx="38" cy="38" r="34" fill="none" stroke-width="3" />
                                                         <circle class="track-ring-bar track-ring-bar--gold" cx="38" cy="38" r="34" fill="none" stroke-width="3.5" stroke-dasharray="213.63" stroke-dashoffset="81.18" stroke-linecap="round" />
@@ -2783,7 +3046,6 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Arithmetic consistency: 1,140,000 remaining / 11,100 = 102.7 min ≈ 1 hour 43 min -->
                                             <div class="track-eta" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                 <span>الوقت المتبقي: 1 ساعة و 43 دقيقة تقريباً</span>
@@ -2811,7 +3073,7 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    شاشة سطح المكتب العريضة بدقة 1440px: تم حذف الشريط الجانبي المخترع كلياً (الضريبة ومدفوعات Paylink والدعم الفني) لتعكس الفاتورة الحقيقية المعتمدة في المتجر، مع إعادة تسمية الإطار إلى track-desk وضبط حسابات الوقت التقديري لتطابق سرعة النقل.
+                    شاشة سطح المكتب 1440px بدون شريط جانبي مخترع، مع تمكين حلقة الكانفاس الذهبية وتأثير الإمالة 3D للأجهزة ذات المؤشر الدقيق.
                 </p>
             </section>
 
@@ -2831,6 +3093,27 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr>
+                            <td><b>استبدال Font Awesome بأيقونات Lucide SVG الصريحة</b></td>
+                            <td>
+                                التراكر يحمل مكتبة Font Awesome كاملة لـ 41 أيقونة. المتجر يعتمد Lucide ويملك رسمة الواتساب المتجهية في <code>app-icon.tsx</code>، فتم رسم كافة الأيقونات كـ SVG مضمن بهندسة Lucide (مقاس 24x24 وسماكة 2 وlinecap مدور) لمنع تحميل خط إضافي وتوحيد الهوية البصرية.
+                            </td>
+                            <td>معمارية الواجهة وهوية المتجر</td>
+                        </tr>
+                        <tr>
+                            <td><b>نقل حلقة الكانفاس الذهبية الحية (ring.js) وتكييفها</b></td>
+                            <td>
+                                نقل سكريبت الكانفاس بالكامل كما هو مع تبديل لوحة الألوان إلى رموز الذهب للمتجر، والحفاظ على إيقاف الحلقة خارج الشاشة وعرض إطار ثابت عند تفعيل تقليل الحركة، مع تفعيل انفجار الكوينز (burst) عند الاكتمال.
+                            </td>
+                            <td>توجيه صريح من المالك (2026-09-12)</td>
+                        </tr>
+                        <tr>
+                            <td><b>قاعدة حظر السباكة التقنية (Plumbing Rule)</b></td>
+                            <td>
+                                العميل لا يقرأ عن الآليات الداخلية (المزود، الاستعلام، الآلي، النظام). تم حذف النصوص المخترعة التي تشرح تعذر الاتصال بالمزود، والرجوع للنص الافتراضي أو حذف بطاقة التتبع تماماً إذا كان الرصد غير مدعوم.
+                            </td>
+                            <td>توجيه صريح وقاعدة دائمة من المالك</td>
+                        </tr>
                         <tr>
                             <td><b>لون صندوق الإجراء كحقل مستقل (tone)</b></td>
                             <td>
@@ -2867,13 +3150,6 @@
                             <td>معمارية المتجر وهوية العلامة</td>
                         </tr>
                         <tr>
-                            <td><b>حلقة التقدم المتدرجة بدلاً من كانفاس التراكر</b></td>
-                            <td>
-                                استبدال سكريبت Canvas لحلقة التراكر بقوس تقدم متجهي صريح يمثل النسبة المئوية بدقة، مع حصر الدوران المستمر بالحالات غير المقاسة فقط ودعم <code>prefers-reduced-motion</code>.
-                            </td>
-                            <td>معمارية الواجهة وسهولة الوصول (A11y)</td>
-                        </tr>
-                        <tr>
                             <td><b>استبدال مؤشر «متصل» بوقت آخر تحديث</b></td>
                             <td>
                                 الصفحة لا تفتح اتصالاً شبكياً مستمراً (Websocket) بل تقرأ حالة مخزنة جلبها المتجر عبر مهمة مجدولة وتحديث فوري عند فتح الصفحة.
@@ -2902,13 +3178,6 @@
                             <td>معمارية المصادقة بالمتجر</td>
                         </tr>
                         <tr>
-                            <td><b>اعتماد اللون الذهبي للواجهات النشطة</b></td>
-                            <td>
-                                استبدال اللون الأزرق للمتعقب القديم باللون الذهبي المعتمد في هوية Arab UT لحالات «قيد التنفيذ».
-                            </td>
-                            <td>هوية العلامة البصرية (Brand Tokens)</td>
-                        </tr>
-                        <tr>
                             <td><b>إخفاء خانة «تكرار التحدي» عند التكرار = 1</b></td>
                             <td>
                                 إخفاء خانة التكرار عندما يكون التكرار 1 فقط لمطابقة منطق التراكر الأصلي في <code>ui.js:1102</code> (يشترط <code>timesToSolve &gt;= 2</code>).
@@ -2933,31 +3202,486 @@
                 </table>
 
                 <h3 style="margin: 1.5rem 0 0.5rem; font-size: 1.05rem; font-weight: 850; color: var(--arabut-gold-bright);">
-                    نصوص جديدة مش موجودة في التراكر (مع سبب عدم كفاية النص القديم)
+                    نصوص جديدة مش موجودة في التراكر (القائمة المقلصة بعد تطهير السباكة)
                 </h3>
                 <ul class="track-new-strings-list">
                     <li>
-                        <b>«بانتظار استجابة المزود» / «تم إرسال الطلب إلى المزود، وننتظر تقرير الحالة الأول لنقل الكوينز...»:</b>
-                        أضيفت لتمثيل الطلب المرسل للمزود قبل ورود أول استجابة؛ التراكر القديم كان يعرض حلقة فارغة أو أرقام 0/0 توحي بتعطل الطلب أو إهماله.
-                    </li>
-                    <li>
-                        <b>«تعذّر الاستعلام من المزود» / «لم نتمكن من جلب تفاصيل التتبع الآلية لهذا العنصر حالياً. فريق العمل يتابع الطلب مباشرة.»:</b>
-                        أضيفت لتمثيل العناصر التي لا تدعم الاستعلام الآلي (supported: false)؛ التراكر القديم لم يكن يتعامل مع هذا النوع داخل واجهة التتبع.
-                    </li>
-                    <li>
                         <b>«القسم الحالي: 5» / «الانتصارات الحالية: 6»:</b>
-                        أضيفت لعناصر البوستينغ اليدوي (رايفلز وفوت شامبيونز) لعرض التقدم المحقق بالنسبة للهدف المطلوب؛ التراكر الأصلي لا يدعم الخدمات اليدوية مطلقاً.
+                        أضيفت لخدمات البوستينغ اليدوي لعرض التقدم الميداني؛ التراكر الأصلي لا يدعم الخدمات اليدوية.
                     </li>
                     <li>
-                        <b>«لا تدخل الحساب أثناء اللعب»:</b>
-                        توجيه مقتضب للعميل أثناء تنفيذ البوستينغ البشري احتراماً لقاعدة الإيجاز (الرقم، الحالة، الإجراء التالي).
+                        <b>«الإجراء التالي: لا تدخل الحساب أثناء اللعب»:</b>
+                        توجيه مقتضب مباشر للعميل أثناء تنفيذ البوستينغ البشري احتراماً لقاعدة الإيجاز.
                     </li>
                     <li>
-                        <b>«مرحلة عابرة (نصف دقيقة - دقيقتان)»:</b>
-                        وسم توضيحي لحالة «جاري إنهاء طلبك» لطمأنة العميل بأن المرحلة مؤقتة لبيع اللاعبين وليست توقفاً.
+                        <b>«تعذّر الدخول للحساب الآن، وغالباً ضغط في سيرفرات EA. اضغط «تشغيل الطلب» للمحاولة مرة ثانية»:</b>
+                        صياغة مقترحة لحالة loginFailed لحل التناقض بين النص القديم وظهور زر تشغيل الطلب.
                     </li>
                 </ul>
             </section>
         </div>
+
+        <!-- ============================================================
+             INLINED SCRIPTS: TrackRing Living Gold Ring & FX Physicality
+             ============================================================ -->
+        <script>
+            /**
+             * TrackRing — Ported from assets/js/ring.js
+             * Upgraded with Arab UT store tokens, multi-instance canvas support,
+             * visibility-paused rendering loops, and prefers-reduced-motion fallback.
+             */
+            (() => {
+                'use strict';
+
+                const PALETTE = {
+                    progress: { core: '#d4a843', hot: '#e4b756', glow: 'rgba(212,168,67,', ember: '228,183,86' },
+                    success: { core: '#78d59e', hot: '#a3f3c2', glow: 'rgba(120,213,158,', ember: '163,243,194' },
+                    danger: { core: '#ffb4a9', hot: '#ffd2cc', glow: 'rgba(255,180,169,', ember: '255,190,180' },
+                    warning: { core: '#f59e0b', hot: '#fcd34d', glow: 'rgba(245,158,11,', ember: '251,191,36' },
+                };
+
+                const PAD = 2;
+
+                function prefersReduced() {
+                    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                }
+
+                class CanvasRingInstance {
+                    constructor(container) {
+                        this.container = container;
+                        this.canvas = null;
+                        this.ctx = null;
+                        this.dpr = 1;
+                        this.size = 0;
+                        this.box = 0;
+                        this.raf = null;
+                        this.visible = true;
+                        this.reduceMotion = prefersReduced();
+                        this.lastT = 0;
+
+                        const rawPct = parseFloat(container.dataset.percent) || 0;
+                        const mode = container.dataset.mode || 'progress';
+                        const active = container.dataset.active !== 'false';
+                        const indeterminate = container.dataset.indeterminate === 'true';
+
+                        this.state = {
+                            pct: rawPct,
+                            targetPct: rawPct,
+                            mode: mode,
+                            active: active,
+                            indeterminate: indeterminate,
+                            spin: 0,
+                            shimmer: 0,
+                            intensity: rawPct / 100,
+                        };
+
+                        this.embers = [];
+                        this.sparks = [];
+                        this.shocks = [];
+
+                        this.init();
+                    }
+
+                    resize() {
+                        if (!this.canvas || !this.container) return;
+                        const rect = this.container.getBoundingClientRect();
+                        this.box = Math.max(60, Math.min(rect.width || 76, rect.height || 76));
+                        this.size = Math.round(this.box * PAD);
+                        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+                        this.canvas.width = Math.round(this.size * this.dpr);
+                        this.canvas.height = Math.round(this.size * this.dpr);
+                        this.canvas.style.width = this.size + 'px';
+                        this.canvas.style.height = this.size + 'px';
+                        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                    }
+
+                    init() {
+                        try {
+                            this.canvas = document.createElement('canvas');
+                            this.canvas.className = 'track-ring-canvas';
+                            this.ctx = this.canvas.getContext('2d');
+                            if (!this.ctx) return;
+
+                            this.container.appendChild(this.canvas);
+                            this.container.classList.add('has-canvas-ring');
+                            this.resize();
+
+                            window.addEventListener('resize', () => {
+                                this.resize();
+                                this.repaint();
+                                this.ensureLoop();
+                            });
+
+                            if ('IntersectionObserver' in window) {
+                                new IntersectionObserver((entries) => {
+                                    this.visible = entries.some(e => e.isIntersecting);
+                                    if (this.visible) this.ensureLoop();
+                                    else this.stop();
+                                }, { threshold: 0.05 }).observe(this.container);
+                            }
+
+                            document.addEventListener('visibilitychange', () => {
+                                if (document.hidden) this.stop();
+                                else this.ensureLoop();
+                            });
+
+                            if (this.reduceMotion) {
+                                this.drawStatic();
+                            } else {
+                                this.ensureLoop();
+                                if (this.container.dataset.burst === 'true') {
+                                    setTimeout(() => this.burst(), 600);
+                                }
+                            }
+                        } catch (_) {}
+                    }
+
+                    burst() {
+                        if (!this.ctx || this.reduceMotion) return;
+                        const cx = this.size / 2, cy = this.size / 2;
+                        const bp = PALETTE.progress;
+                        this.shocks.push({ r: this.box * 0.26, max: this.box * 0.85, life: 1, pal: bp });
+                        const n = 32;
+                        for (let i = 0; i < n; i++) {
+                            const a = (-Math.PI / 2) + (Math.random() - 0.5) * Math.PI * 1.8;
+                            const sp = this.box * (0.016 + Math.random() * 0.026);
+                            this.sparks.push({
+                                x: cx + Math.cos(a) * this.box * 0.26,
+                                y: cy + Math.sin(a) * this.box * 0.26,
+                                vx: Math.cos(a) * sp,
+                                vy: Math.sin(a) * sp - this.box * 0.01,
+                                g: this.box * 0.0006,
+                                r: this.box * (0.018 + Math.random() * 0.024),
+                                rot: Math.random() * Math.PI,
+                                vr: (Math.random() - 0.5) * 0.3,
+                                life: 1,
+                                coin: Math.random() > 0.3,
+                                pal: bp,
+                            });
+                        }
+                        this.ensureLoop();
+                    }
+
+                    ensureLoop() {
+                        if (this.reduceMotion || !this.visible || document.hidden) return;
+                        if (this.raf == null) {
+                            this.lastT = 0;
+                            this.raf = requestAnimationFrame(t => this.frame(t));
+                        }
+                    }
+
+                    stop() {
+                        if (this.raf != null) {
+                            cancelAnimationFrame(this.raf);
+                            this.raf = null;
+                        }
+                    }
+
+                    ringGeom() {
+                        const cx = this.size / 2, cy = this.size / 2;
+                        const stroke = Math.max(4, this.box * 0.07);
+                        const r = this.box / 2 - stroke / 2 - this.box * 0.02;
+                        return { cx, cy, r, stroke };
+                    }
+
+                    spawnEmber(tipX, tipY, pal) {
+                        const a = -Math.PI / 2 - Math.random() * Math.PI;
+                        const sp = this.box * (0.002 + Math.random() * 0.004);
+                        this.embers.push({
+                            x: tipX + (Math.random() - 0.5) * this.box * 0.04,
+                            y: tipY + (Math.random() - 0.5) * this.box * 0.04,
+                            vx: Math.cos(a) * sp + (Math.random() - 0.5) * this.box * 0.002,
+                            vy: Math.sin(a) * sp,
+                            r: this.box * (0.006 + Math.random() * 0.01),
+                            life: 1,
+                            decay: 0.012 + Math.random() * 0.02,
+                            ember: pal.ember,
+                        });
+                    }
+
+                    drawArc(g, pal) {
+                        const start = -Math.PI / 2;
+                        const sweep = (this.state.pct / 100) * Math.PI * 2;
+
+                        this.ctx.beginPath();
+                        this.ctx.arc(g.cx, g.cy, g.r, 0, Math.PI * 2);
+                        this.ctx.strokeStyle = 'rgba(212,168,67,0.14)';
+                        this.ctx.lineWidth = g.stroke;
+                        this.ctx.stroke();
+
+                        if (this.state.pct <= 0.01) return null;
+
+                        this.ctx.save();
+                        this.ctx.shadowColor = pal.glow + (0.55 + this.state.intensity * 0.4) + ')';
+                        this.ctx.shadowBlur = g.stroke * (1.4 + this.state.intensity * 2.2);
+                        this.ctx.beginPath();
+                        this.ctx.arc(g.cx, g.cy, g.r, start, start + sweep);
+                        this.ctx.strokeStyle = pal.core;
+                        this.ctx.lineWidth = g.stroke;
+                        this.ctx.lineCap = 'round';
+                        this.ctx.stroke();
+                        this.ctx.restore();
+
+                        const shPos = this.state.shimmer * sweep;
+                        const shLen = Math.min(sweep, 0.5);
+                        this.ctx.save();
+                        this.ctx.beginPath();
+                        this.ctx.arc(g.cx, g.cy, g.r, start + shPos - shLen / 2, start + shPos + shLen / 2);
+                        this.ctx.strokeStyle = pal.hot;
+                        this.ctx.globalAlpha = 0.55;
+                        this.ctx.lineWidth = g.stroke * 0.7;
+                        this.ctx.lineCap = 'round';
+                        this.ctx.shadowColor = pal.glow + '0.9)';
+                        this.ctx.shadowBlur = g.stroke * 1.6;
+                        this.ctx.stroke();
+                        this.ctx.restore();
+
+                        const tx = g.cx + Math.cos(start + sweep) * g.r;
+                        const ty = g.cy + Math.sin(start + sweep) * g.r;
+                        if (this.state.active && this.state.pct > 1 && this.state.pct < 99.5) {
+                            this.ctx.save();
+                            this.ctx.fillStyle = pal.hot;
+                            this.ctx.shadowColor = pal.glow + '0.95)';
+                            this.ctx.shadowBlur = g.stroke * (2 + this.state.intensity * 1.5);
+                            this.ctx.beginPath();
+                            this.ctx.arc(tx, ty, g.stroke * (0.5 + this.state.intensity * 0.18), 0, Math.PI * 2);
+                            this.ctx.fill();
+                            this.ctx.restore();
+                        }
+
+                        return { tipAngle: start + sweep };
+                    }
+
+                    drawIndeterminate(g, pal) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(g.cx, g.cy, g.r, 0, Math.PI * 2);
+                        this.ctx.strokeStyle = 'rgba(212,168,67,0.14)';
+                        this.ctx.lineWidth = g.stroke;
+                        this.ctx.stroke();
+
+                        const head = this.state.spin;
+                        const len = Math.PI * 0.7;
+                        this.ctx.save();
+                        this.ctx.shadowColor = pal.glow + '0.6)';
+                        this.ctx.shadowBlur = g.stroke * 1.8;
+                        const grad = this.ctx.createLinearGradient(0, 0, this.size, this.size);
+                        grad.addColorStop(0, pal.core);
+                        grad.addColorStop(1, pal.hot);
+                        this.ctx.beginPath();
+                        this.ctx.arc(g.cx, g.cy, g.r, head, head + len);
+                        this.ctx.strokeStyle = grad;
+                        this.ctx.lineWidth = g.stroke;
+                        this.ctx.lineCap = 'round';
+                        this.ctx.stroke();
+                        this.ctx.restore();
+                    }
+
+                    repaint() {
+                        if (!this.ctx) return;
+                        this.ctx.clearRect(0, 0, this.size, this.size);
+                        const g = this.ringGeom();
+                        const pal = PALETTE[this.state.mode] || PALETTE.progress;
+                        if (this.state.indeterminate) this.drawIndeterminate(g, pal);
+                        else this.drawArc(g, pal);
+                    }
+
+                    drawStatic() {
+                        if (!this.ctx) return;
+                        this.ctx.clearRect(0, 0, this.size, this.size);
+                        const g = this.ringGeom();
+                        const pal = PALETTE[this.state.mode] || PALETTE.progress;
+                        this.state.pct = this.state.targetPct;
+                        if (this.state.indeterminate) {
+                            this.ctx.beginPath();
+                            this.ctx.arc(g.cx, g.cy, g.r, 0, Math.PI * 2);
+                            this.ctx.strokeStyle = pal.glow + '0.5)';
+                            this.ctx.lineWidth = g.stroke;
+                            this.ctx.stroke();
+                            return;
+                        }
+                        this.drawArc(g, pal);
+                    }
+
+                    frame(t) {
+                        this.raf = null;
+                        if (!this.ctx) return;
+                        const dt = this.lastT ? Math.min((t - this.lastT) / 16.67, 3) : 1;
+                        this.lastT = t;
+
+                        const pal = PALETTE[this.state.mode] || PALETTE.progress;
+                        const g = this.ringGeom();
+
+                        this.state.pct += (this.state.targetPct - this.state.pct) * Math.min(1, 0.12 * dt);
+                        if (Math.abs(this.state.pct - this.state.targetPct) < 0.05) this.state.pct = this.state.targetPct;
+
+                        const wantIntensity = this.state.indeterminate ? 0.4 : (this.state.pct / 100);
+                        this.state.intensity += (wantIntensity - this.state.intensity) * Math.min(1, 0.05 * dt);
+
+                        this.state.spin += 0.06 * dt;
+                        this.state.shimmer += 0.012 * dt;
+                        if (this.state.shimmer > 1) this.state.shimmer -= 1;
+
+                        this.ctx.clearRect(0, 0, this.size, this.size);
+
+                        let tip = null;
+                        if (this.state.indeterminate) {
+                            this.drawIndeterminate(g, pal);
+                        } else {
+                            tip = this.drawArc(g, pal);
+                        }
+
+                        if (tip && this.state.active && this.state.pct > 2 && this.state.pct < 99.5) {
+                            const spawn = this.state.intensity * 0.9;
+                            if (Math.random() < spawn * dt) {
+                                const tx = g.cx + Math.cos(tip.tipAngle) * g.r;
+                                const ty = g.cy + Math.sin(tip.tipAngle) * g.r;
+                                this.spawnEmber(tx, ty, pal);
+                            }
+                        }
+
+                        for (let i = this.embers.length - 1; i >= 0; i--) {
+                            const e = this.embers[i];
+                            e.x += e.vx * dt; e.y += e.vy * dt;
+                            e.vy -= this.box * 0.00006 * dt;
+                            e.life -= e.decay * dt;
+                            if (e.life <= 0) { this.embers.splice(i, 1); continue; }
+                            this.ctx.save();
+                            this.ctx.globalAlpha = Math.max(0, e.life) * 0.8;
+                            this.ctx.fillStyle = 'rgba(' + e.ember + ',1)';
+                            this.ctx.shadowColor = 'rgba(' + e.ember + ',0.9)';
+                            this.ctx.shadowBlur = e.r * 2.5;
+                            this.ctx.beginPath();
+                            this.ctx.arc(e.x, e.y, e.r * e.life, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            this.ctx.restore();
+                        }
+
+                        for (let i = this.shocks.length - 1; i >= 0; i--) {
+                            const s = this.shocks[i];
+                            s.r += (s.max - s.r) * 0.08 * dt;
+                            s.life -= 0.018 * dt;
+                            if (s.life <= 0) { this.shocks.splice(i, 1); continue; }
+                            this.ctx.save();
+                            this.ctx.globalAlpha = Math.max(0, s.life) * 0.55;
+                            this.ctx.strokeStyle = s.pal.hot;
+                            this.ctx.lineWidth = Math.max(1, this.box * 0.014 * s.life);
+                            this.ctx.shadowColor = s.pal.glow + '0.8)';
+                            this.ctx.shadowBlur = this.box * 0.06;
+                            this.ctx.beginPath();
+                            this.ctx.arc(g.cx, g.cy, s.r, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                            this.ctx.restore();
+                        }
+
+                        for (let i = this.sparks.length - 1; i >= 0; i--) {
+                            const p = this.sparks[i];
+                            p.vy += p.g * dt;
+                            p.x += p.vx * dt; p.y += p.vy * dt;
+                            p.rot += p.vr * dt;
+                            p.life -= 0.011 * dt;
+                            if (p.life <= 0) { this.sparks.splice(i, 1); continue; }
+                            this.ctx.save();
+                            this.ctx.globalAlpha = Math.max(0, p.life);
+                            this.ctx.translate(p.x, p.y);
+                            this.ctx.rotate(p.rot);
+                            this.ctx.shadowColor = p.pal.glow + '0.8)';
+                            this.ctx.shadowBlur = p.r * 2;
+                            if (p.coin) {
+                                this.ctx.fillStyle = p.pal.core;
+                                this.ctx.beginPath();
+                                this.ctx.ellipse(0, 0, p.r * Math.abs(Math.cos(p.rot)) + p.r * 0.25, p.r, 0, 0, Math.PI * 2);
+                                this.ctx.fill();
+                                this.ctx.fillStyle = p.pal.hot;
+                                this.ctx.globalAlpha *= 0.6;
+                                this.ctx.beginPath();
+                                this.ctx.ellipse(-p.r * 0.2, -p.r * 0.2, p.r * 0.25, p.r * 0.4, 0, 0, Math.PI * 2);
+                                this.ctx.fill();
+                            } else {
+                                this.ctx.fillStyle = p.pal.hot;
+                                this.ctx.beginPath();
+                                this.ctx.arc(0, 0, p.r * 0.5, 0, Math.PI * 2);
+                                this.ctx.fill();
+                            }
+                            this.ctx.restore();
+                        }
+
+                        const busy = this.state.active || this.state.indeterminate ||
+                            this.embers.length || this.sparks.length || this.shocks.length ||
+                            Math.abs(this.state.pct - this.state.targetPct) > 0.05;
+
+                        if (busy && this.visible && !document.hidden) {
+                            this.raf = requestAnimationFrame(t => this.frame(t));
+                        }
+                    }
+                }
+
+                // Initialize living rings across all coins cards
+                const ringInstances = [];
+                function bootRings() {
+                    document.querySelectorAll('.track-ring-wrapper[data-track-ring]').forEach(el => {
+                        ringInstances.push(new CanvasRingInstance(el));
+                    });
+                }
+
+                // Pointer Physicality FX (from fx.js)
+                function bootFx() {
+                    const fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+                    const reduce = prefersReduced();
+                    if (!fine || reduce) return;
+
+                    function initTilt(el, max = 5) {
+                        let raf = null, rx = 0, ry = 0;
+                        el.style.willChange = 'transform';
+                        const onMove = (e) => {
+                            const r = el.getBoundingClientRect();
+                            const px = (e.clientX - r.left) / r.width - 0.5;
+                            const py = (e.clientY - r.top) / r.height - 0.5;
+                            rx = -py * max; ry = px * max;
+                            if (!raf) raf = requestAnimationFrame(apply);
+                        };
+                        const apply = () => {
+                            raf = null;
+                            el.style.transform = `perspective(720px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateY(-3px)`;
+                        };
+                        const reset = () => { if (raf) cancelAnimationFrame(raf); raf = null; el.style.transform = ''; };
+                        el.addEventListener('pointermove', onMove);
+                        el.addEventListener('pointerleave', reset);
+                    }
+
+                    function initMagnetic(el, strength = 0.32, max = 7) {
+                        let raf = null, x = 0, y = 0, pressed = false;
+                        el.style.willChange = 'transform';
+                        const apply = () => {
+                            raf = null;
+                            el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${pressed ? 0.96 : 1})`;
+                        };
+                        const queue = () => { if (!raf) raf = requestAnimationFrame(apply); };
+                        el.addEventListener('pointermove', (e) => {
+                            const r = el.getBoundingClientRect();
+                            x = Math.max(-max, Math.min(max, (e.clientX - (r.left + r.width / 2)) * strength));
+                            y = Math.max(-max, Math.min(max, (e.clientY - (r.top + r.height / 2)) * strength));
+                            queue();
+                        });
+                        el.addEventListener('pointerdown', () => { pressed = true; queue(); });
+                        el.addEventListener('pointerup', () => { pressed = false; queue(); });
+                        el.addEventListener('pointerleave', () => {
+                            pressed = false;
+                            if (raf) cancelAnimationFrame(raf); raf = null;
+                            el.style.transform = '';
+                        });
+                    }
+
+                    document.querySelectorAll('.track-card, .track-manual-card').forEach(c => initTilt(c, 4));
+                    document.querySelectorAll('.track-btn').forEach(b => initMagnetic(b, 0.28, 6));
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => { bootRings(); bootFx(); });
+                } else {
+                    bootRings();
+                    bootFx();
+                }
+            })();
+        </script>
     </body>
 </html>
