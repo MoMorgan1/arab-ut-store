@@ -74,30 +74,39 @@ customer-facing concept. It is translated into an Order Status plus a Hold Reaso
 correcting account credentials, resuming a stopped delivery, retrying a failed challenge.
 Owner rule, 2026-09-12: the customer keeps full control of these.
 
-## Correcting credentials is a two-step protocol, not a request and a verdict
+## Nothing arrives from a Supplier. We ask, or we do not know.
 
-Owner's description, 2026-09-12. This shapes every screen and state machine that touches a
-credential fix, and getting it wrong makes the store lie to the customer.
+Owner's correction, 2026-09-12, and the single most load-bearing fact about this integration.
 
-When an Item is held because the account details are wrong and the customer submits corrected
-ones, the Supplier answers **immediately** — and that answer means only "received". It is not a
-judgement on whether the new details work. The Item then moves to trying again, and the Supplier's
-bot attempts a fresh login some time later. That attempt is where the truth appears: either the
-details are wrong again and the Item returns to the same hold, or they work and the delivery
-starts.
+**A Supplier never notifies us of anything.** There is no callback, no webhook, no push. Every
+change in a delivery's state is discovered because the store asked. If nobody asks, the order sits
+at whatever we last recorded, however wrong that has become.
 
-So a credential submission has three outcomes, not two: **received**, then later **worked** or
-**wrong again**. The third arrives in a subsequent observation, not in the response to the
-submission.
+The credential fix is the clearest case. When an Item is held because the account details are
+wrong and the customer submits corrected ones, the Supplier's reply is `success` - and that means
+exactly two things: the details were updated, and it will try again. It is not a verdict. Whether
+the new details actually work is discovered later, by polling, when the state changes to
+transferring or back to the same error.
 
-Two consequences worth stating because they are easy to get backwards:
+So a credential submission has three outcomes, not two: **accepted**, then later **worked** or
+**wrong again** - and the third is only ever visible to a poll.
 
-- A successful submission must never be reported to the customer as "fixed". It is "received, we
-  are trying again". Saying "fixed" and then returning to the same hold reason a minute later
-  reads as the store not knowing what is happening.
-- An Item moving from in-progress back to the same hold reason is **correct behaviour here**, not
-  a regression to be guarded against. Any rule that forbids a status going backwards has to permit
-  this, or a second wrong password becomes invisible.
+Three consequences, each easy to get backwards:
+
+- A successful submission must never be shown to the customer as "fixed". It is "received, we are
+  trying again". Saying "fixed" and then returning to the same hold reason reads as a store that
+  does not know what is happening to its own orders.
+- **A credential fix has to be followed by a prompt read.** A customer who has just corrected
+  their password is watching the screen. Leaving them on the ordinary background cadence means
+  minutes of "trying again" before anything moves, when the answer may already exist at the
+  Supplier.
+- An Item moving from in-progress back to the same hold reason is **correct behaviour**, not a
+  regression. Any rule forbidding a status from going backwards has to permit it, or a second
+  wrong password becomes invisible.
+
+Customer-facing text for every Supplier state the tracker knows is transcribed in the tracker
+repo's `STATUS_MAPPING.md`, including which states offer an edit button and which send the
+customer to support instead.
 
 ## Challenges
 

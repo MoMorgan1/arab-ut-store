@@ -358,6 +358,12 @@ The reconciler must stay free to move an item from in-progress back to the same 
 because that is how a second wrong password becomes visible. No no-going-backwards rule may
 block it.
 
+**A credential fix must schedule its own read.** Nothing arrives from a supplier - the verdict on
+new details exists only in a poll - and a customer who has just retyped their password is watching
+the screen. So accepting a credential fix sets the job's `next_poll_at` to now and stamps
+`last_viewed_at`, putting it in D3's attention band instead of the background one. Without that,
+the customer waits out the ordinary cadence to learn something the supplier may already know.
+
 **A challenge retry must prove the challenge belongs to the order.** Found in review, 2026-09-12:
 the tracker validates a retry twice - the challenge id's format, and that the challenge is
 actually on that order (`api-handlers.php:1852-1860`, which answers `403 SBC_NOT_IN_ORDER`). The
