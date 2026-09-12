@@ -107,6 +107,47 @@ final class ItemTracking
         $presentation = $job->presentation ?? TrackingPresentation::NotReported;
         $holdTone = $job->hold_tone;
 
+        // Terminal is decided here and nowhere else.
+        //
+        // The job's stored fields are the last thing a supplier said, and nothing clears
+        // them when an order ends: RefreshItemTracking refuses a terminal order before it
+        // reaches the translator (RefreshItemTracking.php:109), the admin transition and
+        // the refund never touch fulfillment_jobs, and the translator's own terminal
+        // branches are therefore unreachable from production. So an order cancelled
+        // mid-delivery still holds `transferring` and `edit_credentials`, and without this
+        // the customer reads "we are moving your coins" under a cancelled order, beside a
+        // button that does nothing.
+        //
+        // The item's status answers first because it is the one that leads: an order only
+        // becomes Completed once every item is (ApplySupplierObservation.php:248), and the
+        // cancel and refund paths update the items alongside the order. The order is the
+        // safety net, read lazily because this method is a public entry point and cannot
+        // assume a caller loaded the relation; both real callers set it first, so the query
+        // is a fallback rather than a per-item cost on the order page.
+        $order = $item->relationLoaded('order') ? $item->order : $item->order()->first();
+
+        $terminalPresentation = match (true) {
+            $item->status === OrderItemStatus::Cancelled => TrackingPresentation::Cancelled,
+            $item->status === OrderItemStatus::Refunded => TrackingPresentation::Refunded,
+            $item->status === OrderItemStatus::Completed => TrackingPresentation::Completed,
+            ! $order instanceof Order => null,
+            $order->status === OrderStatus::Cancelled => TrackingPresentation::Cancelled,
+            $order->status === OrderStatus::Refunded => TrackingPresentation::Refunded,
+            $order->status === OrderStatus::Completed => TrackingPresentation::Completed,
+            default => null,
+        };
+
+        $orderIsTerminal = $terminalPresentation !== null;
+
+        if ($terminalPresentation !== null) {
+            // Nothing is pending on a finished order, so no hold and no buttons. The
+            // counters, the balance and the completion time stay: they are facts about
+            // what happened, not invitations to act.
+            $presentation = $terminalPresentation;
+            $holdReason = null;
+            $holdTone = null;
+        }
+
         $completedAt = $job->completed_at?->utc()->toIso8601String();
         if ($completedAt === null && isset($job->observation['finishedAt']) && is_numeric($job->observation['finishedAt'])) {
             $ts = (int) $job->observation['finishedAt'];
@@ -160,25 +201,6 @@ final class ItemTracking
                 : $job->placements()->where('delivery_phase', DeliveryPhase::Challenge->value)->first();
 
             $challengeSupplier = $placement->supplier ?? $job->supplier;
-
-            // Both statuses are consulted, and the item's answers first because it is the
-            // one that leads: an order only becomes Completed once every item is
-            // (ApplySupplierObservation.php:248), and the cancel and refund paths update
-            // the items alongside the order. The order is the safety net.
-            //
-            // The relation is read lazily because this method is a public entry point and
-            // cannot assume a caller loaded it. Both real callers do set it first, so the
-            // query below is a fallback rather than a per-item cost on the order page.
-            $order = $item->relationLoaded('order') ? $item->order : $item->order()->first();
-            $orderIsTerminal = in_array($item->status, [
-                OrderItemStatus::Completed,
-                OrderItemStatus::Cancelled,
-                OrderItemStatus::Refunded,
-            ], true) || ($order instanceof Order && in_array($order->status, [
-                OrderStatus::Completed,
-                OrderStatus::Cancelled,
-                OrderStatus::Refunded,
-            ], true));
 
             $requestedIds = $placement?->challengeIds() ?? [];
             $rawObservation = is_array($job->observation) ? $job->observation : [];
@@ -272,7 +294,6 @@ final class ItemTracking
         $simplified = is_string($obs['simplifiedStatus'] ?? null) ? strtolower(trim($obs['simplifiedStatus'])) : '';
         $isFinished = str_contains($rawStatus, 'finish')
             || str_contains($rawStatus, 'complet')
-            || $rawStatus === 'finished'
             || $job->completed_at !== null;
 
         $workStarted = $isFinished
@@ -291,7 +312,7 @@ final class ItemTracking
             'holdTone' => $holdTone?->value,
             'completedAt' => $completedAt,
             // Actions is always a list (never null) so the client has a single type to handle.
-            'actions' => array_map(
+            'actions' => $orderIsTerminal ? [] : array_map(
                 fn (SupplierAction $action): string => $action->value,
                 $job->allowedActions(),
             ),

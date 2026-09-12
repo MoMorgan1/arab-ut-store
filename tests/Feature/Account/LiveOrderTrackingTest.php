@@ -741,3 +741,65 @@ test('defect 7: workStarted dynamic boolean matches ui.js predicate', function (
     'idle/queued without triggers' => [['status' => 'queued', 'accountCheck' => '', 'economyState' => 'ready'], null, false],
     'empty observation' => [[], null, false],
 ]);
+
+test('a terminal order reports its own ending, not the last thing the supplier said', function (
+    OrderStatus $orderStatus,
+    OrderItemStatus $itemStatus,
+    TrackingPresentation $expected,
+): void {
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner, $orderStatus);
+    $item = trackingItem($order, ServiceType::Coins, $itemStatus);
+
+    // The job still holds everything the supplier last said, because nothing clears it
+    // when an order ends: the refresh refuses a terminal order before it reaches the
+    // translator, and neither the admin transition nor the refund touches the job.
+    trackingJob($item, [
+        'presentation' => TrackingPresentation::Transferring,
+        'hold_reason' => OrderHoldReason::Credentials,
+        'hold_tone' => HoldTone::Action,
+        'allowed_actions' => ['edit_credentials', 'resume'],
+        'coins_delivered' => 40_000,
+        'coins_ordered' => 100_000,
+    ]);
+
+    $tracking = ItemTracking::for($item, 'ar');
+
+    expect($tracking['presentation'])->toBe($expected->value)
+        ->and($tracking['headline'])->toBe($expected->headline('ar'))
+        ->and($tracking['holdReason'])->toBeNull()
+        ->and($tracking['holdMessage'])->toBeNull()
+        ->and($tracking['holdTone'])->toBeNull()
+        ->and($tracking['actions'])->toBe([])
+        // The counters are facts about what happened and survive; only the invitations
+        // to act are removed.
+        ->and($tracking['progress']['coinsDelivered'])->toBe(40_000)
+        ->and($tracking['progress']['coinsOrdered'])->toBe(100_000);
+})->with([
+    'order cancelled' => [OrderStatus::Cancelled, OrderItemStatus::InProgress, TrackingPresentation::Cancelled],
+    'order refunded' => [OrderStatus::Refunded, OrderItemStatus::InProgress, TrackingPresentation::Refunded],
+    'order completed' => [OrderStatus::Completed, OrderItemStatus::InProgress, TrackingPresentation::Completed],
+    'item cancelled' => [OrderStatus::InProgress, OrderItemStatus::Cancelled, TrackingPresentation::Cancelled],
+    'item refunded' => [OrderStatus::InProgress, OrderItemStatus::Refunded, TrackingPresentation::Refunded],
+    'item completed' => [OrderStatus::InProgress, OrderItemStatus::Completed, TrackingPresentation::Completed],
+]);
+
+test('a live order still reports the supplier state and its actions', function (): void {
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+
+    trackingJob($item, [
+        'presentation' => TrackingPresentation::Transferring,
+        'hold_reason' => OrderHoldReason::Credentials,
+        'hold_tone' => HoldTone::Action,
+        'allowed_actions' => ['edit_credentials', 'resume'],
+    ]);
+
+    $tracking = ItemTracking::for($item, 'ar');
+
+    expect($tracking['presentation'])->toBe('transferring')
+        ->and($tracking['holdReason'])->toBe('credentials')
+        ->and($tracking['holdTone'])->toBe('action')
+        ->and($tracking['actions'])->toBe(['edit_credentials', 'resume']);
+});

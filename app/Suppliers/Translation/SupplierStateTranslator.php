@@ -630,6 +630,12 @@ final class SupplierStateTranslator
             is_string($simplifiedRaw) ? $simplifiedRaw : '',
         );
 
+        // A terminal order never moves, whatever the supplier says. This guards the
+        // canonical status and the action list; the headline a terminal order shows is
+        // ItemTracking's decision, not this one, because nothing clears these stored
+        // fields when an order ends and the presenter is the only read path the customer
+        // reaches. RefreshItemTracking refuses a terminal order before it gets here, so
+        // this arm is a guard for future callers rather than a live branch.
         if ($this->isTerminal($current)) {
             $terminalPresentation = match ($current) {
                 OrderStatus::Completed => TrackingPresentation::Completed,

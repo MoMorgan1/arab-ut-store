@@ -34,7 +34,7 @@ return [
         'no_player' => 'We could not find a suitable player on the market to complete the delivery right now. We are watching the market and will resume shortly.',
         'maintenance' => 'The game servers are under EA maintenance. We resume automatically once it ends.',
         'paused' => 'Your order is paused for now and we will resume shortly. Message us any time for details.',
-        'below_minimum' => 'The remaining amount is below the minimum transfer, so we are closing your order.',
+        'below_minimum' => 'The remaining amount is below the minimum transfer. We are finishing the order.',
     ],
     'tracking_states' => [
         'processing' => [

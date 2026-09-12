@@ -5,6 +5,7 @@ require_once dirname(__DIR__).'/Loyalty/LoyaltyFixtures.php';
 use App\Actions\Fulfillment\ApplySupplierObservation;
 use App\Enums\DeliveryPhase;
 use App\Enums\FulfillmentStatus;
+use App\Enums\HoldTone;
 use App\Enums\OrderHoldReason;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
@@ -1154,7 +1155,9 @@ it('preserves established presentation and hold_tone when given an unsupported o
     [$order, $item, $job] = createObservationContext(
         jobAttributes: [
             'presentation' => TrackingPresentation::Transferring,
-            'hold_tone' => null,
+            // Seeded non-null on purpose: with a null here the hold_tone half of this
+            // test passes whether or not the guard exists.
+            'hold_tone' => HoldTone::Info,
             'observed_at' => CarbonImmutable::parse('2026-09-12 12:00:00'),
         ],
     );
@@ -1179,5 +1182,6 @@ it('preserves established presentation and hold_tone when given an unsupported o
 
     $freshJob = $job->fresh();
     expect($freshJob->presentation)->toBe(TrackingPresentation::Transferring)
+        ->and($freshJob->hold_tone)->toBe(HoldTone::Info)
         ->and($freshJob->observation_supported)->toBeFalse();
 });
