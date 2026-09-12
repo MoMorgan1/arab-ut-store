@@ -339,11 +339,24 @@ and no analytics at all.
 ## Slice D — actions and notifications (Claude)
 
 **D1. Self-service actions.** Each action derives from the allowed-action set, and is
-re-authorised server-side when pressed — never trusted from the client. Credential correction
-needs a real operation model, because the supplier can return HTTP 200 and still not have applied
-the change: credential versions, `pending`/`applied`/`failed` state, concurrency control, and
-semantic validation of the response, not just its status code. Otherwise stored credentials
-silently disagree with the supplier while the page says success. Rate limited per order.
+re-authorised server-side when pressed — never trusted from the client. Rate limited per order.
+
+**Credential correction is a two-step protocol, and the earlier draft of this task had it wrong.**
+It said the supplier "can return HTTP 200 and still not have applied the change", and asked for
+semantic validation of that response. The owner's description, 2026-09-12, is that the immediate
+answer honestly means *received* and nothing more: the item then moves to trying again, the
+supplier's bot attempts a fresh login later, and only that attempt reveals whether the details
+work or the item returns to the same hold. See `CONTEXT.md`.
+
+So the model is `submitted` → `acknowledged` → later `worked` or `wrong again`, where the last
+step arrives in a subsequent observation rather than in the submission's response. This task
+therefore does not need response-validation; it needs a **pending state with an owner**:
+credential versions so a second submission during a pending attempt is ordered rather than
+racing, and copy that says "received, trying again" rather than "fixed".
+
+The reconciler must stay free to move an item from in-progress back to the same hold reason,
+because that is how a second wrong password becomes visible. No no-going-backwards rule may
+block it.
 
 **A challenge retry must prove the challenge belongs to the order.** Found in review, 2026-09-12:
 the tracker validates a retry twice - the challenge id's format, and that the challenge is
