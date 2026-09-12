@@ -129,19 +129,29 @@ Decided 2026-09-13, on the two mappings the tracker contradicts itself about:
   `InProgress` on `EaServers`, where it may well be EA's side. That reason's text says we will retry
   and says nothing about the two buttons now under it, which C2 has to cover.
 
-  **A second correction, and it matters for D1.** I justified widening the tracker's edit boundary by
-  reading its own comment - `retrySBCAPI` "does not reliably gate on status upstream" - as proof that
-  FFT accepts a credential correction in any state. That is too strong: the comment establishes the
-  gate is the tracker's local product choice, not that the supplier is unconditionally permissive.
-  Worse for our purposes, the tracker's edit handler updates the customer record through
-  `createCustomerAPI` **keyed on the existing account identity**, which is exactly why its modal
-  locks the email and sends a customer with a wrong email to WhatsApp.
+  **A second correction, and then a correction to the correction.** I first justified widening the
+  tracker's edit boundary by reading its own comment - `retrySBCAPI` "does not reliably gate on
+  status upstream" - as proof that FFT accepts a correction in any state. That is too strong: the
+  comment establishes the gate is the tracker's local product choice, which is enough to widen it,
+  but not that the supplier is unconditionally permissive.
 
-  So the owner's decision that the email is editable stands as a product decision, and offering the
-  button is safe, but **whether changing the email actually reaches the supplier is unverified.**
-  D1 has to establish that before the field ships - on a real test order, not by reading. If the
-  account identity turns out to be immutable at the supplier, a changed email means re-placing the
-  order rather than correcting it, and that is a different feature.
+  I then told Mohamed that a changed email may not reach the supplier at all, and generalised an
+  SBC-only mechanism to everything. He caught it. There are **two different calls**, and only one of
+  them has the problem:
+
+  | Path | Call | Keyed by | A changed email |
+  | --- | --- | --- | --- |
+  | Coins | `correctCredentialsAPI` | `orderID` | lands - `user` is an ordinary optional field beside it (`api-handlers.php:1178-1200`) |
+  | Challenge | `createCustomerAPI` with `updateCustomer: '1'` | `user`, the email | writes a **different** customer record while the solve stays bound to the original account (`api-handlers.php:2118-2137`) |
+
+  So the coins case - the ordinary one - is fine, and the risk is challenges only. There the failure
+  mode is the bad kind: the tracker accepts `action: 'created'` as success, so sending a new email
+  would report success while the bot keeps trying the old account. **D1 must verify the challenge
+  path on a real test order before the email field ships for a challenge item.**
+
+  And my explanation of *why* the tracker locks the email was invented. The coins call takes `user`
+  freely, so the lock is a product choice of theirs - or it is there for the SBC case - and not a
+  technical constraint. Nothing in the code says which.
 - `sessionExpired` keeps retry alone. It is not a login-data problem: the tracker's help text says
   the connection renews itself, which is why it moved to `EaServers` rather than `ActiveSession`.
 
