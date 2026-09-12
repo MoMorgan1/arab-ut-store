@@ -145,8 +145,11 @@ final class ApplySupplierObservation
                 }
             }
 
+            // An order-level admin hold withholds item moves and hold fields just like an item-level hold
+            $isAdminHold = $itemIsAdminHold || $orderIsAdminHold;
+
             // Update item status if not withheld by an active admin hold
-            if (! $itemIsAdminHold) {
+            if (! $isAdminHold) {
                 $targetItemStatus = OrderItemStatus::from($state->status->value);
 
                 if ($targetItemStatus !== $targetItem->status) {
@@ -171,7 +174,7 @@ final class ApplySupplierObservation
             }
 
             // Rule 5: Items aggregate to the order conservatively.
-            if (! $orderIsAdminHold) {
+            if (! $isAdminHold) {
                 $targetOrderStatus = $this->aggregateOrderStatus($items, $order->status);
 
                 if ($targetOrderStatus !== $order->status) {
@@ -212,7 +215,7 @@ final class ApplySupplierObservation
                 state: $state,
                 observedAt: $observedAt,
                 rawPayload: $rawPayload,
-                withheldDueToAdmin: $itemIsAdminHold,
+                withheldDueToAdmin: $isAdminHold,
                 orderIsTerminal: false,
             );
         }, attempts: 3);
@@ -273,8 +276,10 @@ final class ApplySupplierObservation
         // Rule 7: Mask sensitive customer data before storing in the JSON column
         $maskedObservation = $this->maskRawPayload($rawPayload);
         if ($withheldDueToAdmin) {
-            $maskedObservation['_withheld'] = true;
-            $maskedObservation['_withheld_reason'] = 'admin_hold';
+            $maskedObservation['_service'] = [
+                'withheld' => true,
+                'withheld_reason' => 'admin_hold',
+            ];
         }
         $job->observation = $maskedObservation;
 
@@ -388,8 +393,8 @@ final class ApplySupplierObservation
         foreach ($payload as $key => $value) {
             if (is_array($value)) {
                 $masked[$key] = $this->maskRawPayload($value);
-            } elseif (is_string($value) && $this->isEmail($value)) {
-                $masked[$key] = $this->maskEmail($value);
+            } elseif (is_string($value)) {
+                $masked[$key] = $this->maskStringEmails($value);
             } else {
                 $masked[$key] = $value;
             }
@@ -398,28 +403,33 @@ final class ApplySupplierObservation
         return $masked;
     }
 
-    private function isEmail(string $value): bool
+    /**
+     * Sweeps a string for embedded email addresses and masks each match in place.
+     */
+    private function maskStringEmails(string $value): string
     {
-        $trimmed = trim($value);
-
-        if ($trimmed === '' || ! str_contains($trimmed, '@')) {
-            return false;
+        if (! str_contains($value, '@')) {
+            return $value;
         }
 
-        return filter_var($trimmed, FILTER_VALIDATE_EMAIL) !== false;
-    }
+        $replaced = preg_replace_callback(
+            '/[a-z0-9._%+-]+@(?:[a-z0-9-]+\.)+[a-z]{2,}/i',
+            function (array $matches): string {
+                $email = $matches[0];
+                $parts = explode('@', $email, 2);
 
-    private function maskEmail(string $email): string
-    {
-        $parts = explode('@', trim($email), 2);
+                if (count($parts) !== 2) {
+                    return $email;
+                }
 
-        if (count($parts) !== 2) {
-            return $email;
-        }
+                [$local, $domain] = $parts;
+                $firstChar = mb_substr($local, 0, 1);
 
-        [$local, $domain] = $parts;
-        $firstChar = mb_substr($local, 0, 1);
+                return $firstChar.'...@'.$domain;
+            },
+            $value
+        );
 
-        return $firstChar.'...@'.$domain;
+        return is_string($replaced) ? $replaced : $value;
     }
 }

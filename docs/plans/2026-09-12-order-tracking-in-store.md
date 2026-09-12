@@ -231,6 +231,21 @@ sweep and a customer's refresh press can read the same job at the same time and 
 order. So an observation older than the one already stored is discarded, and the per-job lock from
 decision 13 is what makes that check meaningful rather than racy.
 
+**Three boundaries B5 cannot decide on its own**, found in review 2026-09-12 and left stated
+rather than guessed:
+
+- **A partially-cancelled order stalls.** Any `Cancelled` item makes "every item completed"
+  unreachable, so an order whose remaining item finishes sits in `InProgress` for good - no
+  cashback, no review invite - until a human acts. That follows correctly from "an observation
+  never cancels an order", but somebody has to decide what a part-cancelled order's completion
+  means, and it is not the reconciler.
+- **Item status is not monotonic.** A `Completed` item on a still-open multi-item order can move
+  backwards under the phase-progression rule. Once the ORDER completes, the terminal rule freezes
+  everything, so the exposure is bounded to open orders.
+- **`order_items.order_id` is immutable only by convention.** Nothing updates it today, which is
+  what makes the unlocked read of it safe before the transaction opens. The day someone adds a
+  "move an item between orders" writer, that read becomes wrong silently.
+
 **B6. Silence alarm.** An automated paid item with no placement row after a bounded wait is
 surfaced to Mohamed. Covers "n8n placed successfully and its callback was lost", which n8n cannot
 see and which otherwise leaves a paid order invisible.
