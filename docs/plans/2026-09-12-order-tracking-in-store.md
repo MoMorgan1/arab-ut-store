@@ -383,6 +383,28 @@ this is agreement rather than a new rule.
 What we store stays whatever the supplier said. Clamping belongs to the display; rewriting the
 observation to fit the bar would be falsifying the record to protect a progress bar.
 
+**Challenge tracking is read but not wired, and the two counter tracks are stored under names that
+say the wrong thing.** Found 2026-09-12 while briefing the canvas. `FftClient::observeChallenges()`
+exists and is tested, and has **no caller in `app/` outside `app/Suppliers/`** - the placement now
+records the challenge ids, and nothing asks about them. Two further defects sit in the path C3 has
+to use:
+
+- `challenges_solved` and `challenges_requested` hold `challengesDone` / `totalChallenges`, which is
+  the **squads within the solve being worked now** - seven of them in the order we read - under names
+  that say solves. The solve track, `timesSolved` / `timesToSolve`, survives only inside the raw
+  `observation` json, and `ItemTracking` does not expose it at all. So the payload offers "1 / 2"
+  semantics for a "3 / 7" number, which is the exact collapse the owner's rule forbids. Renaming and
+  exposing both tracks is C3 work, not a later tidy-up.
+- `SupplierStateTranslator` has no `sbcStatus` vocabulary. It decides from `status`, `accountCheck`
+  and `economyState`, and an `sbcStatusBulkAPI` response carries none of the three, so a challenge
+  observation cannot be translated at all today. The tracker's SBC status map and its retryable set
+  have to be ported as their own decision path, fail-closed on an unknown code exactly as the coins
+  path already is.
+
+One item can carry several challenge ids, so the challenge payload is a **list** of per-challenge
+objects rather than one flattened progress object - the tracker renders one card per challenge id.
+Because that shape follows from the canvas, both defects land with C3 rather than ahead of it.
+
 **C3. Canvas, then the port** (canvas: Claude; port: DeepSeek). A `/design` canvas leading with
 390px: the ring, the progress bar, the three stat boxes, the action box, the challenge cards,
 drawn in the store's tokens. Mohamed approves or edits on the canvas; his edits are the design.
