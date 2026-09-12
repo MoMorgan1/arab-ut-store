@@ -222,6 +222,19 @@ thirty seconds per viewer. Refresh goes through a separate bounded request, de-d
 per-job lock so concurrent viewers cause one supplier call. Manual-service items carry status
 only.
 
+**Two items inherited from the Objectives fix, 2026-09-12, both needing an owner call:**
+
+- **A missing EA secret at checkout tells the customer the wrong thing.** `PlaceOrder` raises
+  `CheckoutUnavailable('EA account details are required.')`, but the Paylink checkout controller
+  folds every non-phone `CheckoutUnavailable` into the generic "your cart or prices have changed,
+  refresh and try again". A customer whose credentials went missing is told to refresh, which
+  cannot help them. The fix is a distinct error for that case and copy that names the actual next
+  action.
+- **Objectives is the only service not held to `quantity === 1`.** It now binds to one EA
+  credential snapshot per item, so a quantity above one is ambiguous: is it several completions on
+  one account, or a mistake? Decide before it matters, because the ambiguity is in orders already
+  placeable today.
+
 **C2. Copy and the refund unfolding** (Claude; Mohamed approves the texts). Stop folding
 `Refunded` in **both** `OrderStatus::forCustomer()` and `OrderItemStatus::forCustomer():16`. The
 assertions that will fail are `tests/Feature/Account/AccountOrdersTest.php:309` and `:334` — the

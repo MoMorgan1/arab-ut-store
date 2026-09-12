@@ -89,7 +89,7 @@ final readonly class RepriceCart
 
         return match (true) {
             $service === ServiceType::Coins => $this->coins($variant, $platform, $configuration),
-            $this->isManualService($service) => $this->manualService($variant, $service, $platform, $configuration, $lock),
+            $this->isBoosterConfiguredService($service) => $this->manualService($variant, $service, $platform, $configuration, $lock),
             $service === ServiceType::Sbc => $this->sbc($variant, $configuration),
             default => CartItemPrice::priced(
                 $variant->effectivePriceHalalah(),
@@ -281,7 +281,7 @@ final readonly class RepriceCart
             && $configuration['included_wins'] === null;
     }
 
-    private function isManualService(ServiceType $service): bool
+    private function isBoosterConfiguredService(ServiceType $service): bool
     {
         return $service->isBoosterConfigured();
     }
