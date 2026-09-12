@@ -1040,6 +1040,14 @@ final class SupplierStateTranslator
         $hasCustomerAction = $this->in(self::CUSTOMER_ACTION_ACCOUNT_CHECKS, $accountCheck)
             || $this->in(self::CUSTOMER_ACTION_ECONOMY_STATES, $economyState);
 
+        // The tracker's branches guard on `!actualActionMsg`, and a message exists for a
+        // system-info code too - getActionMessage() returns one with an `__info_box__:`
+        // prefix rather than returning nothing (ui.js:310-313). Guarding only on
+        // customer-action codes let an order with `accountCheck: entered` and
+        // `economyState: noPlayer` read "جاري تسجيل الدخول" with an amber box underneath
+        // saying we cannot find a player - a headline contradicting its own reason.
+        $hasMessage = $hasCustomerAction || $this->in(self::SYSTEM_INFO_ECONOMY_STATES, $economyState);
+
         // 1. Tempban/system cooldown states that display as 'Processing' (ui.js:425-442)
         if ($economyState === 'tempbanCooldown'
             || $economyState === 'listingTempban'
@@ -1055,7 +1063,7 @@ final class SupplierStateTranslator
             $presentation = TrackingPresentation::TransferringPartDone;
         } elseif (($economyState === 'customerHasPlayer' || $economyState === 'customerListedPlayer') && ! $hasCustomerAction && ! $isFinished && ! $isStopped) {
             $presentation = TrackingPresentation::Preparing;
-        } elseif (in_array($accountCheck, ['entered', 'started', 'userPassVerified', 'correctBA'], true) && ! $hasCustomerAction && ! $isFinished && ! $isStopped) {
+        } elseif (in_array($accountCheck, ['entered', 'started', 'userPassVerified', 'correctBA'], true) && ! $hasMessage && ! $isFinished && ! $isStopped) {
             $presentation = TrackingPresentation::LoggingIn;
         } elseif ($isFinished) {
             $presentation = TrackingPresentation::Completed;

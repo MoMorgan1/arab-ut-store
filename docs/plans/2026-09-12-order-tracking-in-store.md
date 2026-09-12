@@ -206,6 +206,19 @@ Every deviation ran the same direction: reasoning from first principles about a 
 implementation already had right. So the default is now inverted. **Match the tracker unless the
 owner says otherwise, and write down any deviation he approves along with his reason.**
 
+**One place we deliberately did not port it, approved by Mohamed on 2026-09-13** ("`تمام انت صح`"). The trailing
+zero-remaining override reads `remaining <= 0` where `remaining = total - delivered`, and both sides
+default to 0 when the supplier has reported no numbers (`ui.js:528-531, 542`). So an order that has
+reported **nothing at all** computes `0 - 0 <= 0` and renders `جاري إنهاء طلبك` - "finishing your
+order" - before a single coin has moved. Our port guards the override on both counters being present
+and the ordered amount being above zero, so that order falls through to its real state instead.
+
+This is the one tracker behaviour so far that looks like an ordinary bug rather than encoded truth:
+it tells a customer their order is wrapping up at the moment it has not started. The `NotReported`
+presentation exists for exactly that case. He agreed, so this is the first approved deviation
+from the tracker that is ours rather than his - and the standing rule holds either way: it is
+written down here with who approved it and why.
+
 This does not extend to the three things that are ours rather than the tracker's: canonical
 `OrderStatus` (the store's spine, which the tracker has no concept of), what we persist (the
 tracker stores nothing, we have an allowlist because the suppliers return passwords), and security

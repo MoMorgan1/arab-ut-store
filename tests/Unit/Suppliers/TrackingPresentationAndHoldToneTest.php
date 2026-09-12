@@ -234,3 +234,25 @@ test('transfersInProgress with an error simplified status does not read as trans
         ->and($translator->resolvePresentation('started', 'correctBA', 'transfersInProgress', 10, 100, ''))
         ->toBe(TrackingPresentation::Transferring);
 });
+
+test('a system-info state suppresses the logging-in headline, so it cannot contradict its own box', function (string $economyState): void {
+    // The tracker guards its branches on "is there a message", and a system-info code has
+    // one - getActionMessage() returns it with an __info_box__ prefix rather than returning
+    // nothing (ui.js:310-313). Guarding only on customer-action codes produced
+    // "جاري تسجيل الدخول" above an amber box explaining we cannot find a player.
+    $translator = new SupplierStateTranslator;
+
+    expect($translator->resolvePresentation('started', 'entered', $economyState))
+        ->toBe(TrackingPresentation::Processing);
+})->with([
+    'calcErrorMaintenance', 'FailedProxyConnectionError', 'FailProxyUnavailable',
+    'noPlayer', 'noSuitableSender', 'belowMinTransfer',
+]);
+
+test('an account check with no economy state still reads as logging in', function (): void {
+    // The other half of the pair: the guard must not swallow the branch entirely.
+    $translator = new SupplierStateTranslator;
+
+    expect($translator->resolvePresentation('started', 'entered', ''))
+        ->toBe(TrackingPresentation::LoggingIn);
+});
