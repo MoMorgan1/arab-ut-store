@@ -573,6 +573,33 @@ and no analytics at all.
 
 ## Slice D — actions and notifications (Claude)
 
+**A correction writes to our own record first, and that is what makes a two-phase order work.**
+Owner's point, 2026-09-13, and it is the one that matters about credentials:
+
+A Challenge order runs coins first, then n8n submits the solve after the coins loop finishes. So a
+wrong email surfaces during the **coins** phase, where correcting it works - `correctCredentialsAPI`
+is keyed on `orderID` and takes `user` as an ordinary field. The coins then complete. But when n8n
+comes to place phase two, it places with whatever email the store hands it, and if the correction
+only ever went to the supplier, the store still holds the original. The challenge is then submitted
+against an account that does not exist and is never placed at all.
+
+So the order of writes is the requirement, not an implementation detail:
+
+1. the customer submits a correction
+2. **the store writes `order_item_secrets`** - our record is the source of truth
+3. the store forwards to the supplier for the phase running now
+4. when phase two is placed, B4 composes its payload from `order_item_secrets` at send time, so it
+   carries the corrected email without anyone remembering to pass it along
+
+B4 already specifies that composition and that a retried send re-reads current credentials rather
+than replaying old ones, so the second half is designed. The first half - D1 writing back before
+forwarding - was not written down anywhere, which is how the gap would have shipped.
+
+**This also settles the editable-email question.** Correcting it during the coins phase fixes phase
+two, so the field stays editable for both kinds and nothing needs locking. The one case left is a
+challenge **already placed** against a wrong email, which stays a support matter - and it is rare,
+because coins always runs first and surfaces the bad email before the solve is ever submitted.
+
 **D1. Self-service actions.** Each action derives from the allowed-action set, and is
 re-authorised server-side when pressed — never trusted from the client. Rate limited per order.
 
