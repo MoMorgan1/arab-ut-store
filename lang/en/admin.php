@@ -218,6 +218,7 @@ return [
         'no_player' => 'No suitable player for delivery',
         'maintenance' => 'Game servers under maintenance',
         'paused' => 'Order temporarily paused',
+        'below_minimum' => 'Amount below minimum transfer',
     ],
     'statuses' => [
         'pending_payment' => 'Pending payment',

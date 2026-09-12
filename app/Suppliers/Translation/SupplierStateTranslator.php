@@ -52,6 +52,7 @@ final class SupplierStateTranslator
         OrderHoldReason::NoPlayer,
         OrderHoldReason::Maintenance,
         OrderHoldReason::Paused,
+        OrderHoldReason::BelowMinimum,
     ];
 
     /**
@@ -106,10 +107,15 @@ final class SupplierStateTranslator
     /**
      * economyState codes that hold the job, whatever the reason's class. The
      * reason alone decides InProgress versus WaitingForCustomer, so customer
-     * and system codes live in one map; a null reason is a state with no hold
-     * to name, never a hold on the customer.
+     * and system codes live in one map; a reason in AUTOMATIC_RECOVERY_REASONS
+     * keeps the order InProgress and asks the customer for nothing.
      *
-     * @var array<string, OrderHoldReason|null>
+     * Every mapped code names a reason. `belowMinTransfer` was the one exception
+     * until 2026-09-13, and it cost the customer the explanation: the amber box
+     * is decided by the code while its text comes from the reason, so a code with
+     * no reason drew a box with nothing in it.
+     *
+     * @var array<string, OrderHoldReason>
      */
     private const array ECONOMY_STATE_HOLDS = [
         'FailedWrongCredentialsTo' => OrderHoldReason::Credentials,
@@ -130,7 +136,7 @@ final class SupplierStateTranslator
         'FailProxyUnavailable' => OrderHoldReason::Connection,
         'noSuitableSender' => OrderHoldReason::NoPlayer,
         'noPlayer' => OrderHoldReason::NoPlayer,
-        'belowMinTransfer' => null, // the system is finishing the order itself
+        'belowMinTransfer' => OrderHoldReason::BelowMinimum, // the system is finishing the order itself
     ];
 
     /**
@@ -311,6 +317,20 @@ final class SupplierStateTranslator
         'tempbanCooldown', 'listingTempban', 'dailyReceiverLimit', 'calcErrorMaintenance',
         'FailedProxyConnectionError', 'FailProxyUnavailable',
         'noPlayer', 'noSuitableSender', 'belowMinTransfer',
+    ];
+
+    /**
+     * SBC failure statuses that are system-side informational waits rather than customer action.
+     *
+     * @var list<string>
+     */
+    public const array SBC_SYSTEM_INFO_STATUSES = [
+        'tempban',
+        'TempbanCooldown',
+        'dailyReceiverLimit',
+        'FailProxyConn',
+        'FailedProxyConnectionError',
+        'FailProxy',
     ];
 
     /**
@@ -611,9 +631,12 @@ final class SupplierStateTranslator
         );
 
         if ($this->isTerminal($current)) {
-            $terminalPresentation = $current === OrderStatus::Completed
-                ? TrackingPresentation::Completed
-                : TrackingPresentation::Stopped;
+            $terminalPresentation = match ($current) {
+                OrderStatus::Completed => TrackingPresentation::Completed,
+                OrderStatus::Cancelled => TrackingPresentation::Cancelled,
+                OrderStatus::Refunded => TrackingPresentation::Refunded,
+                default => TrackingPresentation::Stopped,
+            };
 
             return $this->state(
                 $current,
@@ -775,6 +798,13 @@ final class SupplierStateTranslator
         }
 
         if ($this->isTerminal($current)) {
+            $terminalPresentation = match ($current) {
+                OrderStatus::Completed => TrackingPresentation::Completed,
+                OrderStatus::Cancelled => TrackingPresentation::Cancelled,
+                OrderStatus::Refunded => TrackingPresentation::Refunded,
+                default => TrackingPresentation::Stopped,
+            };
+
             return new TranslatedState(
                 status: $current,
                 holdReason: null,
@@ -788,7 +818,7 @@ final class SupplierStateTranslator
                 solvesDone: $solvesDone,
                 solvesTotal: $solvesTotal,
                 holdTone: null,
-                presentation: $current === OrderStatus::Completed ? TrackingPresentation::Completed : TrackingPresentation::Stopped,
+                presentation: $terminalPresentation,
             );
         }
 
@@ -883,8 +913,9 @@ final class SupplierStateTranslator
 
         $actions = $this->sbcActions($supplier, $activeStatus);
 
-        $isInfo = in_array($activeStatus, ['tempban', 'TempbanCooldown', 'dailyReceiverLimit', 'FailProxyConn', 'FailedProxyConnectionError', 'FailProxy'], true);
+        $isInfo = in_array($activeStatus, self::SBC_SYSTEM_INFO_STATUSES, true);
         $holdTone = $isInfo ? HoldTone::Info : HoldTone::Action;
+        $presentation = $isInfo ? TrackingPresentation::Processing : TrackingPresentation::NeedsReview;
 
         return new TranslatedState(
             status: $orderStatus,
@@ -899,7 +930,7 @@ final class SupplierStateTranslator
             solvesDone: $solvesDone,
             solvesTotal: $solvesTotal,
             holdTone: $holdTone,
-            presentation: TrackingPresentation::NeedsReview,
+            presentation: $presentation,
         );
     }
 
@@ -1003,10 +1034,11 @@ final class SupplierStateTranslator
 
     public function resolveHoldTone(string $status, string $accountCheck, string $economyState): ?HoldTone
     {
-        if ($economyState === self::ECONOMY_STATE_DEACTIVATED) {
-            return null;
-        }
-
+        // The tracker's comment at ui.js:292 ("deactivated = completely hidden from customer")
+        // overstates its own implementation: in ui.js code, deactivated is merely absent from
+        // the error and info maps, and getActionMessage() evaluates accountCheck first (ui.js:300).
+        // Furthermore, showActionBox (ui.js:770) triggers if hasAction || isStopped || isInfoBox || isCriticalAccountError.
+        // Therefore deactivated suppresses nothing on its own beside an account error or a stopped status.
         if ($this->in(self::CUSTOMER_ACTION_ACCOUNT_CHECKS, $accountCheck)) {
             return HoldTone::Action;
         }
@@ -1048,16 +1080,17 @@ final class SupplierStateTranslator
         // saying we cannot find a player - a headline contradicting its own reason.
         $hasMessage = $hasCustomerAction || $this->in(self::SYSTEM_INFO_ECONOMY_STATES, $economyState);
 
-        // 1. Tempban/system cooldown states that display as 'Processing' (ui.js:425-442)
-        if ($economyState === 'tempbanCooldown'
-            || $economyState === 'listingTempban'
-            || $economyState === 'dailyReceiverLimit'
-        ) {
-            $presentation = TrackingPresentation::Processing;
+        // 1. Tempban/system cooldown states (ui.js:425-442)
+        if ($economyState === 'tempbanCooldown') {
+            $presentation = TrackingPresentation::CooldownTempban;
+        } elseif ($economyState === 'listingTempban') {
+            $presentation = TrackingPresentation::CooldownListing;
+        } elseif ($economyState === 'dailyReceiverLimit') {
+            $presentation = TrackingPresentation::CooldownDailyLimit;
+        } elseif ($economyState === 'transfersInProgress' && ! $hasCustomerAction && mb_strtolower($simplifiedStatus) !== 'error') {
             // The tracker's third condition, easy to drop and load-bearing: an order can
             // report transfersInProgress while its simplified status says error, and that is
             // not something to render as "transferring" (ui.js:443).
-        } elseif ($economyState === 'transfersInProgress' && ! $hasCustomerAction && mb_strtolower($simplifiedStatus) !== 'error') {
             $presentation = TrackingPresentation::Transferring;
         } elseif ($economyState === 'transferCycleComplete' && ! $hasCustomerAction && ! $isFinished && ! $isStopped) {
             $presentation = TrackingPresentation::TransferringPartDone;
@@ -1111,7 +1144,7 @@ final class SupplierStateTranslator
                 true,
                 $observed,
                 holdTone: $holdTone,
-                presentation: TrackingPresentation::Completed,
+                presentation: $presentation,
             );
         }
 
@@ -1130,21 +1163,17 @@ final class SupplierStateTranslator
         }
 
         if (array_key_exists($economyState, self::ECONOMY_STATE_HOLDS)) {
-            $hold = self::ECONOMY_STATE_HOLDS[$economyState];
-
-            if ($hold === null) {
-                return new TranslatedState(
-                    OrderStatus::InProgress,
-                    null,
-                    $this->actions($supplier, $status, $accountCheck, $economyState, $phase, OrderStatus::InProgress),
-                    true,
-                    $observed,
-                    holdTone: $holdTone,
-                    presentation: $presentation,
-                );
-            }
-
-            return $this->hold($hold, $supplier, $status, $accountCheck, $economyState, $phase, $observed, $holdTone, $presentation);
+            return $this->hold(
+                self::ECONOMY_STATE_HOLDS[$economyState],
+                $supplier,
+                $status,
+                $accountCheck,
+                $economyState,
+                $phase,
+                $observed,
+                $holdTone,
+                $presentation,
+            );
         }
 
         if ($economyState === self::ECONOMY_STATE_DEACTIVATED) {

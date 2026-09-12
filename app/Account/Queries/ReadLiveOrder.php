@@ -104,6 +104,7 @@ final class ReadLiveOrder
                     ])->with(['placements' => fn ($placements) => $placements->select([
                         'id',
                         'fulfillment_job_id',
+                        'supplier',
                         'delivery_phase',
                         'supplier_challenge_ids',
                     ])]),
@@ -112,6 +113,13 @@ final class ReadLiveOrder
                 ->withExists('squadImage')
                 ->orderBy('id')])
             ->firstOrFail();
+
+        // The items already have their order in hand; say so, or ItemTracking fetches the
+        // same row again once per challenge item further down this method.
+        foreach ($order->items as $orderItem) {
+            $orderItem->setRelation('order', $order);
+        }
+
         $terminal = in_array($order->status, [
             OrderStatus::Completed,
             OrderStatus::Cancelled,

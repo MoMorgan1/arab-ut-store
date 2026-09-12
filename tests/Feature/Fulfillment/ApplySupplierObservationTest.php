@@ -12,6 +12,7 @@ use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
+use App\Enums\TrackingPresentation;
 use App\Models\FulfillmentJob;
 use App\Models\FulfillmentPlacement;
 use App\Models\Order;
@@ -1147,4 +1148,36 @@ it('test 13: a coins-phase payload is still stored flat and is unaffected', func
     foreach ($stored as $value) {
         expect(is_array($value))->toBeFalse();
     }
+});
+
+it('preserves established presentation and hold_tone when given an unsupported observation (Defect 2c)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'presentation' => TrackingPresentation::Transferring,
+            'hold_tone' => null,
+            'observed_at' => CarbonImmutable::parse('2026-09-12 12:00:00'),
+        ],
+    );
+
+    // Unsupported observation returns null presentation and null holdTone
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: false,
+        observedState: null,
+        presentation: null,
+        holdTone: null,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: CarbonImmutable::parse('2026-09-12 12:05:00'),
+        rawPayload: ['garbage' => 'unparseable'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->presentation)->toBe(TrackingPresentation::Transferring)
+        ->and($freshJob->observation_supported)->toBeFalse();
 });

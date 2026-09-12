@@ -304,8 +304,15 @@ final class ApplySupplierObservation
                 fn (SupplierAction $action): string => $action->value,
                 $state->allowedActions,
             );
-            $job->presentation = $state->presentation;
-            $job->hold_tone = $state->holdTone;
+            // Presentation and hold tone are only updated when non-null so earlier phases and
+            // established headlines are not erased by an unusable observation, matching the
+            // progress counters rule below. A cleared hold_reason is an intentional answer.
+            if ($state->presentation !== null) {
+                $job->presentation = $state->presentation;
+            }
+            if ($state->holdTone !== null) {
+                $job->hold_tone = $state->holdTone;
+            }
         }
 
         // Progress counters are only updated when non-null so earlier phases are not erased

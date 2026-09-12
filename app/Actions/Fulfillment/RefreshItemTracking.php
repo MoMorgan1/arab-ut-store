@@ -59,6 +59,9 @@ final class RefreshItemTracking
      *         stateLabel: string,
      *         squads: array{done: int|null, total: int|null},
      *         solves: array{done: int|null, total: int|null},
+     *         holdReason: string|null,
+     *         holdMessage: string|null,
+     *         holdTone: string|null,
      *         coinsUsed: int|null,
      *         finishedAt: string|null,
      *         actions: list<string>,
@@ -67,6 +70,7 @@ final class RefreshItemTracking
      *         answered: int,
      *         requested: int,
      *     }|null,
+     *     workStarted: bool,
      * }|null
      */
     public function execute(OrderItem $item, string $locale): ?array
@@ -94,6 +98,12 @@ final class RefreshItemTracking
             ? $item->order
             : $item->order()->first();
 
+        // Hand the order back to the item so ItemTracking, which needs the same row to
+        // decide whether a terminal order still offers actions, does not fetch it again.
+        if ($order instanceof Order && ! $item->relationLoaded('order')) {
+            $item->setRelation('order', $order);
+        }
+
         // 3) Terminal orders (Completed, Cancelled, Refunded) cannot change state, and
         // ApplySupplierObservation would discard/refuse writes anyway.
         if ($order instanceof Order && in_array($order->status, [
@@ -116,13 +126,14 @@ final class RefreshItemTracking
         }
 
         try {
-            if ($job->delivery_phase === DeliveryPhase::Challenge && $job->supplier->handlesChallenges()) {
-                /** @var FulfillmentPlacement|null $placement */
-                $placement = $job->placements()
-                    ->where('delivery_phase', DeliveryPhase::Challenge->value)
-                    ->latest('id')
-                    ->first();
+            /** @var FulfillmentPlacement|null $placement */
+            $placement = $job->relationLoaded('placements')
+                ? $job->placements->first(fn ($p) => $p->delivery_phase === DeliveryPhase::Challenge)
+                : $job->placements()->where('delivery_phase', DeliveryPhase::Challenge->value)->latest('id')->first();
 
+            $challengeSupplier = $placement->supplier ?? $job->supplier;
+
+            if ($job->delivery_phase === DeliveryPhase::Challenge && $challengeSupplier->handlesChallenges()) {
                 $challengeIds = $placement?->challengeIds() ?? [];
 
                 if ($challengeIds === []) {
@@ -135,7 +146,7 @@ final class RefreshItemTracking
                 }
 
                 try {
-                    $client = $this->registry->for($job->supplier);
+                    $client = $this->registry->for($challengeSupplier);
                     $bulk = $client->observeChallenges($challengeIds);
                 } catch (SupplierUnavailable) {
                     return ItemTracking::for($item, $locale);
@@ -157,7 +168,7 @@ final class RefreshItemTracking
                 $orderStatus = $order instanceof Order ? $order->status : OrderStatus::InProgress;
 
                 $translated = $this->translator->translateChallenge(
-                    $job->supplier,
+                    $challengeSupplier,
                     $challengeIds,
                     $bulk,
                     $orderStatus,

@@ -1,12 +1,15 @@
 <?php
 
 use App\Enums\ChallengeState;
+use App\Enums\DeliveryPhase;
 use App\Enums\HoldTone;
 use App\Enums\OrderStatus;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
 use App\Enums\TrackingPresentation;
+use App\Suppliers\RawSupplierObservation;
 use App\Suppliers\Translation\SupplierStateTranslator;
+use Carbon\CarbonImmutable;
 
 test('each of the nine system economy states produces HoldTone::Info', function (string $code): void {
     $translator = new SupplierStateTranslator;
@@ -75,14 +78,23 @@ test('cooldown and system states take precedence over stopped status for HoldTon
     'listingTempban' => ['listingTempban'],
 ]);
 
-test('deactivated completely hides the action box producing null tone even when stopped', function (string $status): void {
+test('deactivated alone yields a null tone (no action box)', function (): void {
     $translator = new SupplierStateTranslator;
 
-    $tone = $translator->resolveHoldTone($status, '', 'deactivated');
+    expect($translator->resolveHoldTone('entered', '', 'deactivated'))->toBeNull();
+});
 
-    expect($tone)->toBeNull();
+test('deactivated with customer action account check yields HoldTone::Action', function (): void {
+    $translator = new SupplierStateTranslator;
+
+    expect($translator->resolveHoldTone('entered', 'wrongBA', 'deactivated'))->toBe(HoldTone::Action);
+});
+
+test('deactivated with stopped status yields HoldTone::Action', function (string $status): void {
+    $translator = new SupplierStateTranslator;
+
+    expect($translator->resolveHoldTone($status, '', 'deactivated'))->toBe(HoldTone::Action);
 })->with([
-    'entered' => ['entered'],
     'stopped' => ['stopped'],
     'interrupted' => ['interrupted'],
 ]);
@@ -101,9 +113,9 @@ test('presentation cascade resolves in exact tracker order', function (
 
     expect($presentation)->toBe($expected);
 })->with([
-    'tempbanCooldown -> Processing' => ['entered', '', 'tempbanCooldown', null, null, TrackingPresentation::Processing],
-    'listingTempban -> Processing' => ['entered', '', 'listingTempban', null, null, TrackingPresentation::Processing],
-    'dailyReceiverLimit -> Processing' => ['entered', '', 'dailyReceiverLimit', null, null, TrackingPresentation::Processing],
+    'tempbanCooldown -> CooldownTempban' => ['entered', '', 'tempbanCooldown', null, null, TrackingPresentation::CooldownTempban],
+    'listingTempban -> CooldownListing' => ['entered', '', 'listingTempban', null, null, TrackingPresentation::CooldownListing],
+    'dailyReceiverLimit -> CooldownDailyLimit' => ['entered', '', 'dailyReceiverLimit', null, null, TrackingPresentation::CooldownDailyLimit],
     'transfersInProgress -> Transferring' => ['entered', '', 'transfersInProgress', 10000, 50000, TrackingPresentation::Transferring],
     'transferCycleComplete -> TransferringPartDone' => ['entered', '', 'transferCycleComplete', 10000, 50000, TrackingPresentation::TransferringPartDone],
     'customerHasPlayer -> Preparing' => ['entered', '', 'customerHasPlayer', 0, 50000, TrackingPresentation::Preparing],
@@ -118,20 +130,21 @@ test('presentation cascade resolves in exact tracker order', function (
     'default -> Processing' => ['waiting', '', '', 0, 50000, TrackingPresentation::Processing],
 ]);
 
-test('trap 1: tempbanCooldown or dailyReceiverLimit with stopped status resolves to Processing and not Stopped', function (
+test('trap 1: cooldown states with stopped status resolve to their Cooldown presentation and not Stopped', function (
     string $status,
     string $econ,
+    TrackingPresentation $expected,
 ): void {
     $translator = new SupplierStateTranslator;
 
     $presentation = $translator->resolvePresentation($status, '', $econ, 10000, 50000);
 
-    expect($presentation)->toBe(TrackingPresentation::Processing);
+    expect($presentation)->toBe($expected);
 })->with([
-    'stopped + tempbanCooldown' => ['stopped', 'tempbanCooldown'],
-    'interrupted + tempbanCooldown' => ['interrupted', 'tempbanCooldown'],
-    'stopped + dailyReceiverLimit' => ['stopped', 'dailyReceiverLimit'],
-    'interrupted + listingTempban' => ['interrupted', 'listingTempban'],
+    'stopped + tempbanCooldown' => ['stopped', 'tempbanCooldown', TrackingPresentation::CooldownTempban],
+    'interrupted + tempbanCooldown' => ['interrupted', 'tempbanCooldown', TrackingPresentation::CooldownTempban],
+    'stopped + dailyReceiverLimit' => ['stopped', 'dailyReceiverLimit', TrackingPresentation::CooldownDailyLimit],
+    'interrupted + listingTempban' => ['interrupted', 'listingTempban', TrackingPresentation::CooldownListing],
 ]);
 
 test('trap 2: zero-remaining orders respect isFinished and isStopped without being overridden by Finishing', function (
@@ -256,3 +269,68 @@ test('an account check with no economy state still reads as logging in', functio
     expect($translator->resolvePresentation('started', 'entered', ''))
         ->toBe(TrackingPresentation::LoggingIn);
 });
+
+test('finished status with tempbanCooldown on a non-coins phase reports cooldown presentation with Completed status', function (): void {
+    $translator = new SupplierStateTranslator;
+    $observation = new RawSupplierObservation(
+        supplier: Supplier::Fft,
+        supplierOrderId: 'fft-tracking-test',
+        payload: [
+            'status' => 'finished',
+            'economyState' => 'tempbanCooldown',
+        ],
+        fetchedAt: CarbonImmutable::now(),
+    );
+
+    $translated = $translator->translate($observation, OrderStatus::InProgress, DeliveryPhase::Challenge);
+
+    expect($translated->status)->toBe(OrderStatus::Completed)
+        ->and($translated->presentation)->toBe(TrackingPresentation::CooldownTempban);
+});
+
+test('terminal cancelled and refunded orders resolve to their respective TrackingPresentation cases', function (
+    OrderStatus $terminalStatus,
+    TrackingPresentation $expected,
+): void {
+    $translator = new SupplierStateTranslator;
+    $observation = new RawSupplierObservation(
+        supplier: Supplier::Fft,
+        supplierOrderId: 'fft-tracking-test',
+        payload: [
+            'status' => 'transfersinprogress',
+        ],
+        fetchedAt: CarbonImmutable::now(),
+    );
+
+    $translated = $translator->translate($observation, $terminalStatus, DeliveryPhase::Coins);
+
+    expect($translated->presentation)->toBe($expected)
+        ->and($translated->allowedActions)->toBe([]);
+})->with([
+    'Cancelled' => [OrderStatus::Cancelled, TrackingPresentation::Cancelled],
+    'Refunded' => [OrderStatus::Refunded, TrackingPresentation::Refunded],
+]);
+
+test('challenge informational statuses resolve to Processing presentation and Info hold tone', function (
+    string $sbcStatus,
+): void {
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        ['chal-info-1'],
+        ['chal-info-1' => ['sbcStatus' => $sbcStatus]],
+        OrderStatus::InProgress,
+    );
+
+    expect($translated->presentation)->toBe(TrackingPresentation::Processing)
+        ->and($translated->holdTone)->toBe(HoldTone::Info)
+        ->and($translated->status)->toBe(OrderStatus::InProgress);
+})->with([
+    'tempban' => ['tempban'],
+    'TempbanCooldown' => ['TempbanCooldown'],
+    'dailyReceiverLimit' => ['dailyReceiverLimit'],
+    'FailProxyConn' => ['FailProxyConn'],
+    'FailedProxyConnectionError' => ['FailedProxyConnectionError'],
+    'FailProxy' => ['FailProxy'],
+]);

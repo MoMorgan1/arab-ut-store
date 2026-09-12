@@ -79,7 +79,7 @@ return [
         'FailProxyUnavailable' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::Connection, 'actions' => [SupplierAction::Resume]],
         'noSuitableSender' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::NoPlayer, 'actions' => [SupplierAction::Resume]],
         'noPlayer' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::NoPlayer, 'actions' => [SupplierAction::Resume]],
-        'belowMinTransfer' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => [SupplierAction::Resume]],
+        'belowMinTransfer' => ['status' => OrderStatus::InProgress, 'hold' => OrderHoldReason::BelowMinimum, 'actions' => [SupplierAction::Resume]],
         'transfersInProgress' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
         'transferCycleComplete' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],
         'customerHasPlayer' => ['status' => OrderStatus::InProgress, 'hold' => null, 'actions' => []],

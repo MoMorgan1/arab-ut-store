@@ -387,3 +387,54 @@ test('test 20: a response missing one of three ids still applies the counters of
         ->and($freshJob->solves_total)->toBe(2)
         ->and($order->fresh()->status)->toBe(OrderStatus::InProgress);
 });
+
+test('Defect 4: a job whose primary supplier is UTT but whose challenge placement is FFT reads challenges and keeps challenge actions', function (): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createTrackingContext(
+        serviceType: ServiceType::Sbc,
+        deliveryPhase: DeliveryPhase::Challenge,
+        jobAttributes: [
+            'supplier' => Supplier::Utt,
+            'supplier_order_id' => 'utt-job-'.fake()->unique()->numerify('######'),
+        ],
+    );
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Coins,
+        'supplier' => Supplier::Utt,
+        'supplier_order_id' => 'utt-coins-'.$item->id,
+        'placed_at' => now()->subHour(),
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'fft-sbc-'.$item->id,
+        'supplier_challenge_ids' => [$challengeId],
+        'idempotency_key' => 'placement-test-defect-4',
+        'placed_at' => now(),
+    ]);
+
+    Http::fake([
+        'https://fft.example.test/sbcStatusBulkAPI' => Http::response([
+            $challengeId => [
+                'sbcStatus' => 'WrongUserPass',
+                'challengesDone' => 1,
+                'totalChallenges' => 7,
+                'timesSolved' => 0,
+                'timesToSolve' => 1,
+            ],
+        ]),
+    ]);
+
+    $tracking = app(RefreshItemTracking::class)->execute($item, 'en');
+
+    expect($tracking)->not->toBeNull()
+        ->and($tracking['challenges'])->toHaveCount(1)
+        ->and($tracking['challenges'][0]['state'])->toBe('sign_in_failed')
+        ->and($tracking['challenges'][0]['actions'])->toContain('edit_credentials')
+        ->and($tracking['challenges'][0]['actions'])->toContain('retry_challenge');
+});

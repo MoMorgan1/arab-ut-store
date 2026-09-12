@@ -34,11 +34,24 @@ return [
         'no_player' => 'We could not find a suitable player on the market to complete the delivery right now. We are watching the market and will resume shortly.',
         'maintenance' => 'The game servers are under EA maintenance. We resume automatically once it ends.',
         'paused' => 'Your order is paused for now and we will resume shortly. Message us any time for details.',
+        'below_minimum' => 'The remaining amount is below the minimum transfer, so we are closing your order.',
     ],
     'tracking_states' => [
         'processing' => [
             'headline' => 'Processing',
             'subline' => 'Your order is being processed',
+        ],
+        'cooldown_tempban' => [
+            'headline' => 'Processing',
+            'subline' => 'We are currently working on your order. You can log in and play normally; once you exit the game, delivery will resume automatically.',
+        ],
+        'cooldown_listing' => [
+            'headline' => 'Processing',
+            'subline' => 'The transfer market is in a temporary cooldown from EA. We are waiting for it to lift and delivery will resume automatically — you can play normally.',
+        ],
+        'cooldown_daily_limit' => [
+            'headline' => 'Processing',
+            'subline' => 'You have reached the daily limit. For account safety, please wait 36 hours then refresh the order. You can play normally.',
         ],
         'logging_in' => [
             'headline' => 'Signing In',
@@ -72,9 +85,17 @@ return [
             'headline' => 'Action Required',
             'subline' => 'Please check the details below',
         ],
+        'cancelled' => [
+            'headline' => 'Order cancelled',
+            'subline' => 'This order was cancelled',
+        ],
+        'refunded' => [
+            'headline' => 'Refunded',
+            'subline' => 'The amount was returned to your wallet',
+        ],
         'not_reported' => [
             'headline' => 'Queued',
-            'subline' => 'Waiting for processing to start with the supplier',
+            'subline' => 'Waiting to start',
         ],
     ],
     'challenge_states' => [

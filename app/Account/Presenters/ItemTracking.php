@@ -4,11 +4,15 @@ namespace App\Account\Presenters;
 
 use App\Enums\ChallengeState;
 use App\Enums\DeliveryPhase;
+use App\Enums\HoldTone;
+use App\Enums\OrderItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
 use App\Enums\TrackingPresentation;
 use App\Models\FulfillmentJob;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Suppliers\ChallengeIds;
 use App\Suppliers\Translation\SupplierStateTranslator;
@@ -59,6 +63,9 @@ final class ItemTracking
      *         stateLabel: string,
      *         squads: array{done: int|null, total: int|null},
      *         solves: array{done: int|null, total: int|null},
+     *         holdReason: string|null,
+     *         holdMessage: string|null,
+     *         holdTone: string|null,
      *         coinsUsed: int|null,
      *         finishedAt: string|null,
      *         actions: list<string>,
@@ -67,6 +74,7 @@ final class ItemTracking
      *         answered: int,
      *         requested: int,
      *     }|null,
+     *     workStarted: bool,
      * }|null
      */
     public static function for(OrderItem $item, string $locale): ?array
@@ -151,6 +159,27 @@ final class ItemTracking
                 ? $job->placements->first(fn ($p) => $p->delivery_phase === DeliveryPhase::Challenge)
                 : $job->placements()->where('delivery_phase', DeliveryPhase::Challenge->value)->first();
 
+            $challengeSupplier = $placement->supplier ?? $job->supplier;
+
+            // Both statuses are consulted, and the item's answers first because it is the
+            // one that leads: an order only becomes Completed once every item is
+            // (ApplySupplierObservation.php:248), and the cancel and refund paths update
+            // the items alongside the order. The order is the safety net.
+            //
+            // The relation is read lazily because this method is a public entry point and
+            // cannot assume a caller loaded it. Both real callers do set it first, so the
+            // query below is a fallback rather than a per-item cost on the order page.
+            $order = $item->relationLoaded('order') ? $item->order : $item->order()->first();
+            $orderIsTerminal = in_array($item->status, [
+                OrderItemStatus::Completed,
+                OrderItemStatus::Cancelled,
+                OrderItemStatus::Refunded,
+            ], true) || ($order instanceof Order && in_array($order->status, [
+                OrderStatus::Completed,
+                OrderStatus::Cancelled,
+                OrderStatus::Refunded,
+            ], true));
+
             $requestedIds = $placement?->challengeIds() ?? [];
             $rawObservation = is_array($job->observation) ? $job->observation : [];
 
@@ -166,9 +195,9 @@ final class ItemTracking
                     $answeredCount++;
                     $rawStatus = is_string($entry['sbcStatus'] ?? null) ? trim($entry['sbcStatus']) : '';
                     $stateEnum = SupplierStateTranslator::challengeState($rawStatus);
-                    $challengeActions = array_map(
+                    $challengeActions = $orderIsTerminal ? [] : array_map(
                         fn (SupplierAction $a): string => $a->value,
-                        SupplierStateTranslator::sbcChallengeActions($job->supplier, $rawStatus),
+                        SupplierStateTranslator::sbcChallengeActions($challengeSupplier, $rawStatus),
                     );
 
                     $finTs = $entry['finishedAt'] ?? null;
@@ -177,6 +206,14 @@ final class ItemTracking
                         $ts = (int) $finTs;
                         $challengeFinishedAt = CarbonImmutable::createFromTimestamp($ts > 10000000000 ? (int) ($ts / 1000) : $ts)->utc()->toIso8601String();
                     }
+
+                    $cardHoldReason = SupplierStateTranslator::SBC_STATUS_HOLDS[$rawStatus] ?? null;
+                    $cardHoldMessage = $cardHoldReason?->message($locale);
+                    $cardHoldTone = match (true) {
+                        $cardHoldReason === null => null,
+                        in_array($rawStatus, SupplierStateTranslator::SBC_SYSTEM_INFO_STATUSES, true) => HoldTone::Info->value,
+                        default => HoldTone::Action->value,
+                    };
 
                     $challengesList[] = [
                         'target' => $target,
@@ -190,6 +227,9 @@ final class ItemTracking
                             'done' => isset($entry['timesSolved']) && is_numeric($entry['timesSolved']) ? (int) $entry['timesSolved'] : null,
                             'total' => isset($entry['timesToSolve']) && is_numeric($entry['timesToSolve']) ? (int) $entry['timesToSolve'] : null,
                         ],
+                        'holdReason' => $cardHoldReason?->value,
+                        'holdMessage' => $cardHoldMessage,
+                        'holdTone' => $cardHoldTone,
                         'coinsUsed' => isset($entry['costCoins']) && is_numeric($entry['costCoins']) ? (int) $entry['costCoins'] : null,
                         'finishedAt' => $challengeFinishedAt,
                         'actions' => $challengeActions,
@@ -201,6 +241,9 @@ final class ItemTracking
                         'stateLabel' => ChallengeState::Unknown->label($locale),
                         'squads' => ['done' => null, 'total' => null],
                         'solves' => ['done' => null, 'total' => null],
+                        'holdReason' => null,
+                        'holdMessage' => null,
+                        'holdTone' => null,
                         'coinsUsed' => null,
                         'finishedAt' => null,
                         'actions' => [],
@@ -216,6 +259,26 @@ final class ItemTracking
                 'requested' => count($requestedIds),
             ];
         }
+
+        // Computed dynamically from the stored observation without a schema migration.
+        // Indicates whether work on the order has visibly begun, enabling the client to
+        // accurately evaluate whether to clear its optimistic retry grace window.
+        // TrackingPresentation cannot stand in for this because presentation can be
+        // suppressed by cooldowns or customer-action messages while work has visibly begun.
+        $obs = is_array($job->observation) ? $job->observation : [];
+        $rawStatus = is_string($obs['status'] ?? null) ? strtolower(trim($obs['status'])) : '';
+        $accCheck = is_string($obs['accountCheck'] ?? null) ? trim($obs['accountCheck']) : '';
+        $econ = is_string($obs['economyState'] ?? null) ? trim($obs['economyState']) : '';
+        $simplified = is_string($obs['simplifiedStatus'] ?? null) ? strtolower(trim($obs['simplifiedStatus'])) : '';
+        $isFinished = str_contains($rawStatus, 'finish')
+            || str_contains($rawStatus, 'complet')
+            || $rawStatus === 'finished'
+            || $job->completed_at !== null;
+
+        $workStarted = $isFinished
+            || in_array($accCheck, ['entered', 'started', 'userPassVerified', 'correctBA'], true)
+            || in_array($econ, ['transfersInProgress', 'transferCycleComplete', 'customerHasPlayer', 'customerListedPlayer'], true)
+            || ($rawStatus === 'transfersinprogress' && $simplified !== 'error');
 
         return [
             'kind' => $kind,
@@ -241,6 +304,7 @@ final class ItemTracking
             'progress' => $progress,
             'challenges' => $challenges,
             'coverage' => $coverage,
+            'workStarted' => $workStarted,
         ];
     }
 
@@ -278,6 +342,9 @@ final class ItemTracking
      *         stateLabel: string,
      *         squads: array{done: int|null, total: int|null},
      *         solves: array{done: int|null, total: int|null},
+     *         holdReason: string|null,
+     *         holdMessage: string|null,
+     *         holdTone: string|null,
      *         coinsUsed: int|null,
      *         finishedAt: string|null,
      *         actions: list<string>,
@@ -286,6 +353,7 @@ final class ItemTracking
      *         answered: int,
      *         requested: int,
      *     }|null,
+     *     workStarted: bool,
      * }|null
      */
     public function __invoke(OrderItem $item, string $locale): ?array

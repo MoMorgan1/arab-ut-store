@@ -490,6 +490,7 @@ test('ItemTracking presenter direct invocation returns expected shape', function
         ],
         'challenges' => null,
         'coverage' => null,
+        'workStarted' => false,
     ]);
 });
 
@@ -606,3 +607,137 @@ test('challenge list target indices are 0-based integer positions and un-returne
         ->and($tracking['challenges'][2]['solves'])->toBe(['done' => 1, 'total' => 2])
         ->and($tracking['challenges'][2]['coinsUsed'])->toBe(120_000);
 });
+
+test('challenge card surfaces curated holdReason, holdMessage, and holdTone for SBC entry status', function (): void {
+    $challengeId1 = '1803b7a6-0000-0000-0000-00000064265f';
+    $challengeId2 = '2b8e38f6-1111-2222-3333-444455556666';
+    $challengeId3 = '3c9f49a7-2222-3333-4444-555566667777';
+    $challengeId4 = '4d0a5ab8-3333-4444-5555-666677778888';
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Sbc);
+
+    $job = trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observation' => [
+            $challengeId1 => [
+                'sbcStatus' => 'WrongUserPass',
+            ],
+            $challengeId2 => [
+                'sbcStatus' => 'TempbanCooldown',
+            ],
+            $challengeId3 => [
+                'sbcStatus' => 'finished',
+            ],
+            $challengeId4 => [
+                'sbcStatus' => 'WrongBA',
+            ],
+        ],
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId1, $challengeId2, $challengeId3, $challengeId4],
+        'idempotency_key' => 'placement-test-defect-3c',
+        'placed_at' => now(),
+    ]);
+
+    $trackingEn = ItemTracking::for($item, 'en');
+
+    // The message is asserted against the reason's own copy rather than a literal: the
+    // point of the field is that the card carries the reason's message, not that the
+    // copy never changes.
+    // Target 0: WrongUserPass - the customer must act, and on which detail.
+    expect($trackingEn['challenges'][0]['holdReason'])->toBe('credentials')
+        ->and($trackingEn['challenges'][0]['holdTone'])->toBe('action')
+        ->and($trackingEn['challenges'][0]['holdMessage'])->toBe(OrderHoldReason::Credentials->message('en'))
+        // Target 1: TempbanCooldown - a wait, so informational, and a different reason.
+        ->and($trackingEn['challenges'][1]['holdReason'])->toBe('paused')
+        ->and($trackingEn['challenges'][1]['holdTone'])->toBe('info')
+        ->and($trackingEn['challenges'][1]['holdMessage'])->toBe(OrderHoldReason::Paused->message('en'))
+        // Target 2: finished -> nulls
+        ->and($trackingEn['challenges'][2]['holdReason'])->toBeNull()
+        ->and($trackingEn['challenges'][2]['holdTone'])->toBeNull()
+        ->and($trackingEn['challenges'][2]['holdMessage'])->toBeNull();
+
+    // Target 3: WrongBA. This is the case the field exists for - it curates to the same
+    // chip as WrongUserPass, because the customer does not read our status codes, but the
+    // two ask them to fix different things and the card has to say which.
+    expect($trackingEn['challenges'][3]['state'])->toBe($trackingEn['challenges'][0]['state'])
+        ->and($trackingEn['challenges'][3]['holdReason'])->toBe('backup_codes')
+        ->and($trackingEn['challenges'][3]['holdReason'])->not->toBe($trackingEn['challenges'][0]['holdReason'])
+        ->and($trackingEn['challenges'][3]['holdMessage'])->not->toBe($trackingEn['challenges'][0]['holdMessage']);
+
+    $trackingAr = ItemTracking::for($item, 'ar');
+    expect($trackingAr['challenges'][0]['holdReason'])->toBe('credentials')
+        ->and($trackingAr['challenges'][0]['holdTone'])->toBe('action')
+        ->and($trackingAr['challenges'][0]['holdMessage'])->toBe(OrderHoldReason::Credentials->message('ar'))
+        ->and($trackingAr['challenges'][0]['holdMessage'])->not->toBe($trackingEn['challenges'][0]['holdMessage']);
+});
+
+test('defect 5: terminal order or item hides challenge card actions', function (OrderStatus $orderStatus, OrderItemStatus $itemStatus): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner, $orderStatus);
+    $item = trackingItem($order, ServiceType::Sbc, $itemStatus);
+
+    $job = trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observation' => [
+            $challengeId => [
+                'sbcStatus' => 'WrongUserPass',
+            ],
+        ],
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId],
+        'idempotency_key' => 'placement-test-defect-5-'.fake()->unique()->word(),
+        'placed_at' => now(),
+    ]);
+
+    $tracking = ItemTracking::for($item, 'en');
+
+    expect($tracking['challenges'][0]['actions'])->toBe([]);
+})->with([
+    'order completed' => [OrderStatus::Completed, OrderItemStatus::InProgress],
+    'order cancelled' => [OrderStatus::Cancelled, OrderItemStatus::InProgress],
+    'order refunded' => [OrderStatus::Refunded, OrderItemStatus::InProgress],
+    'item completed' => [OrderStatus::InProgress, OrderItemStatus::Completed],
+    'item cancelled' => [OrderStatus::InProgress, OrderItemStatus::Cancelled],
+    'item refunded' => [OrderStatus::InProgress, OrderItemStatus::Refunded],
+]);
+
+test('defect 7: workStarted dynamic boolean matches ui.js predicate', function (array $observation, ?CarbonImmutable $completedAt, bool $expected): void {
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+
+    trackingJob($item, [
+        'observation' => $observation,
+        'completed_at' => $completedAt,
+    ]);
+
+    $tracking = ItemTracking::for($item, 'en');
+
+    expect($tracking['workStarted'])->toBe($expected);
+})->with([
+    'transfersinprogress status' => [['status' => 'transfersinprogress'], null, true],
+    'transfersinprogress with simplified error' => [['status' => 'transfersinprogress', 'simplifiedStatus' => 'error'], null, false],
+    'userPassVerified accountCheck' => [['accountCheck' => 'userPassVerified'], null, true],
+    'transfersInProgress economyState' => [['economyState' => 'transfersInProgress'], null, true],
+    'finished status' => [['status' => 'finished'], null, true],
+    'completed status' => [['status' => 'completed'], null, true],
+    'completed_at set' => [[], CarbonImmutable::now(), true],
+    'idle/queued without triggers' => [['status' => 'queued', 'accountCheck' => '', 'economyState' => 'ready'], null, false],
+    'empty observation' => [[], null, false],
+]);

@@ -7,8 +7,8 @@ namespace App\Enums;
  *
  * Not all of them wait on the customer, and the distinction decides the
  * canonical status above: eleven of these ask the customer to do something or
- * to message us, and six - EaServers, StoreStock, Connection, NoPlayer,
- * Maintenance and Paused - say we are handling it and ask nothing. A reason in
+ * to message us, and seven - EaServers, StoreStock, Connection, NoPlayer,
+ * Maintenance, Paused, and BelowMinimum - say we are handling it and ask nothing. A reason in
  * the second group must never move an item to WaitingForCustomer, because the
  * customer has nothing to wait on. The reason texts in lang/ar/orders.php are
  * where that split is visible.
@@ -40,6 +40,7 @@ enum OrderHoldReason: string
     case NoPlayer = 'no_player';
     case Maintenance = 'maintenance';
     case Paused = 'paused';
+    case BelowMinimum = 'below_minimum';
 
     /**
      * The customer-facing message for this reason, frozen at transition time.

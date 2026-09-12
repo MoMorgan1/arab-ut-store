@@ -15,6 +15,9 @@ namespace App\Enums;
 enum TrackingPresentation: string
 {
     case Processing = 'processing';
+    case CooldownTempban = 'cooldown_tempban';
+    case CooldownListing = 'cooldown_listing';
+    case CooldownDailyLimit = 'cooldown_daily_limit';
     case LoggingIn = 'logging_in';
     case Preparing = 'preparing';
     case Transferring = 'transferring';
@@ -23,6 +26,8 @@ enum TrackingPresentation: string
     case Completed = 'completed';
     case Stopped = 'stopped';
     case NeedsReview = 'needs_review';
+    case Cancelled = 'cancelled';
+    case Refunded = 'refunded';
     case NotReported = 'not_reported';
 
     public function headline(string $locale = 'ar'): string
