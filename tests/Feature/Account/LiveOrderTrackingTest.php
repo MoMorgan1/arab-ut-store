@@ -856,3 +856,36 @@ test('workStarted uses the exact finished check, so unfinished is not finished',
     'finished' => ['finished', true],
     'completed' => ['completed', true],
 ]);
+
+test('workStarted is false on a challenge job until it completes, because a challenge observation carries none of the four signals', function (): void {
+    $challengeId = '6f2c7cda-5555-6666-7777-888899990000';
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Sbc);
+
+    // A challenge observation is keyed by challenge id, so it has no top-level
+    // status, accountCheck, economyState or simplifiedStatus to read. The tracker's
+    // page-level predicate answers false on the same data; the per-card optimism is
+    // a separate mechanism the client owns.
+    $job = trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observation' => [$challengeId => ['sbcStatus' => 'solvingChallenge']],
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => [$challengeId],
+        'idempotency_key' => 'placement-workstarted-challenge',
+        'placed_at' => now(),
+    ]);
+
+    expect(ItemTracking::for($item, 'en')['workStarted'])->toBeFalse();
+
+    $job->update(['completed_at' => CarbonImmutable::now()]);
+
+    expect(ItemTracking::for($item->fresh(), 'en')['workStarted'])->toBeTrue();
+});

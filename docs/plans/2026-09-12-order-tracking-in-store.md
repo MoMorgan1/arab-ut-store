@@ -625,6 +625,29 @@ same cascade, and each was the last review at the time. The lesson is not that t
 good; it is that a hand-ported ordered cascade whose branches are not mutually exclusive cannot be
 verified by reading it. Every branch now has a test that pins its **order**, not just its condition.
 
+**C3a round three — a fifth review, and the defect was in the fix for the fourth, 2026-09-13.**
+The final reviewer was capped, so the owner's own fallback ran instead, briefed to attack its own
+earlier conclusions. It found the terminal disarm stopped one level short.
+
+- **The challenge cards kept asking.** The item-level fix emptied the cards' buttons but their hold
+  reason, message and tone were recomputed inside the loop, so a cancelled order still read "correct
+  your sign-in details" with nothing to press. The card's *state* stays, because that is what
+  happened; the ask goes.
+- **`workStarted` re-derived "finished" with `str_contains($status, 'finish')`**, which also matches
+  `unfinished`. This repository already carries a comment and a pinned fixture saying exactly that,
+  six lines from the constant written to avoid it. **A rule the codebase has already learned is worth
+  making callable, not worth restating:** `statusIsFinished()` is public for that reason.
+- **The completed subline had been flattened** to one line where the tracker names the customer's
+  console and tells them to wait thirty minutes for the app. Restored with a `:console` placeholder,
+  filled by the client from the platform the item already carries.
+- **The refunded subline claimed the wallet.** A refund can go back to the card, or be split across
+  both, so the payload cannot know. It now states the refund without naming a destination.
+
+**Open, needing the owner:** the canvas carries a chip strip transcribing the tracker's own challenge
+vocabulary — "فشل الدخول (401)", "فشل الاتصال بالبروكسي" — which the plumbing rule now forbids. The
+payload is already correct and never emits those; the strip predates the rule. It is either annotated
+as a record of the tracker's vocabulary or removed.
+
 **C4. A separate presenter for the bearer link** (Claude). The account payload is not fit to serve
 a capability URL: it carries payment breakdowns, review actions and purchase analytics
 (`ReadLiveOrder.php:95`, `:119`, `:181`), and the frontend fires a `purchase` event whenever
