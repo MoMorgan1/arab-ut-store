@@ -794,3 +794,48 @@ test('normalises challenge ids case-insensitively and strips SBC- prefix on both
     expect($translated->status)->toBe(OrderStatus::Completed)
         ->and($translated->supported)->toBeTrue();
 });
+
+test('two response keys naming one challenge fail closed instead of merging', function (array $bulk): void {
+    // A bare uuid and the same uuid with an SBC- prefix normalise to one id. Letting the
+    // later entry win meant a finished alias could erase an unfinished observation and
+    // complete the order, paying cashback on a challenge still being solved. Both
+    // response orders are pinned because the bug only showed in one of them.
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        ['1803b7a6-0000-0000-0000-00000064265f'],
+        $bulk,
+        OrderStatus::InProgress,
+    );
+
+    expect($translated->status)->toBe(OrderStatus::InProgress)
+        ->and($translated->supported)->toBeFalse()
+        ->and($translated->allowedActions)->toBe([])
+        ->and($translated->squadsDone)->toBeNull();
+})->with([
+    'finished last' => [[
+        '1803b7a6-0000-0000-0000-00000064265f' => ['sbcStatus' => 'solvingChallenge'],
+        'SBC-1803B7A6-0000-0000-0000-00000064265F' => ['sbcStatus' => 'finished'],
+    ]],
+    'finished first' => [[
+        'SBC-1803B7A6-0000-0000-0000-00000064265F' => ['sbcStatus' => 'finished'],
+        '1803b7a6-0000-0000-0000-00000064265f' => ['sbcStatus' => 'solvingChallenge'],
+    ]],
+]);
+
+test('a response key naming two challenges answers for neither', function (): void {
+    // The permissive parse accepts a separated list, so "uuid-a,uuid-b" would resolve to
+    // uuid-a and let one entry answer for a challenge it says nothing about.
+    $translator = new SupplierStateTranslator;
+
+    $translated = $translator->translateChallenge(
+        Supplier::Fft,
+        ['1803b7a6-0000-0000-0000-00000064265f'],
+        ['1803b7a6-0000-0000-0000-00000064265f,3a0825bf-0000-0000-0000-00000064265f' => ['sbcStatus' => 'finished']],
+        OrderStatus::InProgress,
+    );
+
+    expect($translated->status)->toBe(OrderStatus::InProgress)
+        ->and($translated->supported)->toBeFalse();
+});

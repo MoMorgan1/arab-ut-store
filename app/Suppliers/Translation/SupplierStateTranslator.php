@@ -520,16 +520,46 @@ final class SupplierStateTranslator
             }
         }
 
+        // Two response keys can normalise to one id - a bare uuid and the same uuid with
+        // an SBC- prefix or a different case. Letting the later one win meant a finished
+        // alias could erase an unfinished observation and complete the order, so a
+        // collision is treated as a response we cannot trust rather than a merge.
         $returned = [];
+        $collided = false;
+
         foreach ($bulk as $key => $entry) {
             if (! is_array($entry)) {
                 continue;
             }
 
-            $norm = $this->normaliseChallengeId((string) $key);
-            if ($norm !== null && in_array($norm, $normalizedRequested, true)) {
-                $returned[$norm] = $entry;
+            $norm = $this->singleChallengeId((string) $key);
+
+            if ($norm === null || ! in_array($norm, $normalizedRequested, true)) {
+                continue;
             }
+
+            if (array_key_exists($norm, $returned)) {
+                $collided = true;
+                break;
+            }
+
+            $returned[$norm] = $entry;
+        }
+
+        if ($collided) {
+            return new TranslatedState(
+                status: $current,
+                holdReason: null,
+                allowedActions: [],
+                supported: false,
+                observedState: null,
+                coinsDelivered: null,
+                coinsOrdered: null,
+                squadsDone: null,
+                squadsTotal: null,
+                solvesDone: null,
+                solvesTotal: null,
+            );
         }
 
         // 1. Nothing came back for any requested id. Fail closed: supported: false,
@@ -740,6 +770,24 @@ final class SupplierStateTranslator
         }
 
         return false;
+    }
+
+    /**
+     * The single challenge id a response key names, or null when it names none or several.
+     *
+     * A response key must stand for exactly one challenge. The permissive parse accepts a
+     * comma or space separated list, so "uuid-a,uuid-b" would otherwise resolve to uuid-a
+     * and let one entry answer for a challenge it says nothing about.
+     */
+    private function singleChallengeId(string $key): ?string
+    {
+        $tokens = ChallengeIds::parse([$key]);
+
+        if (count($tokens) !== 1) {
+            return null;
+        }
+
+        return $this->normaliseChallengeId($key);
     }
 
     private function normaliseChallengeId(string $id): ?string

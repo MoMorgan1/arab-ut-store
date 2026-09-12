@@ -119,9 +119,29 @@ Decided 2026-09-13, on the two mappings the tracker contradicts itself about:
   FFT accepts a credential correction whatever the status. The family is `LoginFailed`,
   `loginFailed`, `LoginFailed401`, `LoginFailed495`, `LoginError`, `loginLoop` and
   `LoginFailedDeviceBan`; `needEmailConfirm` is my extension on his reasoning, since correcting the
-  email is the only thing that resolves it. The order stays `InProgress` throughout, because it may
-  well be EA's side; the reason stays `EaServers`, which means C2's copy revision has to cover it —
-  the text currently says we will retry and tells the customer nothing about the two buttons under it.
+  email is the only thing that resolves it.
+
+  **Correction, same day:** I first wrote that the whole family stays `InProgress`. It does not, and
+  should not. Two of them are customer-action reasons and move the order to `WaitingForCustomer`:
+  `LoginFailedDeviceBan` on `AccountBanned`, because a device block is something the customer may
+  have to clear and the rewritten text asks them to check their details, and `needEmailConfirm` on
+  `Credentials`, because only the customer can confirm the email. The rest of the family stays
+  `InProgress` on `EaServers`, where it may well be EA's side. That reason's text says we will retry
+  and says nothing about the two buttons now under it, which C2 has to cover.
+
+  **A second correction, and it matters for D1.** I justified widening the tracker's edit boundary by
+  reading its own comment - `retrySBCAPI` "does not reliably gate on status upstream" - as proof that
+  FFT accepts a credential correction in any state. That is too strong: the comment establishes the
+  gate is the tracker's local product choice, not that the supplier is unconditionally permissive.
+  Worse for our purposes, the tracker's edit handler updates the customer record through
+  `createCustomerAPI` **keyed on the existing account identity**, which is exactly why its modal
+  locks the email and sends a customer with a wrong email to WhatsApp.
+
+  So the owner's decision that the email is editable stands as a product decision, and offering the
+  button is safe, but **whether changing the email actually reaches the supplier is unverified.**
+  D1 has to establish that before the field ships - on a real test order, not by reading. If the
+  account identity turns out to be immutable at the supplier, a changed email means re-placing the
+  order rather than correcting it, and that is a different feature.
 - `sessionExpired` keeps retry alone. It is not a login-data problem: the tracker's help text says
   the connection renews itself, which is why it moved to `EaServers` rather than `ActiveSession`.
 
@@ -494,6 +514,37 @@ to use:
 One item can carry several challenge ids, so the challenge payload is a **list** of per-challenge
 objects rather than one flattened progress object - the tracker renders one card per challenge id.
 Because that shape follows from the canvas, both defects land with C3 rather than ahead of it.
+
+**What the payload still has to carry.** Established by the canvas and by two reviews of the
+challenge path, 2026-09-13. Every item here is something an approved artboard shows and
+`ItemTracking` cannot produce today:
+
+- **The action box's tone**, as its own field. The skin is decided by the supplier code that arrived,
+  not by the hold reason it maps to - nine `economyState` codes are amber and everything else that
+  produces a message is red - so one reason wears either skin depending on how it was reached. It has
+  to be decided where the code is still known.
+- **A presentation state for the headline.** `status`, `phase` and `holdReason` are not enough: the
+  tracker's headline comes from an ordered cascade whose branches are not mutually exclusive, and a
+  client re-deriving it would be re-implementing supplier vocabulary on the wrong side of the
+  boundary. Send a discriminator.
+- **A failure that carries no hold reason is invisible.** `tooExpensive` and its siblings resolve with
+  `holdReason: null` and a retry action, so the payload reads identically to healthy work. The UI can
+  only tell them apart by inspecting the action list, which is not what an action list is for.
+- **Coverage of the last answer.** A partial bulk response is applied, and the page cannot currently
+  tell a fully observed job from one where two of three challenges answered. The freshness line says
+  when we last heard, not how much of the job it covered.
+- **The challenge list**, as a list of per-challenge objects with a stable client identity and a
+  server-resolved action target, because one item can carry several challenge ids and every action
+  has to name which one.
+- **The account coin balance**, with the unknown case and the `-1` "being prepared" case distinct,
+  and the inputs the ETA needs.
+- **The completion time**, which is not `observedAt`.
+- **The service kind**, explicitly. Neither the item name nor a nullable phase is a reliable
+  discriminator, and a Challenge item also has a coins phase.
+- **The optimistic window's state**, so the client can hold a stale error until either the grace
+  deadline passes or the state actually moves - the tracker's condition, not a ten-second timer.
+
+None of these may be filled by exposing a raw supplier observation to the client.
 
 **C3. Canvas, then the port** (canvas: Claude; port: DeepSeek). A `/design` canvas leading with
 390px: the ring, the progress bar, the three stat boxes, the action box, the challenge cards,
