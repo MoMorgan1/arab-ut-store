@@ -45,7 +45,9 @@ Not "each slice ships independently" — that claim was wrong. The real dependen
 - Real end-to-end placement needs B4 **and** F2/F3; nothing reaches customers before that path
   passes an end-to-end acceptance run.
 - F1 needs B3's `open-jobs` and `observations` endpoints before it can do anything, and C shows
-  nothing real until F1 is feeding it. B3 → F1 → C is the critical path.
+  nothing real until F1 is feeding it. G needs C to point its links at, and retiring
+  `track.arab-ut.com` needs G. So the critical path is **B3 → F1 → C → G → retirement**, and
+  everything in D and E hangs off it rather than blocking it.
 
 ---
 
@@ -80,10 +82,17 @@ one is a security regression the first would otherwise introduce.
 Tests: revoked device, expired device, wrong-user device, no device, Google login path, WhatsApp
 login path, and a stale marker.
 
-**A2. Close the live exposure.** In the tracker repo: disable `mode=update`, `mode=resume`,
-`mode=sbc-retry`, `mode=sbc-edit` and `admin-links.php`. Mohamed rotates the FFT and UTT keys and
-distributes them to **both** the store's `shared/.env` and n8n — n8n still places orders and runs
-the pricing and catalog workflows against these suppliers.
+**A2. Rotate the supplier keys.** Mohamed rotates FFT and UTT and distributes them to **both** the
+store's `shared/.env` and n8n — n8n still places orders and runs the pricing and catalog workflows
+against these suppliers.
+
+**The tracker repo is not touched.** Owner instruction, 2026-09-12: leave `track.arab-ut.com`
+alone and retire it instead, soon. So the four write endpoints and the opt-in auth on
+`admin-links.php` stay as they are, and the exposure documented in the design doc stays open for
+as long as that site is up. The mitigation is the retirement date, not a patch — which is why
+slice G sits on the critical path rather than in "later". If Mohamed wants it closed sooner, the
+mechanism already exists on that host: run `tools/set-admin-password.php` from the CLI and set
+`adminAuth.requireWhenUnset` to `true` in `config.php:111`.
 
 **A3. Version the workflows.** Commit both n8n exports under `automation/n8n/fulfillment-v1/` and
 `automation/n8n/order-status-v1/`, sanitised of credentials, with a README each matching
@@ -223,6 +232,39 @@ so this is a replacement, not a port. Whapi's OTP sender is a bare HTTP call
 (`WhapiVerificationSender.php:29`), not delivery machinery; that part is new.
 
 ---
+
+## Slice G — manual orders, and retiring the tracker (Claude)
+
+This is what makes `track.arab-ut.com` deletable, which is why it is not "later".
+
+**G1. One admin screen, not two.** Mohamed asked for both a manual order and a bare
+supplier-order link. They collapse into one feature, because `fulfillment_jobs.order_item_id` is
+NOT NULL and bound to an order item (`2026_08_08_000004:41`): a link pointing at a supplier order
+with no store order has nowhere to live, and making that column nullable would produce order-less
+jobs floating free — the exact split that let the tracker drift away from the store.
+
+So: **create a manual order, with the money optional.**
+
+- Bank transfer → amount plus a manual payment record.
+- Gift → no amount, no payment.
+- Already placed at the supplier by hand → paste the supplier reference instead of dispatching to
+  n8n, and the job is bound at creation.
+
+It takes an `AUT-` number, runs the same fulfillment path, and gets the same tracking page and the
+same signed link. Needs: a `manual` value on `orders.channel` (today only `store` and
+`salla_import` exist), a payment provider for it (today only `wallet` and `paylink`), an admin
+permission of its own, and staff audit on every creation. Reuse `PlaceOrder` rather than writing a
+second checkout — that constraint is in the Admin skill's non-negotiables and it applies here.
+
+Money makes this consequential, so the form's behaviour gets owner approval before it is built:
+which services it may create, whether it can create a customer or only pick an existing one, and
+whether a manual order earns cashback and loyalty spend (it should not, by the same reasoning that
+excludes `salla_import`).
+
+**G2. Retire the tracker.** Once G1 and C are live and verified: confirm no unresolved supplier
+job is outstanding, redirect `track.arab-ut.com` at the store, update the assistant prompts
+(`support-v6..v9` still send customers there) and the knowledge file that points at a nonexistent
+`/orders` path, then take the site down. That closes the `admin-links.php` exposure by removing it.
 
 ## Slice E — operations (later)
 

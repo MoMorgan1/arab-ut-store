@@ -282,8 +282,33 @@ may do to their EA account is not enough.
 - Rewriting `Fulfillment v14`. It is adapted, and only where it spoke to Salla.
 - Adding any `OrderStatus` value.
 - Changing `OrderHoldReason` membership (the copy changes; the cases do not).
-- Running the old tracker in parallel. Its write endpoints and `admin-links.php` are closed
-  before this work lands, independently of it.
+- Editing the tracker repo. Owner instruction, 2026-09-12: leave it alone and retire it soon
+  instead. The consequence is that the `admin-links.php` exposure below stays open until the site
+  comes down, which is why the manual-order work that makes retirement possible is on the critical
+  path and not deferred.
+
+## Manual orders, and why they are one feature and not two
+
+Mohamed needs to hand a customer a tracking link when payment happened outside checkout — a bank
+transfer, a gift, "any circumstance" — and today `admin-links.php` is the only way to do it.
+
+That capability moves into the store's Admin, where it inherits MFA, a permission and staff audit
+instead of a page whose authentication is opt-in. And it arrives as **one screen, with the money
+optional**, not as a manual-order feature plus a separate link minter. The reason is structural:
+`fulfillment_jobs.order_item_id` is NOT NULL and bound to an order item, so a link pointing at a
+supplier order with no store order has nowhere to live. Making that column nullable to allow it
+would create jobs belonging to nothing — which is exactly the shape that let the tracker drift out
+of the store's world in the first place.
+
+So a bank transfer is an amount plus a manual payment record, a gift is neither, and an order
+Mohamed placed at a supplier by hand is one where he pastes the reference instead of dispatching
+to n8n. All three are the same order, with the same `AUT-` number, the same fulfillment path, the
+same tracking page and the same signed link.
+
+Because it touches money, the form's rules need owner approval before it is built: which services
+it may create, whether it can create a customer or only pick one, and whether a manual order earns
+cashback and loyalty spend. The `salla_import` channel is already excluded from both, and the same
+reasoning applies here.
 
 ## Security items that are not optional
 
@@ -294,9 +319,13 @@ These are live today and are not gated on any decision above.
   (`automation/n8n/sbc-catalog-v1/README.md`). The new keys go to **every** authorised consumer,
   not only the store: n8n still places orders and still runs the coins-pricing and SBC-catalog
   workflows against these suppliers. Rotating into the store alone would break the placement path
-  this design depends on. Sanitise both exports before committing them.
-- Close the tracker's write endpoints (`mode=update`, `mode=resume`, `mode=sbc-retry`,
-  `mode=sbc-edit`) and `admin-links.php`, which serves HTTP 200 unauthenticated when no
-  credential file exists and is the issuer of the tokens those endpoints trust.
+  this design depends on.
+- The tracker's write endpoints (`mode=update`, `mode=resume`, `mode=sbc-retry`, `mode=sbc-edit`)
+  and `admin-links.php` are the open exposure: that page serves HTTP 200 unauthenticated whenever
+  no credential file exists, and it issues the tokens those endpoints trust. **By owner
+  instruction the tracker is not edited**, so this is closed by retiring the site rather than by
+  patching it, and the window stays open until then. The mechanism to close it sooner already
+  exists on that host if Mohamed chooses to: run `tools/set-admin-password.php` from the CLI and
+  set `adminAuth.requireWhenUnset` to `true` (`config.php:111`).
 - Neither n8n workflow is under version control. Both exports are committed under
   `automation/n8n/` before either is modified.
