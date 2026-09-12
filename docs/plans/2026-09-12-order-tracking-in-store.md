@@ -205,8 +205,34 @@ assertions that will fail are `tests/Feature/Account/AccountOrdersTest.php:309` 
 parity tests check enum/label coverage, not folding. Revise the cancellation wording at
 `lang/{ar,en}/orders.php:8`. Keep raw status driving financial logic. Then the hold-reason work:
 separate reason text from contextual action copy, and change only the reasons that actually tell
-the customer to message us — several already describe automatic recovery and must not be given a
-button. Gulf-leaning simple Arabic, no Egyptian slang.
+the customer to message us - several already describe automatic recovery and must not be given a
+button.
+
+**The disagreements are already enumerated, so this decision arrives with evidence rather than as
+an abstract question.** Produced by the B2 work, 2026-09-12, comparing each reason's text in
+`lang/ar/orders.php:19-36` against the actions the translation layer now offers for the supplier
+codes that resolve to it:
+
+*Our text promises automatic recovery, but a Resume button appears next to it:*
+`ea_servers` (via `loginFailed`), `connection` (via `FailedProxyConnectionError`,
+`FailProxyUnavailable`), `no_player` (via `noSuitableSender`, `noPlayer`), and `paused` (via
+`dailyReceiverLimit` and the stopped-status fallback, though not via `tempbanCooldown`,
+`listingTempban` or `deactivated`, which offer nothing).
+
+The tracker's own texts for these ask the customer to press resume - "جرّب تشغيل الطلب مرة ثانية
+بعد قليل" - so the button is not an accident. Either our text stops promising automatic recovery,
+or the button goes. Mohamed decides which.
+
+*Our text asks for something the offered buttons do not do:*
+`credentials` asks the customer to correct the order form, but the three 2FA codes resolving to it
+offer only Resume; `platform` and `account_banned` both say "راسلنا" while buttons appear;
+`market_locked` asks the customer to play matches or supply another account, which neither button
+does; `no_club` matches on Resume but carries an extra Edit.
+
+*Text and actions already agree:* `backup_codes`, `insufficient_coins`, `active_session`,
+`transfer_list_full`, `captcha`, `unassigned`, `store_stock`, `maintenance`.
+
+Gulf-leaning simple Arabic, no Egyptian slang.
 
 **C3. Canvas, then the port** (canvas: Claude; port: DeepSeek). A `/design` canvas leading with
 390px: the ring, the progress bar, the three stat boxes, the action box, the challenge cards,
