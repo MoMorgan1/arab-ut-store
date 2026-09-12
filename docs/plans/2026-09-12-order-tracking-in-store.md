@@ -374,6 +374,15 @@ while the window is open.
 
 Port the condition, not the duration.
 
+**Progress is capped at 100%, and the raw counters are not.** Owner decision, 2026-09-12: both
+suppliers over-deliver slightly - 3,000,150 coins against 3,000,000 ordered, 502K against 500K -
+and 150 coins on three million is noise rather than information. The bar stops at 100%. The
+tracker already does exactly this (`Math.min((delivered / total) * 100, 100)`, `ui.js:530`), so
+this is agreement rather than a new rule.
+
+What we store stays whatever the supplier said. Clamping belongs to the display; rewriting the
+observation to fit the bar would be falsifying the record to protect a progress bar.
+
 **C3. Canvas, then the port** (canvas: Claude; port: DeepSeek). A `/design` canvas leading with
 390px: the ring, the progress bar, the three stat boxes, the action box, the challenge cards,
 drawn in the store's tokens. Mohamed approves or edits on the canvas; his edits are the design.
