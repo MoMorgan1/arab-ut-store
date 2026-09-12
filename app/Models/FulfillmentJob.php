@@ -7,6 +7,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderHoldReason;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -18,6 +19,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property array<string, mixed>|null $observation
  * @property array<int, mixed>|null $allowed_actions
  * @property bool $observation_supported
+ * @property string|null $observed_state
+ * @property string|null $lease_token
+ * @property CarbonImmutable|null $observed_at
+ * @property CarbonImmutable|null $last_viewed_at
+ * @property CarbonImmutable|null $leased_until
+ * @property CarbonImmutable|null $next_poll_at
+ * @property CarbonImmutable|null $completed_at
+ * @property int|null $coins_delivered
+ * @property int|null $coins_ordered
+ * @property int|null $challenges_solved
+ * @property int|null $challenges_requested
+ * @property int $poll_failure_count
  */
 class FulfillmentJob extends DomainModel
 {
