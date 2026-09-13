@@ -47,6 +47,7 @@ use App\ValueObjects\Cart\CartItemPrice;
 use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Cart\CartRepricing;
 use App\ValueObjects\Cart\ManualServiceCredentials;
+use App\ValueObjects\EaAccountCredentials;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -607,18 +608,16 @@ final readonly class PlaceOrder
 
         if (! $secret instanceof CartItemSecret
             || $secret->deleted_at !== null
-            || ! is_array($payload)
-            || ! isset($payload['ea_email'], $payload['ea_password'], $payload['backup_codes'])
-            || ! is_string($payload['ea_email'])
-            || filter_var($payload['ea_email'], FILTER_VALIDATE_EMAIL) === false
-            || ! is_string($payload['ea_password'])
-            || $payload['ea_password'] === ''
-            || ! is_array($payload['backup_codes'])
-            || count($payload['backup_codes']) !== 3
-            || count(array_unique($payload['backup_codes'])) !== 3
-            || collect($payload['backup_codes'])->contains(fn (mixed $code): bool => ! is_string($code)
-                || preg_match('/\A[0-9]{8}\z/D', $code) !== 1)) {
+            || ! is_array($payload)) {
             throw new CheckoutUnavailable('EA account details are required.');
+        }
+
+        // One definition of valid EA details, shared with the customer's
+        // correction action: checkout and correction cannot drift apart.
+        try {
+            EaAccountCredentials::fromValidated($payload);
+        } catch (DomainException $exception) {
+            throw new CheckoutUnavailable('EA account details are required.', previous: $exception);
         }
 
         return $secret;

@@ -74,6 +74,13 @@ final class SupplierStateTranslator
         OrderHoldReason::Captcha,
         OrderHoldReason::Unassigned,
         OrderHoldReason::AccountBanned,
+        // All three were Credentials until 2026-09-13 and inherited its place
+        // here; a reason in neither set keeps the order InProgress, which would
+        // have left an order waiting on the customer describing itself as
+        // moving.
+        OrderHoldReason::TwoFactorOff,
+        OrderHoldReason::EmailConfirm,
+        OrderHoldReason::WebAppLocked,
     ];
 
     /**
@@ -93,15 +100,15 @@ final class SupplierStateTranslator
         'noClub' => OrderHoldReason::NoClub,
         'tlFull' => OrderHoldReason::TransferListFull,
         'captcha' => OrderHoldReason::Captcha,
-        'wrongPersona' => OrderHoldReason::Credentials,
+        'wrongPersona' => OrderHoldReason::Platform,
         'console' => OrderHoldReason::ActiveSession,
         'consoleLoggedIn' => OrderHoldReason::ActiveSession,
         'unassignedItemsPresent' => OrderHoldReason::Unassigned,
         'LoginFailedDeviceBan' => OrderHoldReason::AccountBanned,
         'insufficientFunds' => OrderHoldReason::StoreStock, // OUR float at the supplier, not the customer's coins
-        '2FADisabled' => OrderHoldReason::Credentials,
-        'no2fa' => OrderHoldReason::Credentials,
-        'No2FA' => OrderHoldReason::Credentials,
+        '2FADisabled' => OrderHoldReason::TwoFactorOff,
+        'no2fa' => OrderHoldReason::TwoFactorOff,
+        'No2FA' => OrderHoldReason::TwoFactorOff,
     ];
 
     /**
@@ -127,7 +134,7 @@ final class SupplierStateTranslator
         'FailedSessionExpiredCustomerLoggedIn?' => OrderHoldReason::ActiveSession,
         'FailedTLfullReceiver' => OrderHoldReason::TransferListFull,
         'insufficientFunds' => OrderHoldReason::StoreStock, // OUR float at the supplier, not the customer's coins
-        'FailWebAppNotYetUnlocked' => OrderHoldReason::Credentials,
+        'FailWebAppNotYetUnlocked' => OrderHoldReason::WebAppLocked,
         'tempbanCooldown' => OrderHoldReason::Paused,
         'listingTempban' => OrderHoldReason::Paused, // system-side ban, nothing for the customer to do
         'dailyReceiverLimit' => OrderHoldReason::Paused,
@@ -371,16 +378,16 @@ final class SupplierStateTranslator
         'WrongUserPass' => OrderHoldReason::Credentials,
         'WrongBA' => OrderHoldReason::BackupCodes,
         'sessionExpired' => OrderHoldReason::EaServers,
-        'needEmailConfirm' => OrderHoldReason::Credentials,
+        'needEmailConfirm' => OrderHoldReason::EmailConfirm,
         'LoginFailed495' => OrderHoldReason::EaServers,
         'LoginFailed401' => OrderHoldReason::EaServers,
         'LoginFailedDeviceBan' => OrderHoldReason::AccountBanned,
         'LoginError' => OrderHoldReason::EaServers,
         'LoginFailed' => OrderHoldReason::EaServers,
         'loginFailed' => OrderHoldReason::EaServers,
-        '2FADisabled' => OrderHoldReason::Credentials,
-        'no2fa' => OrderHoldReason::Credentials,
-        'No2FA' => OrderHoldReason::Credentials,
+        '2FADisabled' => OrderHoldReason::TwoFactorOff,
+        'no2fa' => OrderHoldReason::TwoFactorOff,
+        'No2FA' => OrderHoldReason::TwoFactorOff,
         'loginLoop' => OrderHoldReason::EaServers,
 
         // Proxy / connection errors

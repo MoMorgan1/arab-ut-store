@@ -1209,3 +1209,133 @@ a.track-challenge__name:hover {
     font-size: 0.85rem;
     line-height: 1.7;
 }
+
+/* ── The "update your details" form ────────────────────────────────────────
+   Transcribed from the tracker's `.premium-edit-modal` block
+   (assets/css/styles.css:4419-4520), which is its own dark variant, so the
+   metrics carry over unchanged: 48px tall fields, 10px radius, a 1px gold rim
+   at 16%, and 1rem type - already above the 16px floor that stops iOS zooming
+   a field on focus. It reuses `.track-modal` for the shell.
+
+   Two fields the tracker offers are absent by the owner's decision, recorded
+   on the canvas: the platform selector and the four operational fields behind
+   it (persona, price limit, sort mode, post-update action). And the email is
+   editable here, where the tracker locks it and sends the customer to
+   WhatsApp. */
+
+/* `.edit-form-group` */
+.track-edit__group {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+/* `.edit-form-label` */
+.track-edit__label {
+    color: var(--arabut-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+/* `.edit-form-input` */
+.track-edit__input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1px solid rgb(249 223 104 / 16%);
+    border-radius: 10px;
+    background: rgb(255 255 255 / 6%);
+    color: var(--arabut-ink);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        background-color 160ms ease;
+}
+
+.track-edit__input:focus {
+    outline: 0;
+    border-color: var(--arabut-gold-bright);
+    box-shadow: 0 0 0 4px rgb(249 223 104 / 16%);
+}
+
+/* `.edit-form-input.error` */
+.track-edit__input[aria-invalid='true'] {
+    border-color: var(--track-danger);
+    background: rgb(239 68 68 / 12%);
+    box-shadow: 0 0 0 4px rgb(239 68 68 / 12%);
+}
+
+/* `.edit-backup-grid` — always three across, always LTR: a backup code is
+   digits, and digits do not reverse. */
+.track-edit__codes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    direction: ltr;
+}
+
+.track-edit__codes .track-edit__input {
+    padding: 0 6px;
+    text-align: center;
+}
+
+/* `.edit-form-note` */
+.track-edit__note {
+    color: var(--arabut-muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+/* `.edit-error-summary` */
+.track-edit__summary {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border: 1px solid rgb(239 68 68 / 35%);
+    border-radius: 10px;
+    background: rgb(239 68 68 / 12%);
+    color: var(--track-danger-soft);
+    font-size: 0.94rem;
+    font-weight: 800;
+    line-height: 1.7;
+}
+
+/* `.edit-form-error` */
+.track-edit__error {
+    color: var(--track-danger-soft);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+/* `.edit-form-actions` */
+.track-edit__actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.track-edit__actions button {
+    flex: 1;
+    min-height: 48px;
+}
+
+/* The form's own cancel: the card's two buttons are gold and green because each
+   one does something; a way out of a dialog is neither. */
+.track-edit__cancel {
+    background: rgb(255 255 255 / 8%);
+    color: var(--arabut-ink);
+}
+
+.track-edit__cancel:hover {
+    background: rgb(255 255 255 / 12%);
+}
+
+/* The dialog's buttons sit side by side and carry the store's 48px minimum,
+   where the card's stack full width at 13px. */
+.track-edit__actions .track-btn {
+    margin-top: 0;
+    font-size: 0.95rem;
+}

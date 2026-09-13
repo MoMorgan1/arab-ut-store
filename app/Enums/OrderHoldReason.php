@@ -42,6 +42,12 @@ enum OrderHoldReason: string
     case Paused = 'paused';
     case BelowMinimum = 'below_minimum';
 
+    // Owner-visible vocabulary added 2026-09-13, because `Credentials` was
+    // answering for five different problems and its sentence was true for one.
+    case TwoFactorOff = 'two_factor_off';
+    case EmailConfirm = 'email_confirm';
+    case WebAppLocked = 'web_app_locked';
+
     /**
      * The customer-facing message for this reason, frozen at transition time.
      */

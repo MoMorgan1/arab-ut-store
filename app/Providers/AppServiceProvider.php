@@ -91,6 +91,13 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(30)->by('account-tracking-refresh-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
             Limit::perMinute(10)->by('account-tracking-refresh-order:'.(string) $request->route('order')),
         ]);
+        // Tighter than the refresh limiter: an action is a supplier request on the
+        // long (5s/12s) timeout profile, so a single order may fire at most three a
+        // minute and one customer five a minute across all of their orders.
+        RateLimiter::for('account-tracking-action', fn (Request $request): array => [
+            Limit::perMinute(5)->by('account-tracking-action-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
+            Limit::perMinute(3)->by('account-tracking-action-order:'.(string) $request->route('order')),
+        ]);
 
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());

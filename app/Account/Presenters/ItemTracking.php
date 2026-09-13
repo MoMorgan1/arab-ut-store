@@ -82,6 +82,7 @@ final class ItemTracking
      *         requested: int,
      *     }|null,
      *     workStarted: bool,
+     *     credentialsPending: bool,
      * }|null
      */
     public static function for(OrderItem $item, string $locale): ?array
@@ -131,18 +132,7 @@ final class ItemTracking
         // safety net, read lazily because this method is a public entry point and cannot
         // assume a caller loaded the relation; both real callers set it first, so the query
         // is a fallback rather than a per-item cost on the order page.
-        $order = $item->relationLoaded('order') ? $item->order : $item->order()->first();
-
-        $terminalPresentation = match (true) {
-            $item->status === OrderItemStatus::Cancelled => TrackingPresentation::Cancelled,
-            $item->status === OrderItemStatus::Refunded => TrackingPresentation::Refunded,
-            $item->status === OrderItemStatus::Completed => TrackingPresentation::Completed,
-            ! $order instanceof Order => null,
-            $order->status === OrderStatus::Cancelled => TrackingPresentation::Cancelled,
-            $order->status === OrderStatus::Refunded => TrackingPresentation::Refunded,
-            $order->status === OrderStatus::Completed => TrackingPresentation::Completed,
-            default => null,
-        };
+        $terminalPresentation = self::terminalPresentation($item);
 
         $orderIsTerminal = $terminalPresentation !== null;
 
@@ -351,6 +341,12 @@ final class ItemTracking
             || in_array($econ, ['transfersInProgress', 'transferCycleComplete', 'customerHasPlayer', 'customerListedPlayer'], true)
             || ($rawStatus === 'transfersinprogress' && $simplified !== 'error');
 
+        // A credential correction is "pending" while it has been sent to the supplier but no
+        // later observation has answered it. The supplier's immediate ack says "received", and
+        // only a fresh poll reveals whether the new details actually work.
+        $credentialsPending = $job->credentials_sent_at !== null
+            && ($job->observed_at === null || $job->credentials_sent_at->isAfter($job->observed_at));
+
         return [
             'kind' => $kind,
             'phase' => $job->delivery_phase?->value,
@@ -376,7 +372,30 @@ final class ItemTracking
             'challenges' => $challenges,
             'coverage' => $coverage,
             'workStarted' => $workStarted,
+            'credentialsPending' => $credentialsPending,
         ];
+    }
+
+    /**
+     * The terminal presentation for an item, or null when the item and its order are
+     * still open. Terminal is decided here and nowhere else, so callers that need the
+     * same answer (for example the self-service actions) read it from this method rather
+     * than re-deriving a second rule.
+     */
+    public static function terminalPresentation(OrderItem $item): ?TrackingPresentation
+    {
+        $order = $item->relationLoaded('order') ? $item->order : $item->order()->first();
+
+        return match (true) {
+            $item->status === OrderItemStatus::Cancelled => TrackingPresentation::Cancelled,
+            $item->status === OrderItemStatus::Refunded => TrackingPresentation::Refunded,
+            $item->status === OrderItemStatus::Completed => TrackingPresentation::Completed,
+            ! $order instanceof Order => null,
+            $order->status === OrderStatus::Cancelled => TrackingPresentation::Cancelled,
+            $order->status === OrderStatus::Refunded => TrackingPresentation::Refunded,
+            $order->status === OrderStatus::Completed => TrackingPresentation::Completed,
+            default => null,
+        };
     }
 
     /**
@@ -427,6 +446,7 @@ final class ItemTracking
      *         requested: int,
      *     }|null,
      *     workStarted: bool,
+     *     credentialsPending: bool,
      * }|null
      */
     public function __invoke(OrderItem $item, string $locale): ?array

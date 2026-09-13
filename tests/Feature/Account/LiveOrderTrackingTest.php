@@ -533,6 +533,7 @@ test('ItemTracking presenter direct invocation returns expected shape', function
         'challenges' => null,
         'coverage' => null,
         'workStarted' => false,
+        'credentialsPending' => false,
     ]);
 });
 

@@ -538,7 +538,7 @@ test('a status in neither the retryable set nor the edit pair offers no actions'
         ->and($translated->status)->toBe($expectedStatus)
         ->and($translated->supported)->toBeTrue();
 })->with([
-    '2FADisabled' => ['2FADisabled', OrderHoldReason::Credentials, OrderStatus::WaitingForCustomer],
+    '2FADisabled' => ['2FADisabled', OrderHoldReason::TwoFactorOff, OrderStatus::WaitingForCustomer],
     'failedNoClub' => ['failedNoClub', OrderHoldReason::NoClub, OrderStatus::WaitingForCustomer],
     'TMLocked' => ['TMLocked', OrderHoldReason::MarketLocked, OrderStatus::WaitingForCustomer],
     'dailyReceiverLimit' => ['dailyReceiverLimit', OrderHoldReason::Paused, OrderStatus::InProgress],
@@ -648,16 +648,16 @@ test('every one of the fifty-one sbcStatus values maps to its canonical status, 
     'WrongUserPass' => ['WrongUserPass', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'WrongBA' => ['WrongBA', OrderStatus::WaitingForCustomer, OrderHoldReason::BackupCodes, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'sessionExpired' => ['sessionExpired', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::RetryChallenge]],
-    'needEmailConfirm' => ['needEmailConfirm', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
+    'needEmailConfirm' => ['needEmailConfirm', OrderStatus::WaitingForCustomer, OrderHoldReason::EmailConfirm, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'LoginFailed495' => ['LoginFailed495', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'LoginFailed401' => ['LoginFailed401', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'LoginFailedDeviceBan' => ['LoginFailedDeviceBan', OrderStatus::WaitingForCustomer, OrderHoldReason::AccountBanned, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'LoginError' => ['LoginError', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'LoginFailed' => ['LoginFailed', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
     'loginFailed' => ['loginFailed', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
-    '2FADisabled' => ['2FADisabled', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
-    'no2fa' => ['no2fa', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
-    'No2FA' => ['No2FA', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
+    '2FADisabled' => ['2FADisabled', OrderStatus::WaitingForCustomer, OrderHoldReason::TwoFactorOff, []],
+    'no2fa' => ['no2fa', OrderStatus::WaitingForCustomer, OrderHoldReason::TwoFactorOff, []],
+    'No2FA' => ['No2FA', OrderStatus::WaitingForCustomer, OrderHoldReason::TwoFactorOff, []],
     'loginLoop' => ['loginLoop', OrderStatus::InProgress, OrderHoldReason::EaServers, [SupplierAction::EditCredentials, SupplierAction::RetryChallenge]],
 
     // Proxy / connection errors (3)

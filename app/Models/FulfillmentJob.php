@@ -30,6 +30,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $leased_until
  * @property CarbonImmutable|null $next_poll_at
  * @property CarbonImmutable|null $completed_at
+ * @property int|null $credential_version_sent
+ * @property CarbonImmutable|null $credentials_sent_at
  * @property int|null $coins_delivered
  * @property int|null $coins_ordered
  * @property int|null $squads_done
@@ -69,6 +71,8 @@ class FulfillmentJob extends DomainModel
             'deadline_at' => 'immutable_datetime',
             'claimed_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
+            'credential_version_sent' => 'integer',
+            'credentials_sent_at' => 'immutable_datetime',
         ];
     }
 

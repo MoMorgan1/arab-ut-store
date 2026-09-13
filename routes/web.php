@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Account\ItemTrackingActionController;
 use App\Http\Controllers\Account\ItemTrackingRefreshController;
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
@@ -72,6 +73,18 @@ Route::post('/orders/{order}/items/{item}/tracking', ItemTrackingRefreshControll
     ->where('order', OrderHandle::routePattern())
     ->middleware(['auth', NoStore::class, 'throttle:account-tracking-refresh'])
     ->name('store.orders.items.tracking');
+Route::post('/orders/{order}/items/{item}/actions/edit-credentials', [ItemTrackingActionController::class, 'editCredentials'])
+    ->where('order', OrderHandle::routePattern())
+    ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
+    ->name('store.orders.items.actions.edit-credentials');
+Route::post('/orders/{order}/items/{item}/actions/resume', [ItemTrackingActionController::class, 'resume'])
+    ->where('order', OrderHandle::routePattern())
+    ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
+    ->name('store.orders.items.actions.resume');
+Route::post('/orders/{order}/items/{item}/actions/retry-challenge', [ItemTrackingActionController::class, 'retryChallenge'])
+    ->where('order', OrderHandle::routePattern())
+    ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
+    ->name('store.orders.items.actions.retry-challenge');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.show');
@@ -198,6 +211,18 @@ Route::prefix('{locale}')
             ->where('order', OrderHandle::routePattern())
             ->middleware(['auth', NoStore::class, 'throttle:account-tracking-refresh'])
             ->name('localized.store.orders.items.tracking');
+        Route::post('/orders/{order}/items/{item}/actions/edit-credentials', [ItemTrackingActionController::class, 'editCredentials'])
+            ->where('order', OrderHandle::routePattern())
+            ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
+            ->name('localized.store.orders.items.actions.edit-credentials');
+        Route::post('/orders/{order}/items/{item}/actions/resume', [ItemTrackingActionController::class, 'resume'])
+            ->where('order', OrderHandle::routePattern())
+            ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
+            ->name('localized.store.orders.items.actions.resume');
+        Route::post('/orders/{order}/items/{item}/actions/retry-challenge', [ItemTrackingActionController::class, 'retryChallenge'])
+            ->where('order', OrderHandle::routePattern())
+            ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
+            ->name('localized.store.orders.items.actions.retry-challenge');
         Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.credentials.show');
