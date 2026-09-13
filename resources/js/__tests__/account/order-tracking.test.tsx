@@ -192,3 +192,51 @@ describe('a challenge card', () => {
         ).toBeNull();
     });
 });
+
+describe('a challenge card reads its colour from the status', () => {
+    it.each([
+        ['success', 'track-challenge__chip--green'],
+        ['danger', 'track-challenge__chip--red'],
+        ['waiting', 'track-challenge__chip--amber'],
+        ['working', 'track-challenge__chip--gold'],
+    ] as const)('wears %s as %s', (tone, expected) => {
+        const { container } = mount(
+            tracking({
+                kind: 'challenge',
+                phase: 'challenge',
+                challenges: [challenge({ tone })],
+            }),
+        );
+
+        expect(container.querySelector(`.${expected}`)).not.toBeNull();
+    });
+
+    it('shows a failure as stopped even when it carries no message to explain it', () => {
+        // tooExpensive, clickFailed and failed carry no hold reason, so the card
+        // used to fall through to gold and a spinning loader: "could not finish"
+        // beside something that said it was still working.
+        const { container } = mount(
+            tracking({
+                kind: 'challenge',
+                phase: 'challenge',
+                challenges: [
+                    challenge({
+                        state: 'failed',
+                        stateLabel: 'Could not finish',
+                        tone: 'danger',
+                        holdReason: null,
+                        holdMessage: null,
+                        holdTone: null,
+                    }),
+                ],
+            }),
+        );
+
+        expect(
+            container.querySelector('.track-challenge__chip--red'),
+        ).not.toBeNull();
+        expect(
+            container.querySelector('.track-challenge__chip .track-spin'),
+        ).toBeNull();
+    });
+});

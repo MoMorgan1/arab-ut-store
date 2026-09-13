@@ -521,6 +521,13 @@ export type OrderTrackingChallenge = {
     target: number;
     state: string;
     stateLabel: string;
+    /**
+     * How the card reads at a glance, decided on the server from the status
+     * itself rather than from whether the card happens to carry a message.
+     * Optional because a status the table does not name falls back to what the
+     * coarse state implies.
+     */
+    tone?: 'success' | 'danger' | 'waiting' | 'working';
     /** What the "?" opens: what the state is, and what to do about it. */
     help: { title: string; desc: string; action: string };
     squads: { done: number | null; total: number | null };

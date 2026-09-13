@@ -224,6 +224,57 @@ This does not extend to the three things that are ours rather than the tracker's
 tracker stores nothing, we have an allowlist because the suppliers return passwords), and security
 boundaries. Those are store concerns and the tracker is not evidence about them.
 
+## C3 round four — what the first review of the screen found
+
+`b1a9950a` shipped the ported screen. The sixth review of this file set, and the first to look at
+the client, found nine real defects and one non-defect. Every one had the same shape: two parts of
+one card answering from different facts. Fixed in `8ff54ddc` unless noted.
+
+1. **The hold was written in pieces.** Its reason and buttons were written on every observation, its
+   colour and headline only when non-null. A recovery therefore cleared the reason and kept the
+   colour — an order ringed amber under the word "Transferring" — and an unreadable answer emptied
+   the buttons a customer was being asked to press. It is now one write, gated on
+   `$state->supported`: a readable observation writes all four parts including nulls, an unreadable
+   one writes none of them.
+2. **Nothing performed the supplier read the owner asked for.** "Opening the page is the refresh"
+   was decided and never wired: the controller only ever read storage, so reopening a page showed
+   the same stale failure. `RefreshOrderTracking` now runs on page open, with a six-second
+   wall-clock budget so a slow supplier cannot hold the render, and `SupplierNotConfigured` is
+   caught alongside `SupplierUnavailable` — a missing key is an operator's problem and must not
+   turn a customer's order into a 500.
+3. **The ring was forced to 100% on completion** while the bar kept the reported percentage. A
+   completed item whose delivered count never arrived showed a full ring above a bar reading zero.
+   The ring reports what the counters report, as the tracker's does (`ui.js:604`).
+4. **A finishing time was offered for every active presentation**, cooldowns included, so a card
+   explaining a 36-hour daily limit promised minutes underneath. The tracker offers one only while
+   coins are moving (`ui.js:660`); so does the card now.
+5. **A leftover timestamp read as a completion.** A retried challenge keeps the time of its earlier
+   attempt, and the caption printed from the timestamp alone. It is gated on the state, as the
+   tracker gates it (`ui.js:1062`).
+6. **A finished order still asked for something in the "?" dialog**, one level below the buttons and
+   the hold that were already disarmed.
+7. **The dialog did not take the keyboard**, and the "?" and its close button were 20px and 36px
+   against the store's 44px rule.
+8. **The card's colour and icon came from whether it carried a message, not from its status.**
+   Several genuine failures carry no hold reason, so they fell through to gold and a spinner:
+   "could not finish" beside something saying it was still working. The card now reads a per-status
+   `tone` from the server.
+9. **13 states collapse 57 supplier statuses, and the collapse put contradictory things together.**
+   `LoginFailed401` holds as `EaServers` but stated as `SignInFailed`, so the dialog said the
+   password was wrong above a body saying EA refused the connection; `TMLocked` stated as `Failed`,
+   whose help says to press retry, which a locked market does not answer. The fix is the tracker's
+   own shape: per-status label, tone and help, with the coarse state kept for behaviour. Delegated
+   with `brief-c3a5`.
+
+The one rejected finding: an unsupported observation still rendering its card. That is the designed
+behaviour — the translator preserves the last good reading deliberately, and the screen labels it
+with its age, which is exactly how the tracker shows staleness.
+
+The lesson, added to the two already recorded: **a review that cannot open the page finds a
+different class of defect than one that can.** Five rounds of code review missed the challenge card
+saying "could not solve" above an amber "information" box; opening it found that in one look. Both
+kinds of review are needed, and the code-only one should be told it is code-only.
+
 ## Blocked on Mohamed
 
 - Export of `Fulfillment v14` and of the order-status workflow.

@@ -474,14 +474,27 @@ function ChallengeCard({
         total > 0 ? Math.min(Math.round((done / total) * 100), 100) : 0;
     const solvesTotal = challenge.solves.total ?? 1;
 
-    const chipTone =
-        challenge.state === 'done'
-            ? 'track-challenge__chip--green'
+    // The colour and the icon come from what the status is, not from whether the
+    // card carries a message: several real failures deliberately carry none, and
+    // reading the message told the customer "could not finish" beside a spinner
+    // that said it was still working. `holdTone` still skins the shared action
+    // box, which is a different question.
+    const tone =
+        challenge.tone ??
+        (challenge.state === 'done'
+            ? 'success'
             : challenge.holdTone === 'info'
-              ? 'track-challenge__chip--amber'
+              ? 'waiting'
               : challenge.holdTone === 'action'
-                ? 'track-challenge__chip--red'
-                : 'track-challenge__chip--gold';
+                ? 'danger'
+                : 'working');
+
+    const chipTone = {
+        success: 'track-challenge__chip--green',
+        danger: 'track-challenge__chip--red',
+        waiting: 'track-challenge__chip--amber',
+        working: 'track-challenge__chip--gold',
+    }[tone];
 
     // A timestamp alone does not mean solved: a retried or failed challenge can
     // keep the one from its earlier attempt, and the tracker gates the caption
@@ -525,10 +538,12 @@ function ChallengeCard({
                     ?
                 </button>
                 <span className={cn('track-challenge__chip', chipTone)}>
-                    {challenge.state === 'done' ? (
+                    {tone === 'success' ? (
                         <CheckCircle2 aria-hidden="true" />
-                    ) : challenge.holdTone === 'action' ? (
+                    ) : tone === 'danger' ? (
                         <AlertTriangle aria-hidden="true" />
+                    ) : tone === 'waiting' ? (
+                        <Clock aria-hidden="true" />
                     ) : (
                         <Loader2 aria-hidden="true" className="track-spin" />
                     )}
@@ -544,7 +559,13 @@ function ChallengeCard({
                         .replace(':percent', formatInteger(percent, locale))}
                     lead={strings.progress}
                     percent={percent}
-                    tone={challenge.state === 'done' ? 'green' : 'gold'}
+                    tone={
+                        tone === 'success'
+                            ? 'green'
+                            : tone === 'danger'
+                              ? 'danger'
+                              : 'gold'
+                    }
                 />
             ) : null}
 
