@@ -41,6 +41,13 @@ yarn-error.log
 # regenerates on demand. `tools/canvas-serve.mjs` is deliberately not here: it
 # serves any canvas in `docs/design/` and is tracked.
 /docs/design/_shots/
+
+# A canvas's seeded page: `seed-canvas.mjs` stamps the design skill's ~2 MiB
+# payload with the artboards beside it, so it is a build product of the
+# `.dc.html` sources and regenerates from them. One was committed by accident
+# (3e297bf9, 11,009 lines) before this rule existed. The sources stay tracked.
+/docs/design/*/*.html
+!/docs/design/*/*.dc.html
 /tools/canvas-verify.mjs
 /tools/canvas-details.mjs
 /tools/probe-*.mjs
