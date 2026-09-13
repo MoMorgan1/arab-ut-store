@@ -163,7 +163,7 @@ return [
             'coins_used' => 'الكوينز المستخدمة',
             'show_status' => 'عرض الحالة',
             'hide_status' => 'إخفاء الحالة',
-            'challenge_help_default' => 'نشتغل على التحدي دلوقتي، وماعليكش أي إجراء.',
+            'challenge_help_default' => 'نعمل على التحدي الآن، وما عليك أي إجراء.',
             'close' => 'إغلاق',
             'help_action_label' => 'الإجراء المطلوب:',
             'challenge_help' => 'معلومات التحدي',

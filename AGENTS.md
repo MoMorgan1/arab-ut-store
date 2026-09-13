@@ -80,6 +80,32 @@ Before calling a new or redesigned interface complete, verify Arabic RTL and Eng
 - Push back honestly on weak ideas, unsafe shortcuts, unrealistic scope, or avoidable complexity.
 - Never substitute a mockup for a working product unless Mohamed explicitly requests a mockup.
 
+## Customer copy
+
+Owner rule, 2026-09-13: **the store's customers are Gulf readers.** Mohamed is Egyptian and the
+copy kept drifting into his own dialect, which reads as foreign to the people buying. Every string a
+customer can see - screens, emails, WhatsApp messages, validation errors - is simple Arabic that a
+Gulf reader would write. Admin screens are exempt: they have one reader.
+
+What that rules out, with what replaced it when this was swept:
+
+| Egyptian | Write instead |
+| --- | --- |
+| `دلوقتي` | `الآن` |
+| `ماعليكش` | `ما عليك` |
+| `شغالين` / `نشتغل` | `نعمل` |
+| `لحد ما` | `حتى` |
+| `عشان` | `حتى` / `لأن` |
+| `دي` / `دا` as a demonstrative | `هذه` / `هذا` |
+| `مش متاح` | `غير متاح` |
+| `بيكمل` / `بنرسل` (the `ب-` present) | `يكمل` / `نرسل` |
+| `يفرّق معنا` | `يهمنا` |
+
+`تقدر`, `تبي`, `فالك التوفيق` and `أول ما` are Gulf-natural and stay.
+
+Ported copy is not exempt. `track.arab-ut.com`'s message catalogue is the specification for **what**
+each message says, never for which dialect says it - the tracker is written in Egyptian throughout.
+
 ## Failures
 
 Owner rule, 2026-09-13: every path handles its failures, and this is how.

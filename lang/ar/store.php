@@ -10,7 +10,7 @@ return [
         'internal_error' => 'تعذرت إضافة الكوينز إلى السلة.',
         'catalog_json_required' => 'تتطلب إضافة المنتج إلى السلة طلب JSON.',
         'catalog_item_unavailable' => 'هذا الخيار غير متاح. حدّث الصفحة واختر خيارًا آخر.',
-        'coins_quantity_step' => 'الكمية دي مش متاحة. اختر واحدة من الكميات المعروضة على الشريط.',
+        'coins_quantity_step' => 'هذه الكمية غير متاحة. اختر واحدة من الكميات المعروضة على الشريط.',
         'catalog_internal_error' => 'تعذرت إضافة هذا المنتج إلى السلة.',
         'manual_service_unavailable' => 'الخدمة أو سعرها تغير. حدّث الصفحة وراجع اختياراتك.',
         'already_in_cart' => 'هذا المنتج موجود في السلة بالفعل.',
@@ -408,7 +408,7 @@ return [
             // same data; only what we do with the week differs.
             'mode_legend' => 'إيش تبي نلعبه؟',
             'mode_promotion' => 'تصعيد ديفجن',
-            'mode_promotion_hint' => 'نلعب لك لحد ما توصل الديفجن اللي تبيه.',
+            'mode_promotion_hint' => 'نلعب لك حتى توصل للديفجن اللي تبيه.',
             'mode_weekly' => 'المباريات الأسبوعية',
             'mode_weekly_hint' => 'نلعب لك مباريات الأسبوع بدون تصعيد — :wins انتصارات مشمولة.',
             'weekly_summary' => 'المباريات الأسبوعية (:wins انتصارات)',

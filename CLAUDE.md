@@ -17,6 +17,12 @@ Design context and the UI workflow live in [.impeccable.md](.impeccable.md).
 - **Assistant work**: read `docs/ai-assistant/STATUS.md`, then the canonical document linked
   from `docs/ai-assistant/README.md`. Historical plans never override the newest owner decision.
 
+## Customer copy
+
+The store sells to Gulf readers. Every customer-visible string is simple Arabic a Gulf reader would
+write - never Egyptian (`دلوقتي`, `لحد ما`, `عشان`, `شغالين`, the `ب-` present). AGENTS.md has the
+table. Admin screens are exempt. A ported message keeps the tracker's meaning, not its dialect.
+
 ## Failures
 
 Every path handles its failures, and AGENTS.md says how (see **Failures**). The short version:

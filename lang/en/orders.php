@@ -19,7 +19,7 @@ return [
     'hold_reasons' => [
         'backup_codes' => 'The backup codes on the account are wrong or already used. Create new codes from the security settings of your EA account, then update them with the edit details button.',
         'credentials' => 'We could not sign in with the email or password you sent. Check them, then update them with the edit details button.',
-        'platform' => 'Your account platform is not the platform selected on the order. Message us so we can correct it before we start.',
+        'platform' => 'The account platform is not the one selected on the order. Send an account on the same platform with the edit details button, or message us - each platform is priced differently.',
         'market_locked' => 'EA has locked the transfer market on your account. Play at least 3 matches a day until it opens, then press resume. Your money is held safely and is not lost.',
         'insufficient_coins' => 'Your coin balance is under 1,500 coins, the minimum we need to deliver by buying players. Top it up, then press resume.',
         'active_session' => 'The account is still signed in to the game or the Companion app. Sign out everywhere, close the game fully, then press resume.',
