@@ -11,6 +11,7 @@ use App\Enums\DeliveryPhase;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
+use App\Exceptions\ManualOrderPlacementRefused;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CreateManualOrderRequest;
 use App\Models\ProductVariant;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Support\PublicHandle\CustomerHandle;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
@@ -40,19 +42,96 @@ final class ManualOrderController extends Controller
         $actor = $request->user();
         $customer = CustomerHandle::resolveForAdmin((string) $request->validated('customer_id'));
 
-        $order = $this->createManualOrder->execute(
-            $actor,
-            $customer,
-            $request->route('locale') === 'en' ? 'en' : 'ar',
-            $this->draft($request),
-            $request->ip(),
-        );
+        $draft = $this->draft($request);
 
-        $prefix = $request->route('locale') === 'en' ? '/en/admin' : '/admin';
+        try {
+            $order = $this->createManualOrder->execute(
+                $actor,
+                $customer,
+                $this->customerLocale(),
+                $draft,
+                $request->ip(),
+            );
+        } catch (ManualOrderPlacementRefused $refused) {
+            // A reference already used, or a challenge the supplier cannot
+            // solve, is mistyping - not an outside failure. It comes back as an
+            // error on the field at fault, with every other field still filled.
+            throw ValidationException::withMessages([
+                $this->placementField($draft, $refused->supplierOrderId) => [
+                    $this->placementMessage($refused->outcome),
+                ],
+            ]);
+        }
 
         return redirect()
-            ->to("{$prefix}/orders/{$order->order_number}")
+            ->route($this->routePrefix($request).'orders.show', ['order' => $order->order_number])
             ->with('status', 'order-created');
+    }
+
+    /**
+     * Names the item whose reference was refused, so the message lands on the
+     * card that carries it rather than at the top of a form with ten of them.
+     */
+    private function placementField(ManualOrderDraft $draft, string $supplierOrderId): string
+    {
+        foreach ($draft->items as $index => $item) {
+            if ($item->placement?->supplierOrderId === $supplierOrderId) {
+                return "items.{$index}.placement.supplier_order_id";
+            }
+        }
+
+        return 'items';
+    }
+
+    /**
+     * Written for the person filling the form. Every outcome the drawer can
+     * actually provoke is named; the rest are shapes its own validation and
+     * `ManualOrderOptions` already prevent, so they share one honest fallback
+     * rather than a wrong specific guess.
+     */
+    private function placementMessage(string $outcome): string
+    {
+        return match ($outcome) {
+            'supplier_reference_conflict' => 'That reference is already on another order.',
+            'item_conflict', 'placement_conflict' => 'This item already has a supplier reference.',
+            'challenge_ids_required' => 'A challenge already placed needs the challenge IDs, or nothing can track it.',
+            'challenge_ids_not_permitted' => 'The coins phase carries no challenge IDs.',
+            'invalid_challenge_ids' => 'Those challenge IDs are not the IDs the supplier issues.',
+            'supplier_cannot_solve_challenges' => 'This supplier does not deliver challenges.',
+            'service_has_no_challenge' => 'This service has no challenge phase.',
+            'not_automated' => 'Only Coins and SBC are delivered by a supplier, so only they carry a reference.',
+            default => 'The supplier reference could not be recorded, so the order was not created.',
+        };
+    }
+
+    /**
+     * `orders.locale` is the CUSTOMER's language, not the staff member's: it
+     * builds the tracking link they open (`IssueOrderTrackingLink:113`) and the
+     * Paylink line titles. Both admin prefixes are registered as `en`
+     * (routes/admin.php:620) because the admin is English-only, so reading the
+     * route here would have stamped every manual order English and handed the
+     * owner an English link to send a Gulf customer.
+     *
+     * `store.default_locale` rather than `app.locale`, because the framework
+     * rewrites the latter to whatever the current request is being served in -
+     * inside an admin request it reads `en`, which is the bug this replaces.
+     */
+    private function customerLocale(): string
+    {
+        return config('store.default_locale') === 'en' ? 'en' : 'ar';
+    }
+
+    /**
+     * Keeps the redirect on the prefix the form was submitted from. Derived
+     * from the route name for the same reason `AdminCouponsPage` does it: both
+     * admin prefixes carry the locale `en`, so the locale cannot tell them
+     * apart and `/admin` would bounce to `/en/admin`.
+     */
+    private function routePrefix(CreateManualOrderRequest $request): string
+    {
+        return str_starts_with((string) $request->route()?->getName(), 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
     }
 
     private function draft(CreateManualOrderRequest $request): ManualOrderDraft

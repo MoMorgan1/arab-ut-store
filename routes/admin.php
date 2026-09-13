@@ -26,6 +26,9 @@ use App\Http\Controllers\Admin\FaqEntryVisibilityController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\ManualOrderController;
+use App\Http\Controllers\Admin\ManualOrderCustomerSearchController;
+use App\Http\Controllers\Admin\ManualOrderOptionsController;
+use App\Http\Controllers\Admin\ManualOrderPriceController;
 use App\Http\Controllers\Admin\MoreController;
 use App\Http\Controllers\Admin\MoveFaqEntryController;
 use App\Http\Controllers\Admin\OrderDetailController;
@@ -156,6 +159,23 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $manualOrder->defaults('locale', $locale);
+                }
+
+                // The drawer's three lookups. Under /api so they never collide
+                // with the order-number route below, which matches bare digits
+                // and would otherwise swallow a word like "options".
+                foreach ([
+                    'options' => ManualOrderOptionsController::class,
+                    'customers' => ManualOrderCustomerSearchController::class,
+                    'price' => ManualOrderPriceController::class,
+                ] as $segment => $controller) {
+                    $lookup = Route::get("/api/orders/new/{$segment}", $controller)
+                        ->middleware(['can:orders.create', 'throttle:staff-reads'])
+                        ->name("orders.new.{$segment}");
+
+                    if ($locale !== null) {
+                        $lookup->defaults('locale', $locale);
+                    }
                 }
 
                 $orderDetail = Route::get('/orders/{order}', OrderDetailController::class)

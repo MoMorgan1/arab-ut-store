@@ -21,6 +21,13 @@ use Illuminate\Validation\Validator;
  */
 final class CreateManualOrderRequest extends FormRequest
 {
+    /**
+     * The Rivals ladder, bottom to top, as `RivalsPricing::LADDER` declares it.
+     * Mirrored rather than exposed because the order it is written in is the
+     * only thing that says which way a promotion climbs.
+     */
+    private const RIVALS_LADDER = ['7', '6', '5', '4', '3', '2', '1', 'elite'];
+
     public function authorize(): bool
     {
         return $this->user()?->can(AdminPermission::OrdersCreate->value) === true;
@@ -72,7 +79,11 @@ final class CreateManualOrderRequest extends FormRequest
             // where the person filling the form can still fix it.
             'items.*.placement.challenge_ids.*' => ['uuid'],
 
-            'items.*.configuration' => ['required', 'array'],
+            // `present`, not `required`: Laravel counts an empty array as
+            // absent, and Objectives is priced by agreement with nothing to
+            // configure - so `required` made the one service with no
+            // configuration the one service that could not be ordered.
+            'items.*.configuration' => ['present', 'array'],
         ];
     }
 
@@ -102,7 +113,7 @@ final class CreateManualOrderRequest extends FormRequest
     {
         $configuration = is_array($item['configuration'] ?? null) ? $item['configuration'] : [];
 
-        foreach ($this->requiredConfigurationKeys($service) as $key) {
+        foreach ($this->requiredConfigurationKeys($service, $configuration) as $key) {
             $value = $configuration[$key] ?? null;
 
             if ($value === null || $value === '') {
@@ -110,6 +121,79 @@ final class CreateManualOrderRequest extends FormRequest
                     "items.{$index}.configuration.{$key}",
                     "This service needs {$key}.",
                 );
+            }
+        }
+
+        $this->validateConfigurationValues($validator, $index, $service, $configuration);
+    }
+
+    /**
+     * The values the storefront's own requests accept, so a manual order
+     * cannot store a division, rank or mode that no pricing table knows and
+     * no fulfillment step can read.
+     *
+     * @param  array<string, mixed>  $configuration
+     */
+    private function validateConfigurationValues(
+        Validator $validator,
+        int $index,
+        ServiceType $service,
+        array $configuration,
+    ): void {
+        $refuse = function (string $key, string $message) use ($validator, $index): void {
+            $validator->errors()->add("items.{$index}.configuration.{$key}", $message);
+        };
+
+        if ($service === ServiceType::Rivals) {
+            $mode = $configuration['mode'] ?? null;
+
+            if ($mode !== null && ! in_array($mode, ['promotion', 'weekly_matches'], true)) {
+                $refuse('mode', 'Rivals is bought either as a promotion or as weekly matches.');
+            }
+
+            foreach (['current_division', 'target_division'] as $key) {
+                $division = $configuration[$key] ?? null;
+
+                if ($division !== null && ! in_array($division, self::RIVALS_LADDER, true)) {
+                    $refuse($key, 'That is not a division on the Rivals ladder.');
+                }
+            }
+
+            $from = array_search($configuration['current_division'] ?? null, self::RIVALS_LADDER, true);
+            $to = array_search($configuration['target_division'] ?? null, self::RIVALS_LADDER, true);
+
+            if ($mode === 'promotion' && $from !== false && $to !== false && $to <= $from) {
+                $refuse('target_division', 'A promotion climbs the ladder, so the target sits above the current division.');
+            }
+        }
+
+        if ($service === ServiceType::FutChampions) {
+            $rank = $configuration['rank'] ?? null;
+
+            if ($rank !== null && (! is_int($rank) || $rank < 1 || $rank > 6)) {
+                $refuse('rank', 'FUT Champions ranks run from 1 to 6.');
+            }
+
+            $matches = $configuration['matches_played'] ?? null;
+
+            if ($matches !== null && (! is_int($matches) || $matches < 0 || $matches > 100)) {
+                $refuse('matches_played', 'Matches played runs from 0 to 100.');
+            }
+        }
+
+        if ($service === ServiceType::Coins) {
+            $quantity = $configuration['coins_quantity'] ?? null;
+
+            if ($quantity !== null && (! is_int($quantity) || $quantity < 1)) {
+                $refuse('coins_quantity', 'A coins order carries a whole number of thousands.');
+            }
+        }
+
+        if ($service === ServiceType::Sbc) {
+            $completions = $configuration['completion_count'] ?? null;
+
+            if ($completions !== null && (! is_int($completions) || $completions < 1)) {
+                $refuse('completion_count', 'An SBC order solves at least one challenge.');
             }
         }
     }
@@ -120,15 +204,23 @@ final class CreateManualOrderRequest extends FormRequest
      * stored, and this says what must be, so an optional key can be added to
      * one without becoming mandatory in the other.
      *
+     * @param  array<string, mixed>  $configuration
      * @return list<string>
      */
-    private function requiredConfigurationKeys(ServiceType $service): array
+    private function requiredConfigurationKeys(ServiceType $service, array $configuration): array
     {
         return match ($service) {
             ServiceType::Coins => ['coins_quantity'],
             ServiceType::Sbc => ['completion_count'],
             ServiceType::FutChampions => ['rank', 'matches_played'],
-            ServiceType::Rivals => ['mode', 'current_division', 'target_division'],
+            // Weekly matches are a second way to buy Rivals: the same account
+            // played for a week without promoting, so there is no route to
+            // name. RivalsCartRequest:31 goes further and forbids the two
+            // divisions outright on that mode; requiring them here would have
+            // made the option impossible to buy through this form.
+            ServiceType::Rivals => ($configuration['mode'] ?? null) === 'weekly_matches'
+                ? ['mode']
+                : ['mode', 'current_division', 'target_division'],
             ServiceType::Objectives => [],
         };
     }

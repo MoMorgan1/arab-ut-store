@@ -199,6 +199,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('staff-identity', fn (Request $request): Limit => Limit::perMinute(10)
             ->by('staff-identity:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
+        // The lookups behind the manual-order drawer: a customer search as you
+        // type, and a price suggestion each time an item changes. They read and
+        // reserve nothing, so the budget is generous - but it is still keyed on
+        // the staff member, because a stuck field re-asking forever is exactly
+        // what a limiter is for.
+        RateLimiter::for('staff-reads', fn (Request $request): Limit => Limit::perMinute(120)
+            ->by('staff-reads:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
         RateLimiter::for('chat-conversations', function (Request $request): array {
             if (! config('chat.enabled', false)) {
                 return [Limit::none()];

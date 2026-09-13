@@ -14,6 +14,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
+use App\Exceptions\ManualOrderPlacementRefused;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemSecret;
@@ -265,11 +266,9 @@ final readonly class CreateManualOrder
             return;
         }
 
-        throw new RuntimeException(sprintf(
-            'The supplier reference %s could not be recorded: %s.',
-            $placement->supplierOrderId,
-            $result['outcome'],
-        ));
+        // Typed rather than bare, so the form can name the field at fault
+        // instead of the staff member losing the page to a 500.
+        throw new ManualOrderPlacementRefused($result['outcome'], $placement->supplierOrderId);
     }
 
     private function writePayment(Order $order, ManualOrderDraft $draft): void
