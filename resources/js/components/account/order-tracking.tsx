@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import CredentialForm from '@/components/account/order-tracking-credentials';
+import type { CredentialValues } from '@/components/account/order-tracking-credentials';
 import { formatInteger } from '@/lib/money';
 import { TrackingRing } from '@/lib/tracking-ring';
 import type { RingOptions } from '@/lib/tracking-ring';
@@ -288,12 +290,16 @@ function ActionBox({
     message,
     actions,
     strings,
+    busy = false,
     onAction,
 }: {
     tone: 'action' | 'info';
     message: string | null;
     actions: string[];
     strings: TrackingStrings;
+    /** A press is in flight. These calls reach a supplier, so they are slow
+     *  enough that a button which does not say so gets pressed twice. */
+    busy?: boolean;
     onAction: (action: string) => void;
 }) {
     if (message === null && actions.length === 0) {
@@ -332,11 +338,17 @@ function ActionBox({
                                     ? 'track-btn--primary'
                                     : 'track-btn--secondary',
                             )}
+                            disabled={busy}
                             key={action}
                             onClick={() => onAction(action)}
                             type="button"
                         >
-                            {action === 'edit_credentials' ? (
+                            {busy ? (
+                                <Loader2
+                                    aria-hidden="true"
+                                    className="track-spin"
+                                />
+                            ) : action === 'edit_credentials' ? (
                                 <PencilLine aria-hidden="true" />
                             ) : (
                                 <RotateCw aria-hidden="true" />
@@ -635,6 +647,16 @@ function ChallengeCard({
     );
 }
 
+/**
+ * Where the card's buttons post to. The server builds them, and re-authorises
+ * every press regardless: having a URL is not having permission.
+ */
+export type TrackingActionUrls = {
+    editCredentials: string;
+    resume: string;
+    retryChallenge: string;
+};
+
 export default function OrderTracking({
     tracking,
     itemName,
@@ -642,7 +664,8 @@ export default function OrderTracking({
     platform,
     locale,
     strings,
-    onAction,
+    actionUrls,
+    onTracking,
 }: {
     tracking: OrderItemTracking;
     itemName: string;
@@ -650,8 +673,112 @@ export default function OrderTracking({
     platform: Platform;
     locale: 'ar' | 'en';
     strings: TrackingStrings;
-    onAction: (action: string, target: number | null) => void;
+    actionUrls: TrackingActionUrls;
+    /** The fresh tracking object an action answers with, for the page to show. */
+    onTracking: (tracking: OrderItemTracking) => void;
 }) {
+    // One action at a time, and one sentence about how it went. These calls go
+    // to the supplier on the long timeout profile, so the button has to say it
+    // is working or the customer presses it again.
+    const [busy, setBusy] = useState(false);
+    const [notice, setNotice] = useState<string | null>(null);
+    const [formOpen, setFormOpen] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+
+    const send = async (
+        url: string,
+        body: Record<string, unknown>,
+    ): Promise<'accepted' | 'saved_not_sent' | 'refused' | 'failed'> => {
+        setBusy(true);
+        setNotice(null);
+
+        try {
+            const response = await fetch(url, {
+                body: JSON.stringify(body),
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    // The meta tag, the way the rest of the app's fetch calls
+                    // read it; Inertia's own router would handle this but it
+                    // does not hand back the JSON this needs.
+                    'X-CSRF-TOKEN':
+                        document.querySelector<HTMLMetaElement>(
+                            'meta[name="csrf-token"]',
+                        )?.content ?? '',
+                },
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                return 'failed';
+            }
+
+            const payload = (await response.json()) as {
+                tracking: OrderItemTracking | null;
+                status: string;
+            };
+
+            if (payload.tracking !== null) {
+                onTracking(payload.tracking);
+            }
+
+            return payload.status === 'accepted' ||
+                payload.status === 'saved_not_sent'
+                ? payload.status
+                : 'refused';
+        } catch {
+            return 'failed';
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const message = (
+        outcome: 'accepted' | 'saved_not_sent' | 'refused' | 'failed',
+    ): string =>
+        outcome === 'accepted'
+            ? strings.credentials_accepted
+            : outcome === 'saved_not_sent'
+              ? strings.credentials_saved_not_sent
+              : strings.action_refused;
+
+    const onAction = async (action: string, target: number | null) => {
+        if (busy) {
+            return;
+        }
+
+        if (action === 'edit_credentials') {
+            setFormError(null);
+            setFormOpen(true);
+
+            return;
+        }
+
+        const outcome =
+            action === 'retry_challenge' && target !== null
+                ? await send(actionUrls.retryChallenge, { target })
+                : await send(actionUrls.resume, {});
+
+        setNotice(message(outcome));
+    };
+
+    const onCredentials = async (values: CredentialValues) => {
+        const outcome = await send(actionUrls.editCredentials, {
+            backup_codes: values.codes,
+            ea_email: values.email,
+            ea_password: values.password,
+        });
+
+        if (outcome === 'refused' || outcome === 'failed') {
+            setFormError(strings.action_refused);
+
+            return;
+        }
+
+        setFormOpen(false);
+        setNotice(message(outcome));
+    };
+
     // Recomputed on a timer so "a minute ago" does not sit there saying "just
     // now" while the customer watches it.
     const [now, setNow] = useState(() => Date.now());
@@ -994,6 +1121,7 @@ export default function OrderTracking({
                 tracking.actions.length > 0 ? (
                     <ActionBox
                         actions={tracking.actions}
+                        busy={busy}
                         message={tracking.holdMessage}
                         onAction={(action) => onAction(action, null)}
                         strings={strings}
@@ -1001,6 +1129,43 @@ export default function OrderTracking({
                     />
                 ) : null}
             </div>
+
+            {tracking.credentialsPending || notice !== null ? (
+                <p
+                    aria-live="polite"
+                    className="track-notice"
+                    // A correction is not a fix: the supplier's answer means
+                    // "received", and only the next reading says whether the new
+                    // details work. The sentence says that rather than claiming
+                    // the problem is over.
+                >
+                    {notice ?? strings.credentials_pending}
+                </p>
+            ) : null}
+
+            {formOpen ? (
+                <CredentialForm
+                    busy={busy}
+                    onClose={() => setFormOpen(false)}
+                    onSubmit={onCredentials}
+                    serverError={formError}
+                    strings={{
+                        cancel: strings.edit_cancel,
+                        close: strings.close,
+                        codes_label: strings.edit_codes,
+                        codes_note: strings.edit_codes_note,
+                        duplicate_codes: strings.edit_same_codes,
+                        email_label: strings.edit_email,
+                        fix_errors: strings.edit_fix,
+                        invalid_code: strings.edit_bad_code,
+                        invalid_email: strings.edit_bad_email,
+                        password_label: strings.edit_password,
+                        password_required: strings.edit_need_password,
+                        submit: strings.edit_submit,
+                        title: strings.edit_title,
+                    }}
+                />
+            ) : null}
 
             {help !== null ? (
                 <div

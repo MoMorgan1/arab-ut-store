@@ -1339,3 +1339,18 @@ a.track-challenge__name:hover {
     margin-top: 0;
     font-size: 0.95rem;
 }
+
+/* What an action answered with. It sits under the box the button was in, says
+   one sentence, and never claims a correction is a fix: the supplier's answer
+   means "received", and the next reading is what settles it. */
+.track-notice {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgb(249 223 104 / 22%);
+    border-radius: 12px;
+    background: rgb(249 223 104 / 8%);
+    color: var(--arabut-ink);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.7;
+}

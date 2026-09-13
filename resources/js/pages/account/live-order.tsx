@@ -25,7 +25,10 @@ import {
     resumePaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
 import { cn } from '@/lib/utils';
-import type { AccountLiveOrderPageProps } from '@/types/account';
+import type {
+    AccountLiveOrderPageProps,
+    OrderItemTracking,
+} from '@/types/account';
 
 /**
  * How often an open order asks the server where it is. Replaces the old
@@ -523,6 +526,20 @@ function InvoiceItem({
 }) {
     const [expanded, setExpanded] = useState(false);
     const contentId = `order-item-${item.id}`;
+
+    // An action answers with a whole tracking object, and the card should show it
+    // straight away rather than wait for a reload. It is held as an override of
+    // the reading it replaced, not as a copy of it: when the page is reloaded and
+    // hands down a newer reading, that one wins without an effect to sync it.
+    const [override, setOverride] = useState<{
+        of: OrderItemTracking | null;
+        value: OrderItemTracking;
+    } | null>(null);
+
+    const tracking =
+        override !== null && override.of === item.tracking
+            ? override.value
+            : item.tracking;
     const details = useRef<HTMLDivElement | null>(null);
 
     // The status card is taller than the row that opens it, and the row can sit
@@ -649,20 +666,21 @@ function InvoiceItem({
                             translations={translations}
                         />
                     ) : null}
-                    {item.tracking !== null ? (
+                    {tracking !== null ? (
                         <OrderTracking
+                            actionUrls={item.actionUrls}
                             imageUrl={item.imageUrl}
                             itemName={item.name}
                             locale={locale}
-                            onAction={() => {
-                                // D1 wires these to the supplier. Until it lands the
-                                // buttons are inert rather than absent: the canvas is
-                                // approved with them in place, and hiding them now
-                                // would mean building the layout twice.
-                            }}
+                            // An action answers with the whole tracking object,
+                            // so the card shows what the supplier just said
+                            // without a page reload behind it.
+                            onTracking={(next) =>
+                                setOverride({ of: item.tracking, value: next })
+                            }
                             platform={item.platform}
                             strings={translations.tracking}
-                            tracking={item.tracking}
+                            tracking={tracking}
                         />
                     ) : null}
                 </div>

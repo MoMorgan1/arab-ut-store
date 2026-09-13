@@ -789,6 +789,13 @@ function liveOrder(
                 quantity: 1,
                 total: { amountMinor: '12999', currency: 'SAR' },
                 credentialsPresent: true,
+                actionUrls: {
+                    editCredentials:
+                        '/orders/UT-1/items/i1/actions/edit-credentials',
+                    resume: '/orders/UT-1/items/i1/actions/resume',
+                    retryChallenge:
+                        '/orders/UT-1/items/i1/actions/retry-challenge',
+                },
                 tracking: null,
                 manualFulfillment: null,
             },

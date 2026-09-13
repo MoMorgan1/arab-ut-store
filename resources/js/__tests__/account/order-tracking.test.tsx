@@ -55,6 +55,7 @@ function tracking(
         challenges: null,
         coverage: null,
         workStarted: true,
+        credentialsPending: false,
         ...overrides,
     };
 }
@@ -86,10 +87,16 @@ function challenge(
 function mount(state: OrderItemTracking) {
     return render(
         <OrderTracking
+            actionUrls={{
+                editCredentials:
+                    '/orders/UT-1/items/i1/actions/edit-credentials',
+                resume: '/orders/UT-1/items/i1/actions/resume',
+                retryChallenge: '/orders/UT-1/items/i1/actions/retry-challenge',
+            }}
             imageUrl="/images/store/coins/ut-coin-80.webp"
             itemName="Coins"
             locale="en"
-            onAction={() => undefined}
+            onTracking={() => undefined}
             platform="playstation"
             strings={strings}
             tracking={state}

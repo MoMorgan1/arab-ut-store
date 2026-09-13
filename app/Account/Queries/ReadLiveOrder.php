@@ -179,6 +179,11 @@ final class ReadLiveOrder
                     'name' => (string) $item->getAttribute($locale === 'en' ? 'name_en' : 'name_ar'),
                     'platform' => $item->platform->value,
                     'imageUrl' => ItemArtwork::for($item),
+                    'actionUrls' => $this->itemActionUrls(
+                        $item,
+                        (string) $order->getAttribute('order_number'),
+                        $locale,
+                    ),
                     'status' => $item->status->forCustomer()->value,
                     'quantity' => (int) $item->getAttribute('quantity'),
                     'total' => AccountMoney::fromMinor(
@@ -360,6 +365,34 @@ final class ReadLiveOrder
             'squadImageUrl' => $squadImageUrl,
             'platform' => $item->platform->value,
             ...$this->safeManualConfiguration($configuration, $item->service_type),
+        ];
+    }
+
+    /**
+     * Where the card's three buttons post to.
+     *
+     * The URLs travel with the item rather than being assembled in the browser,
+     * which is how the credentials and squad-image links already work. They are
+     * present whatever the allowed-action set says: the server re-authorises
+     * every press anyway, so a URL is not a permission.
+     *
+     * @return array{editCredentials: string, resume: string, retryChallenge: string}
+     */
+    private function itemActionUrls(OrderItem $item, string $orderId, string $locale): array
+    {
+        $prefix = $locale === 'en' ? 'localized.store' : 'store';
+        // The localised block sits under a {locale} prefix, so its routes need
+        // that parameter as well as the two the path names.
+        $parameters = [
+            ...($locale === 'en' ? ['locale' => 'en'] : []),
+            'order' => $orderId,
+            'item' => $item->public_id,
+        ];
+
+        return [
+            'editCredentials' => route("{$prefix}.orders.items.actions.edit-credentials", $parameters, absolute: false),
+            'resume' => route("{$prefix}.orders.items.actions.resume", $parameters, absolute: false),
+            'retryChallenge' => route("{$prefix}.orders.items.actions.retry-challenge", $parameters, absolute: false),
         ];
     }
 

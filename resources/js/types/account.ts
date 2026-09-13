@@ -219,6 +219,22 @@ export type AccountTranslations = {
             coins_used: string;
             show_status: string;
             hide_status: string;
+            credentials_accepted: string;
+            credentials_saved_not_sent: string;
+            action_refused: string;
+            edit_title: string;
+            edit_email: string;
+            edit_password: string;
+            edit_codes: string;
+            edit_codes_note: string;
+            edit_submit: string;
+            edit_cancel: string;
+            edit_fix: string;
+            edit_bad_email: string;
+            edit_need_password: string;
+            edit_bad_code: string;
+            edit_same_codes: string;
+            credentials_pending: string;
             challenge_help: string;
             help_action_label: string;
             challenge_help_default: string;
@@ -493,6 +509,12 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             total: AccountMoney;
             credentialsPresent: boolean;
             tracking: OrderItemTracking | null;
+            /** Where the tracking card's three buttons post to. */
+            actionUrls: {
+                editCredentials: string;
+                resume: string;
+                retryChallenge: string;
+            };
             manualFulfillment: {
                 credentialsUrl: string | null;
                 squadImageUrl: string | null;
@@ -577,6 +599,13 @@ export type OrderItemTracking = {
     } | null;
     challenges: OrderTrackingChallenge[] | null;
     coverage: { answered: number; requested: number } | null;
+    /**
+     * A correction is with the supplier and no reading has answered it yet. The
+     * immediate acknowledgement means "received", nothing more: only a later
+     * poll says whether the new details work, so the screen says so rather than
+     * claiming the problem is fixed.
+     */
+    credentialsPending: boolean;
     /**
      * Whether work on the order has visibly begun. It travels on its own
      * because the headline cannot stand in for it: a cooldown or a message can
