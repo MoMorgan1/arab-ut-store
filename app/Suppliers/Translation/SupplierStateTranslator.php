@@ -288,6 +288,16 @@ final class SupplierStateTranslator
         'noPlayer',
         'noSuitableSender',
         'belowMinTransfer',
+        // Owner instruction, 2026-09-13: every hold that recovers on its own
+        // still offers the button, because "wait" and "try now" are different
+        // answers and only the customer knows which they want. The tracker
+        // withheld these two, but its own challenge list offers Retry for
+        // `tempban` and `TempbanCooldown` - the same cooldown, the opposite
+        // call - so withholding them here was an inconsistency rather than a
+        // protection. The supplier still decides what a resume does during a
+        // cooldown; we only stop hiding the request.
+        'listingTempban',
+        'tempbanCooldown',
     ];
 
     /**
@@ -556,6 +566,15 @@ final class SupplierStateTranslator
         'loginFailed',
         'loginLoop',
         'needEmailConfirm',
+        // Owner instruction, 2026-09-13. Each of these already had its
+        // equivalent elsewhere: `FailProxyConn` is the same proxy failure as
+        // `FailProxy`, and `FailedProxyConnectionError` and `dailyReceiverLimit`
+        // both offer Resume on the coins phase. A customer looking at one of
+        // them on a challenge had no button for a problem that is retryable by
+        // definition.
+        'FailProxy',
+        'FailedProxyConnectionError',
+        'dailyReceiverLimit',
     ];
 
     /**

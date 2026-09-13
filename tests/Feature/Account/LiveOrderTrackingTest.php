@@ -515,7 +515,7 @@ test('ItemTracking presenter direct invocation returns expected shape', function
         'headline' => 'Action Required',
         'subline' => 'Please check the details below',
         'holdReason' => 'ea_servers',
-        'holdMessage' => 'EA servers refused the sign-in for now. We are retrying and will update you as soon as it works.',
+        'holdMessage' => trans('orders.hold_reasons.ea_servers', locale: 'en'),
         'holdTone' => 'action',
         'completedAt' => null,
         'actions' => ['retry_challenge'],

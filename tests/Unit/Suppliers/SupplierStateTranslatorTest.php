@@ -541,7 +541,6 @@ test('a status in neither the retryable set nor the edit pair offers no actions'
     '2FADisabled' => ['2FADisabled', OrderHoldReason::TwoFactorOff, OrderStatus::WaitingForCustomer],
     'failedNoClub' => ['failedNoClub', OrderHoldReason::NoClub, OrderStatus::WaitingForCustomer],
     'TMLocked' => ['TMLocked', OrderHoldReason::MarketLocked, OrderStatus::WaitingForCustomer],
-    'dailyReceiverLimit' => ['dailyReceiverLimit', OrderHoldReason::Paused, OrderStatus::InProgress],
 ]);
 
 test('an unknown sbcStatus comes back supported false, no actions, no hold reason, and canonical status unchanged', function (): void {
@@ -662,8 +661,8 @@ test('every one of the fifty-one sbcStatus values maps to its canonical status, 
 
     // Proxy / connection errors (3)
     'FailProxyConn' => ['FailProxyConn', OrderStatus::InProgress, OrderHoldReason::Connection, [SupplierAction::RetryChallenge]],
-    'FailedProxyConnectionError' => ['FailedProxyConnectionError', OrderStatus::InProgress, OrderHoldReason::Connection, []],
-    'FailProxy' => ['FailProxy', OrderStatus::InProgress, OrderHoldReason::Connection, []],
+    'FailedProxyConnectionError' => ['FailedProxyConnectionError', OrderStatus::InProgress, OrderHoldReason::Connection, [SupplierAction::RetryChallenge]],
+    'FailProxy' => ['FailProxy', OrderStatus::InProgress, OrderHoldReason::Connection, [SupplierAction::RetryChallenge]],
 
     // Account / setup errors (4)
     'failedNoClub' => ['failedNoClub', OrderStatus::WaitingForCustomer, OrderHoldReason::NoClub, []],
@@ -694,7 +693,7 @@ test('every one of the fifty-one sbcStatus values maps to its canonical status, 
     'OutOfCoins' => ['OutOfCoins', OrderStatus::WaitingForCustomer, OrderHoldReason::InsufficientCoins, [SupplierAction::RetryChallenge]],
     'tempban' => ['tempban', OrderStatus::InProgress, OrderHoldReason::Paused, [SupplierAction::RetryChallenge]],
     'TempbanCooldown' => ['TempbanCooldown', OrderStatus::InProgress, OrderHoldReason::Paused, [SupplierAction::RetryChallenge]],
-    'dailyReceiverLimit' => ['dailyReceiverLimit', OrderStatus::InProgress, OrderHoldReason::Paused, []],
+    'dailyReceiverLimit' => ['dailyReceiverLimit', OrderStatus::InProgress, OrderHoldReason::Paused, [SupplierAction::RetryChallenge]],
 
     // System errors (3)
     'aborted' => ['aborted', OrderStatus::InProgress, OrderHoldReason::Paused, [SupplierAction::RetryChallenge]],
