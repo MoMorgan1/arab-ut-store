@@ -9,6 +9,7 @@ use App\Enums\OrderStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
+use App\Enums\SupplierAction;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -22,6 +23,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -77,6 +79,31 @@ function actionTestSecret(OrderItem $item, array $payload): OrderItemSecret
     $secret->save();
 
     return $secret;
+}
+
+/**
+ * An item whose job offers the given actions, with a secret already on file.
+ *
+ * @param  list<SupplierAction>  $actions
+ * @return array{0: User, 1: Order, 2: OrderItem, 3: FulfillmentJob}
+ */
+function actionableCoinsItem(array $actions): array
+{
+    $owner = User::factory()->create();
+    $order = actionTestOrder($owner);
+    $item = actionTestItem($order);
+    $job = actionTestJob($item, [
+        'delivery_phase' => DeliveryPhase::Coins,
+        'allowed_actions' => array_map(fn (SupplierAction $a): string => $a->value, $actions),
+    ]);
+
+    actionTestSecret($item, [
+        'ea_email' => 'original@example.test',
+        'ea_password' => 'original-password',
+        'backup_codes' => ['12345678', '23456789', '34567890'],
+    ]);
+
+    return [$owner, $order, $item, $job];
 }
 
 beforeEach(function (): void {
@@ -426,3 +453,111 @@ function actionCheckoutCart(array $codes): array
 
     return compact('user', 'cart', 'item', 'variant');
 }
+
+test('a second correction cannot land while the first is still in flight', function (): void {
+    // Two tabs are the test. Both used to read the same version, both wrote, and
+    // whichever supplier call landed last decided what the supplier worked on -
+    // which could be the details the store had already replaced.
+    [$owner, $order, $item, $job] = actionableCoinsItem([SupplierAction::EditCredentials]);
+
+    Cache::lock("credential-correction:item:{$item->id}", 30)->get();
+
+    Http::fake(['https://fft.example.test/*' => Http::response(['status' => 'ok'])]);
+
+    $response = $this->actingAs($owner)
+        ->postJson("/orders/{$order->order_number}/items/{$item->public_id}/actions/edit-credentials", [
+            'ea_email' => 'second@example.test',
+            'ea_password' => 'second-password',
+            'backup_codes' => ['111111', '222222', '333333'],
+        ])
+        ->assertOk();
+
+    expect($response->json('status'))->toBe('refused');
+    Http::assertNothingSent();
+});
+
+test('a supplier that refuses the correction still reports it as saved', function (): void {
+    // The record is written before the call, so "that did not go through" would be
+    // false: the store holds the corrected details and the next placement uses them.
+    [$owner, $order, $item, $job] = actionableCoinsItem([SupplierAction::EditCredentials]);
+
+    Http::fake([
+        'https://fft.example.test/*' => Http::response(['error' => 'WrongUserPass']),
+    ]);
+
+    $response = $this->actingAs($owner)
+        ->postJson("/orders/{$order->order_number}/items/{$item->public_id}/actions/edit-credentials", [
+            'ea_email' => 'fresh@example.test',
+            'ea_password' => 'fresh-password',
+            'backup_codes' => ['111111', '222222', '333333'],
+        ])
+        ->assertOk();
+
+    expect($response->json('status'))->toBe('saved_not_accepted');
+
+    $secret = OrderItemSecret::query()->where('order_item_id', $item->id)->firstOrFail();
+    expect($secret->encrypted_payload['ea_email'])->toBe('fresh@example.test');
+});
+
+test('a password keeps the spaces the customer typed', function (): void {
+    // trimStrings would otherwise store and forward a different password from the
+    // one that works, and the customer would have no way to see why.
+    [$owner, $order, $item, $job] = actionableCoinsItem([SupplierAction::EditCredentials]);
+
+    Http::fake(['https://fft.example.test/*' => Http::response(['status' => 'ok'])]);
+
+    $this->actingAs($owner)
+        ->postJson("/orders/{$order->order_number}/items/{$item->public_id}/actions/edit-credentials", [
+            'ea_email' => 'spaces@example.test',
+            'ea_password' => '  keep me  ',
+            'backup_codes' => ['111111', '222222', '333333'],
+        ])
+        ->assertOk();
+
+    $secret = OrderItemSecret::query()->where('order_item_id', $item->id)->firstOrFail();
+    expect($secret->encrypted_payload['ea_password'])->toBe('  keep me  ');
+});
+
+test('a fresh payload is not left carrying the old retention date', function (): void {
+    // The supplier had working details that support was told had been purged.
+    [$owner, $order, $item, $job] = actionableCoinsItem([SupplierAction::EditCredentials]);
+
+    OrderItemSecret::query()->where('order_item_id', $item->id)->firstOrFail()->forceFill([
+        'deleted_at' => CarbonImmutable::now()->subDay(),
+        'retained_until' => CarbonImmutable::now()->subDay(),
+    ])->save();
+
+    Http::fake(['https://fft.example.test/*' => Http::response(['status' => 'ok'])]);
+
+    $this->actingAs($owner)
+        ->postJson("/orders/{$order->order_number}/items/{$item->public_id}/actions/edit-credentials", [
+            'ea_email' => 'again@example.test',
+            'ea_password' => 'again-password',
+            'backup_codes' => ['111111', '222222', '333333'],
+        ])
+        ->assertOk();
+
+    $secret = OrderItemSecret::query()->where('order_item_id', $item->id)->firstOrFail();
+    expect($secret->deleted_at)->toBeNull()
+        ->and($secret->retained_until)->toBeNull();
+});
+
+test('an unreadable observation does not answer a pending correction', function (): void {
+    // observed_at advances even for a response we could not parse, so comparing
+    // timestamps alone let an unreadable answer close the question and show the
+    // customer the old failure as the verdict on their new details.
+    [$owner, $order, $item, $job] = actionableCoinsItem([SupplierAction::EditCredentials]);
+
+    $job->forceFill([
+        'credentials_sent_at' => CarbonImmutable::parse('2026-09-13 10:00:00'),
+        'credential_version_sent' => 2,
+        'observed_at' => CarbonImmutable::parse('2026-09-13 10:05:00'),
+        'observation_supported' => false,
+    ])->save();
+
+    expect(ItemTracking::for($item->fresh(), 'en')['credentialsPending'])->toBeTrue();
+
+    $job->forceFill(['observation_supported' => true])->save();
+
+    expect(ItemTracking::for($item->fresh(), 'en')['credentialsPending'])->toBeFalse();
+});

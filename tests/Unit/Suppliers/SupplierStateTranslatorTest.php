@@ -668,7 +668,7 @@ test('every one of the fifty-one sbcStatus values maps to its canonical status, 
     // Account / setup errors (4)
     'failedNoClub' => ['failedNoClub', OrderStatus::WaitingForCustomer, OrderHoldReason::NoClub, []],
     'consoleLoggedIn' => ['consoleLoggedIn', OrderStatus::WaitingForCustomer, OrderHoldReason::ActiveSession, [SupplierAction::RetryChallenge]],
-    'FailedPersonaSwitch' => ['FailedPersonaSwitch', OrderStatus::WaitingForCustomer, OrderHoldReason::Credentials, []],
+    'FailedPersonaSwitch' => ['FailedPersonaSwitch', OrderStatus::WaitingForCustomer, OrderHoldReason::Platform, []],
     'TMLocked' => ['TMLocked', OrderStatus::WaitingForCustomer, OrderHoldReason::MarketLocked, []],
 
     // SBC-specific errors (8)

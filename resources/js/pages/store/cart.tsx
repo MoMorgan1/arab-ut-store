@@ -1983,7 +1983,8 @@ function ManualCredentialState({
 }
 
 const MANUAL_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MANUAL_EA_CODE_PATTERN = /^[0-9]{8}$/;
+// Six or eight digits, the same rule the server applies.
+const MANUAL_EA_CODE_PATTERN = /^(?:[0-9]{6}|[0-9]{8})$/;
 const MANUAL_PS_CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 function isCodeTriple(
@@ -2248,7 +2249,7 @@ function ManualCredentialForm({
                                 focusSiblingCodeField(event.currentTarget, -1);
                             }
                         }}
-                        pattern="[0-9]{8}"
+                        pattern="[0-9]{6}|[0-9]{8}"
                         required
                         value={code}
                     />
@@ -2672,7 +2673,7 @@ function CredentialState({
                                             );
                                         }
                                     }}
-                                    pattern="[0-9]{8}"
+                                    pattern="[0-9]{6}|[0-9]{8}"
                                     required
                                     value={code}
                                 />

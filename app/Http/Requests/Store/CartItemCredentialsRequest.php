@@ -4,6 +4,7 @@ namespace App\Http\Requests\Store;
 
 use App\Enums\ServiceType;
 use App\Models\CartItem;
+use App\ValueObjects\EaAccountCredentials;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -29,7 +30,7 @@ final class CartItemCredentialsRequest extends FormRequest
             'ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'ea_password' => ['present', 'string', 'min:1', 'max:128'],
             'backup_codes' => ['required', 'array', 'size:3'],
-            'backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
+            'backup_codes.*' => ['required', 'string', 'regex:'.EaAccountCredentials::BACKUP_CODE_PATTERN, 'distinct:strict'],
             'current_balance' => ['sometimes', 'integer', 'min:0', 'max:100000000'],
             'companion_market_open' => ['sometimes', 'boolean'],
             'policy_accepted' => ['sometimes', 'boolean'],
@@ -144,7 +145,7 @@ final class CartItemCredentialsRequest extends FormRequest
                 'playstation_email' => ['required', 'string', 'email:rfc', 'max:254'],
                 'playstation_password' => ['present', 'string', 'min:1', 'max:256'],
                 'ea_backup_codes' => ['required', 'array', 'size:3'],
-                'ea_backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
+                'ea_backup_codes.*' => ['required', 'string', 'regex:'.EaAccountCredentials::BACKUP_CODE_PATTERN, 'distinct:strict'],
                 'playstation_backup_codes' => ['required', 'array', 'size:3'],
                 'playstation_backup_codes.*' => ['required', 'string', 'regex:/\A[A-Z0-9]{6}\z/D', 'distinct:strict'],
             ];
@@ -154,7 +155,7 @@ final class CartItemCredentialsRequest extends FormRequest
             'ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'ea_password' => ['present', 'string', 'min:1', 'max:256'],
             'ea_backup_codes' => ['required', 'array', 'size:3'],
-            'ea_backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
+            'ea_backup_codes.*' => ['required', 'string', 'regex:'.EaAccountCredentials::BACKUP_CODE_PATTERN, 'distinct:strict'],
         ];
 
         if ($store === 'steam') {

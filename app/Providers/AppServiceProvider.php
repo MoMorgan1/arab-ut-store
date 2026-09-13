@@ -94,10 +94,19 @@ class AppServiceProvider extends ServiceProvider
         // Tighter than the refresh limiter: an action is a supplier request on the
         // long (5s/12s) timeout profile, so a single order may fire at most three a
         // minute and one customer five a minute across all of their orders.
-        RateLimiter::for('account-tracking-action', fn (Request $request): array => [
-            Limit::perMinute(5)->by('account-tracking-action-user:'.($request->user()?->getAuthIdentifier() ?? 'guest')),
-            Limit::perMinute(3)->by('account-tracking-action-order:'.(string) $request->route('order')),
-        ]);
+        // Both buckets carry the caller. Throttling runs before the controller can
+        // check ownership, so a bucket keyed on the order handle alone is one any
+        // signed-in visitor can empty by naming someone else's order number: the
+        // requests 404, and the owner is locked out of correcting their details
+        // for the minute. Order numbers are sequential, which makes that easy.
+        RateLimiter::for('account-tracking-action', function (Request $request): array {
+            $caller = (string) ($request->user()?->getAuthIdentifier() ?? 'guest');
+
+            return [
+                Limit::perMinute(5)->by('account-tracking-action-user:'.$caller),
+                Limit::perMinute(3)->by('account-tracking-action-order:'.$caller.':'.(string) $request->route('order')),
+            ];
+        });
 
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());

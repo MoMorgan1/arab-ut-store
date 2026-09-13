@@ -221,6 +221,7 @@ export type AccountTranslations = {
             hide_status: string;
             credentials_accepted: string;
             credentials_saved_not_sent: string;
+            credentials_saved_not_accepted: string;
             action_refused: string;
             edit_title: string;
             edit_email: string;

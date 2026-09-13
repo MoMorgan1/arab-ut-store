@@ -13,6 +13,8 @@ use App\Suppliers\Exceptions\SupplierUnavailable;
 use App\Suppliers\SupplierRegistry;
 use App\ValueObjects\EaAccountCredentials;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 final class SubmitCredentialCorrection
@@ -43,6 +45,43 @@ final class SubmitCredentialCorrection
         $resolved = $this->resolveActionableItem->for($item, SupplierAction::EditCredentials);
 
         $credentials = EaAccountCredentials::fromValidated($validated);
+
+        // One correction at a time for this item, write and forward together.
+        // Two tabs were enough to break it otherwise: both read the same version,
+        // both wrote, and whichever supplier call happened to land last decided
+        // what the supplier used - which could be the details the store had
+        // already replaced. The next Challenge placement would then be composed
+        // from one account while the supplier worked on another.
+        //
+        // A held lock is refused rather than queued: the second press is the same
+        // customer pressing twice, and making them wait behind a supplier call to
+        // be told nothing changed is worse than telling them to try again.
+        $lock = Cache::lock("credential-correction:item:{$item->id}", 30);
+
+        if (! $lock->get()) {
+            return $this->response($item, $locale, 'refused');
+        }
+
+        try {
+            return $this->correct($item, $resolved, $credentials, $user, $ipAddress, $locale);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * The protocol itself, run under the item's lock.
+     *
+     * @return array{tracking: array<string, mixed>|null, status: string}
+     */
+    private function correct(
+        OrderItem $item,
+        ActionableItem $resolved,
+        EaAccountCredentials $credentials,
+        User $user,
+        string $ipAddress,
+        string $locale,
+    ): array {
 
         // Write before forwarding, deliberately. The order of writes is the point: a
         // Challenge order ships coins first and the solve second, and a wrong EA email
@@ -76,7 +115,11 @@ final class SubmitCredentialCorrection
         }
 
         if (! $result->accepted) {
-            return $this->response($item, $locale, 'refused');
+            // The record was written before the call, so this is not "nothing
+            // happened": the store holds the corrected details and the next
+            // placement will use them. Saying "that did not go through" would be
+            // false, and would invite the customer to type it all again.
+            return $this->response($item, $locale, 'saved_not_accepted');
         }
 
         // The supplier's ack means "received", nothing more; only a fresh poll reveals
@@ -103,6 +146,20 @@ final class SubmitCredentialCorrection
         User $user,
         string $ipAddress,
     ): int {
+        // The payload and its audit row are one write. Without this a failing log
+        // insert left the credentials changed with nothing recording who changed
+        // them, and the caller was told the whole thing failed.
+        return DB::transaction(function () use ($item, $credentials, $user, $ipAddress): int {
+            return $this->persistSecret($item, $credentials, $user, $ipAddress);
+        });
+    }
+
+    private function persistSecret(
+        OrderItem $item,
+        EaAccountCredentials $credentials,
+        User $user,
+        string $ipAddress,
+    ): int {
         $secret = OrderItemSecret::query()->where('order_item_id', $item->id)->first();
 
         if ($secret instanceof OrderItemSecret) {
@@ -110,6 +167,10 @@ final class SubmitCredentialCorrection
             $secret->masked_summary = $credentials->maskedSummary();
             $secret->version = ((int) ($secret->version ?? 1)) + 1;
             $secret->deleted_at = null;
+            // A replaced payload is new, so the retention clock starts again with
+            // it. Keeping the old date meant the supplier had working details
+            // that support was told had already been purged.
+            $secret->retained_until = null;
             $secret->save();
         } else {
             $secret = new OrderItemSecret([

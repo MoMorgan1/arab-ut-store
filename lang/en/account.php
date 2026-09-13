@@ -142,6 +142,7 @@ return [
             'retrying_subline' => 'Your changes are saved and we are retrying the order now. The status may take a moment to catch up.',
             'credentials_accepted' => 'Your new details are saved and we are trying them now.',
             'credentials_saved_not_sent' => 'Your new details are saved. We will send them as soon as we are connected again.',
+            'credentials_saved_not_accepted' => 'Your new details are saved, but the last attempt did not work. Check them or message us.',
             'action_refused' => 'That did not go through. Please try again.',
             'edit_title' => 'Update account details',
             'edit_email' => 'EA account email',

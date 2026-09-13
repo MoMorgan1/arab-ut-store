@@ -2,6 +2,7 @@
 
 namespace App\ValueObjects\Cart;
 
+use App\ValueObjects\EaAccountCredentials;
 use DomainException;
 
 final readonly class ManualServiceCredentials
@@ -50,7 +51,7 @@ final readonly class ManualServiceCredentials
             'playstation_backup_codes',
         ]);
 
-        $eaCodes = self::codes($validated['ea_backup_codes'], '/^[0-9]{8}$/D', false, 'EA');
+        $eaCodes = self::codes($validated['ea_backup_codes'], EaAccountCredentials::BACKUP_CODE_PATTERN, false, 'EA');
         $playStationCodes = self::codes(
             $validated['playstation_backup_codes'],
             '/^[A-Za-z0-9]{6}$/D',
@@ -91,7 +92,7 @@ final readonly class ManualServiceCredentials
             'pc_store' => $store,
             'ea_email' => self::email($validated['ea_email'], 'EA'),
             'ea_password' => self::password($validated['ea_password'], 'EA'),
-            'ea_backup_codes' => self::codes($validated['ea_backup_codes'], '/^[0-9]{8}$/D', false, 'EA'),
+            'ea_backup_codes' => self::codes($validated['ea_backup_codes'], EaAccountCredentials::BACKUP_CODE_PATTERN, false, 'EA'),
         ];
 
         if ($store === 'steam') {

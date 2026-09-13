@@ -17,6 +17,14 @@ Design context and the UI workflow live in [.impeccable.md](.impeccable.md).
 - **Assistant work**: read `docs/ai-assistant/STATUS.md`, then the canonical document linked
   from `docs/ai-assistant/README.md`. Historical plans never override the newest owner decision.
 
+## Failures
+
+Every path handles its failures, and AGENTS.md says how (see **Failures**). The short version:
+an outside failure is never a 500, a write says what it stored rather than what it attempted,
+writes that belong together are one write, a write path is locked per subject, a limiter is keyed
+on the caller and not on an order number, and no error path stores a secret the success path
+protects.
+
 ## Git
 
 - Branch first. Commit and push to that branch only.

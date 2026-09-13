@@ -275,6 +275,37 @@ different class of defect than one that can.** Five rounds of code review missed
 saying "could not solve" above an amber "information" box; opening it found that in one look. Both
 kinds of review are needed, and the code-only one should be told it is code-only.
 
+## The challenge solve gets its own workflow — owner decision, 2026-09-13
+
+Mohamed asked whether n8n would read the corrected email or the original one. The answer, read out
+of `automation/n8n/fulfillment-v14/workflow-v14-salla.json` rather than assumed: **it reads the
+original.** `Fulfillment v14` is one workflow behind one webhook (117 nodes), the challenge path is
+a branch inside it rather than a workflow of its own, and `Router Logic1` takes the email and
+password from `$('Webhook').first().json` and carries them in memory all the way to
+`SBC: Submit Solve`.
+
+So a correction made during the coins phase reaches the supplier (`correctCredentialsAPI` is keyed
+on the supplier's order id) and reaches our own record (D1), and still does not reach the solve:
+n8n submits phase two with the value it captured at the start. **B4 does not close this on its
+own** — it guarantees a *new* send composes from `order_item_secrets`, and this send is inside the
+run that already holds the old value.
+
+**The decision: the challenge phase becomes its own workflow**, triggered by the store when the
+coins phase finishes, so it starts from a fresh payload. Chosen over a callback node inside v14
+partly for this bug and partly because v14 at 117 nodes is doing two jobs in one file.
+
+**Not now.** The owner's words: "هنبني الورك فلو في الاخر مش دلوقتي". Until it exists, a challenge
+item whose email was corrected mid-flight submits its solve against the old account, and that stays
+a support matter. This belongs to slice F, and it needs:
+
+- the store to know when the coins phase has finished (B5 already reconciles that; it needs to fire
+  something)
+- a trigger the store can call, with the HMAC convention the other automation routes use
+- the payload composed at send time from `order_item_secrets` (B4), which is what makes the new run
+  start from the corrected details
+- v14 to stop owning the solve, which is the part that must not be half-done: two workflows both
+  submitting a solve is worse than one submitting it with a stale email
+
 ## Blocked on Mohamed
 
 - Export of `Fulfillment v14` and of the order-status workflow.

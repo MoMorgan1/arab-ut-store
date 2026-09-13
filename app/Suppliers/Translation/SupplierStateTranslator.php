@@ -398,7 +398,7 @@ final class SupplierStateTranslator
         // Account / setup errors
         'failedNoClub' => OrderHoldReason::NoClub,
         'consoleLoggedIn' => OrderHoldReason::ActiveSession,
-        'FailedPersonaSwitch' => OrderHoldReason::Credentials,
+        'FailedPersonaSwitch' => OrderHoldReason::Platform,
         'TMLocked' => OrderHoldReason::MarketLocked,
 
         // SBC-specific errors (null when no honest enum match exists)

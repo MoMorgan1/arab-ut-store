@@ -688,7 +688,13 @@ export default function OrderTracking({
     const send = async (
         url: string,
         body: Record<string, unknown>,
-    ): Promise<'accepted' | 'saved_not_sent' | 'refused' | 'failed'> => {
+    ): Promise<
+        | 'accepted'
+        | 'saved_not_sent'
+        | 'saved_not_accepted'
+        | 'refused'
+        | 'failed'
+    > => {
         setBusy(true);
         setNotice(null);
 
@@ -722,8 +728,12 @@ export default function OrderTracking({
                 onTracking(payload.tracking);
             }
 
+            // A correction is written before the supplier is told, so two of
+            // these mean "saved" even though the supplier did not take it. Only
+            // an action that stored nothing can honestly be called refused.
             return payload.status === 'accepted' ||
-                payload.status === 'saved_not_sent'
+                payload.status === 'saved_not_sent' ||
+                payload.status === 'saved_not_accepted'
                 ? payload.status
                 : 'refused';
         } catch {
@@ -734,13 +744,20 @@ export default function OrderTracking({
     };
 
     const message = (
-        outcome: 'accepted' | 'saved_not_sent' | 'refused' | 'failed',
+        outcome:
+            | 'accepted'
+            | 'saved_not_sent'
+            | 'saved_not_accepted'
+            | 'refused'
+            | 'failed',
     ): string =>
         outcome === 'accepted'
             ? strings.credentials_accepted
             : outcome === 'saved_not_sent'
               ? strings.credentials_saved_not_sent
-              : strings.action_refused;
+              : outcome === 'saved_not_accepted'
+                ? strings.credentials_saved_not_accepted
+                : strings.action_refused;
 
     const onAction = async (action: string, target: number | null) => {
         if (busy) {
@@ -774,6 +791,9 @@ export default function OrderTracking({
 
             return;
         }
+
+        // 'saved_not_accepted' lands here too: the details are on record, so the
+        // form has done its job and the sentence underneath says what happened.
 
         setFormOpen(false);
         setNotice(message(outcome));

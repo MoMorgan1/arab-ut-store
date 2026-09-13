@@ -4,6 +4,7 @@ namespace App\Http\Requests\Store;
 
 use App\Services\Catalog\CoinsCatalogReader;
 use App\Validation\CoinsSelectionRules;
+use App\ValueObjects\EaAccountCredentials;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -27,7 +28,7 @@ final class CoinsCartRequest extends FormRequest
             'credentials.ea_email' => ['required', 'string', 'email:rfc', 'max:254'],
             'credentials.ea_password' => ['present', 'string', 'min:1', 'max:128'],
             'credentials.backup_codes' => ['required', 'array', 'size:3'],
-            'credentials.backup_codes.*' => ['required', 'string', 'regex:/\A[0-9]{8}\z/D', 'distinct:strict'],
+            'credentials.backup_codes.*' => ['required', 'string', 'regex:'.EaAccountCredentials::BACKUP_CODE_PATTERN, 'distinct:strict'],
             'credentials.current_balance' => [
                 Rule::requiredIf($this->requiresCurrentBalance()),
                 Rule::prohibitedIf(! $this->requiresCurrentBalance()),

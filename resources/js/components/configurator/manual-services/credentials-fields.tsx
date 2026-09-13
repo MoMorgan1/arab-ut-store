@@ -550,7 +550,9 @@ export function CodeFields({
                                     }
                                 }}
                                 pattern={
-                                    numeric ? '[0-9]{8}' : '[A-Za-z0-9]{6}'
+                                    numeric
+                                        ? '[0-9]{6}|[0-9]{8}'
+                                        : '[A-Za-z0-9]{6}'
                                 }
                                 placeholder={numeric ? '12345678' : 'A1B2C3'}
                                 ref={(node) => {

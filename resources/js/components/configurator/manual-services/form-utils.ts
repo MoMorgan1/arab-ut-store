@@ -9,7 +9,9 @@ import type {
 export type ManualFormErrors = Partial<Record<string, string>>;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const EA_CODE_PATTERN = /^[0-9]{8}$/;
+// Six or eight digits: EA issues both, and the store's own rule says so
+// (app/ValueObjects/EaAccountCredentials.php).
+const EA_CODE_PATTERN = /^(?:[0-9]{6}|[0-9]{8})$/;
 const PS_CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 export function appendCredentials(

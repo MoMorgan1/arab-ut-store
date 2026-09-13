@@ -344,8 +344,15 @@ final class ItemTracking
         // A credential correction is "pending" while it has been sent to the supplier but no
         // later observation has answered it. The supplier's immediate ack says "received", and
         // only a fresh poll reveals whether the new details actually work.
+        // It clears on a reading we could actually read. `observed_at` advances
+        // even for a response we could not parse - deliberately, so the age on
+        // screen stays honest - so comparing timestamps alone let an unreadable
+        // answer close the question and show the customer the old failure as
+        // though it were the verdict on their new details.
         $credentialsPending = $job->credentials_sent_at !== null
-            && ($job->observed_at === null || $job->credentials_sent_at->isAfter($job->observed_at));
+            && ($job->observed_at === null
+                || ! $job->observation_supported
+                || $job->credentials_sent_at->isAfter($job->observed_at));
 
         return [
             'kind' => $kind,
