@@ -57,6 +57,7 @@ final class RefreshItemTracking
      *         target: int,
      *         state: string,
      *         stateLabel: string,
+     *         help: array{title: string, desc: string, action: string},
      *         squads: array{done: int|null, total: int|null},
      *         solves: array{done: int|null, total: int|null},
      *         holdReason: string|null,

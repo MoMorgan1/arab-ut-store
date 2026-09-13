@@ -18,6 +18,14 @@ enum ChallengeState: string
     case FetchingSquads = 'fetching_squads';
     case Solving = 'solving';
     case Done = 'done';
+    /**
+     * A deliberate wait, not a failure. The tracker labels these amber and says
+     * the system resumes on its own; grouping them under Failed told the
+     * customer the challenge had failed while the card beside it said we were
+     * still working.
+     */
+    case Cooldown = 'cooldown';
+    case Reconnecting = 'reconnecting';
     case SignInFailed = 'sign_in_failed';
     case SessionExpired = 'session_expired';
     case Failed = 'failed';
@@ -26,5 +34,23 @@ enum ChallengeState: string
     public function label(string $locale = 'ar'): string
     {
         return (string) trans("orders.challenge_states.{$this->value}", [], $locale);
+    }
+
+    /**
+     * What the "?" beside the chip opens: what this state is, and what the
+     * customer is meant to do about it - which for most of them is nothing.
+     *
+     * @return array{title: string, desc: string, action: string}
+     */
+    public function help(string $locale = 'ar'): array
+    {
+        /** @var array{title?: string, desc?: string, action?: string} $help */
+        $help = trans("orders.challenge_help.{$this->value}", [], $locale);
+
+        return [
+            'title' => $help['title'] ?? $this->label($locale),
+            'desc' => $help['desc'] ?? '',
+            'action' => $help['action'] ?? '',
+        ];
     }
 }

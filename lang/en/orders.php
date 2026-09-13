@@ -99,8 +99,77 @@ Congratulations on the squad!',
             'subline' => 'This order was refunded',
         ],
         'not_reported' => [
-            'headline' => 'Queued',
-            'subline' => 'Waiting to start',
+            // The tracker has no 'nothing reported yet' screen: an order it knows
+            // nothing about still reads as being worked on, which is true.
+            'headline' => 'Processing',
+            'subline' => 'Your order is being processed',
+        ],
+    ],
+    'challenge_help' => [
+        'queued' => [
+            'title' => 'Queued',
+            'desc' => 'Your order is in the queue and starts shortly.',
+            'action' => 'Nothing is needed from you.',
+        ],
+        'waiting_previous_solve' => [
+            'title' => 'Waiting',
+            'desc' => 'Another challenge on your account is being solved right now.',
+            'action' => 'This one starts as soon as the current challenge finishes.',
+        ],
+        'started' => [
+            'title' => 'Solving',
+            'desc' => 'Reading the challenge and preparing the right squads.',
+            'action' => 'Please wait, and do not open the game right now.',
+        ],
+        'fetching_challenge' => [
+            'title' => 'Reading the challenge',
+            'desc' => 'Reading what the challenge needs before building a squad.',
+            'action' => 'Please wait, and do not open the game right now.',
+        ],
+        'fetching_squads' => [
+            'title' => 'Fetching squads',
+            'desc' => 'Preparing the squads that fit the challenge.',
+            'action' => 'Please wait, and do not open the game right now.',
+        ],
+        'solving' => [
+            'title' => 'Submitting the squad',
+            'desc' => 'Buying the players and submitting the squad in the game.',
+            'action' => 'Please wait; this can take a few minutes.',
+        ],
+        'done' => [
+            'title' => 'Complete',
+            'desc' => 'The challenge was solved successfully.',
+            'action' => 'Nothing is needed from you.',
+        ],
+        'cooldown' => [
+            'title' => 'Safety cooldown',
+            'desc' => 'Paused as a safety measure to avoid an EA transfer market ban.',
+            'action' => 'It resumes on its own once the cooldown ends. You can play normally.',
+        ],
+        'reconnecting' => [
+            'title' => 'Reconnecting',
+            'desc' => 'A brief connection problem; we are retrying.',
+            'action' => 'Nothing is needed from you.',
+        ],
+        'sign_in_failed' => [
+            'title' => 'Wrong details',
+            'desc' => 'The email, the password or the backup code is not right.',
+            'action' => 'Update them from "Update order details", then try again.',
+        ],
+        'session_expired' => [
+            'title' => 'Session expired',
+            'desc' => 'The session with the EA account has expired.',
+            'action' => 'Press "Try again" to renew the connection.',
+        ],
+        'failed' => [
+            'title' => 'Could not finish the challenge',
+            'desc' => 'We could not complete this challenge on the last attempt.',
+            'action' => 'Press "Try again", and message us if it keeps happening.',
+        ],
+        'unknown' => [
+            'title' => 'No details available',
+            'desc' => 'There is no detailed description for this state yet.',
+            'action' => 'If it needs you, a button or a message appears underneath.',
         ],
     ],
     'challenge_states' => [
@@ -111,6 +180,8 @@ Congratulations on the squad!',
         'fetching_squads' => 'Fetching squads',
         'solving' => 'Solving squad',
         'done' => 'Completed',
+        'cooldown' => 'Safety cooldown',
+        'reconnecting' => 'Reconnecting',
         'sign_in_failed' => 'Sign-in failed',
         'session_expired' => 'Session expired',
         'failed' => 'Failed',

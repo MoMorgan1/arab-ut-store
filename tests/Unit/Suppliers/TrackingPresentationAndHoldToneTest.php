@@ -226,8 +226,8 @@ test('challengeState maps raw sbcStatus strings to curated ChallengeState cases'
     'submitFailed' => ['submitFailed', ChallengeState::Failed],
     'playerBuyFailed' => ['playerBuyFailed', ChallengeState::Failed],
     'OutOfCoins' => ['OutOfCoins', ChallengeState::Failed],
-    'tempban' => ['tempban', ChallengeState::Failed],
-    'dailyReceiverLimit' => ['dailyReceiverLimit', ChallengeState::Failed],
+    'tempban' => ['tempban', ChallengeState::Cooldown],
+    'dailyReceiverLimit' => ['dailyReceiverLimit', ChallengeState::Cooldown],
     'unknown string' => ['unheardOfStatus', ChallengeState::Unknown],
 ]);
 

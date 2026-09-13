@@ -351,10 +351,12 @@ html.admin-document {
     --bar-surface-radius: 30px;
     --bar-inset: 6px;
     --bar-rim: 212 175 106;
-    /* Gap to the screen edge, on top of the safe area. 22px is the gap the
-       account chat widget's geometry is built around; changing it moves the
-       launcher's relationship to the bar as well, and a browser test pins it. */
-    --bar-offset: 22px;
+    /* Gap to the screen edge, on top of the safe area. The account chat
+       widget's geometry is built around this, so the launcher moves with it and
+       a browser test pins both numbers. Lowered from 22px to 10px on
+       2026-09-13: on a phone the bar was floating high enough to read as a
+       separate object rather than the edge of the screen. */
+    --bar-offset: 10px;
     --bar-height: 64px;
 }
 
@@ -404,11 +406,11 @@ html.admin-document {
            solid surface. Warmth comes from the tint's hue, not its density. */
         background: linear-gradient(
             to bottom,
-            rgb(26 21 16 / 42%),
-            rgb(16 12 9 / 58%)
+            rgb(26 21 16 / 26%),
+            rgb(16 12 9 / 40%)
         );
-        -webkit-backdrop-filter: blur(22px) saturate(160%) brightness(1.06);
-        backdrop-filter: blur(22px) saturate(160%) brightness(1.06);
+        -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.1);
+        backdrop-filter: blur(28px) saturate(180%) brightness(1.1);
         /* Two hairlines, top brighter than bottom, so the slab reads convex;
            a tight shadow instead of a large diffuse one. */
         box-shadow:
@@ -416,6 +418,9 @@ html.admin-document {
             inset 0 -1px 0 rgb(var(--bar-rim) / 8%),
             0 -8px 24px rgb(0 0 0 / 30%);
         pointer-events: auto;
+        /* The drag across the tabs is horizontal; without this the browser
+           claims the gesture for a scroll and the lens never moves. */
+        touch-action: pan-y;
         transition: opacity 180ms ease;
     }
 
@@ -475,8 +480,84 @@ html.admin-document {
         pointer-events: none;
     }
 
+    /* The lens: a bead of glass over the selected tab that slides to the next
+       one. It magnifies and brightens what is behind it rather than painting a
+       colour over it, which is why it reads as glass and not as a highlight —
+       and why the icon and label underneath stay legible through it.
+
+       The faint warm and cool rims are the dispersion a real lens edge shows.
+       They are 12% and 10%: any stronger and it stops being an edge and starts
+       being a rainbow. */
+    .arabut-bottom-bar__lens {
+        position: absolute;
+        inset-block: var(--bar-inset);
+        /* Physical, not logical: the offset it is moved by comes from
+           offsetLeft, which is measured from the left whatever the direction.
+           Anchoring to the inline start put it against the right edge in
+           Arabic and then pushed it further right. */
+        left: 0;
+        border-radius: calc(var(--bar-surface-radius) - var(--bar-inset));
+        background: linear-gradient(
+            160deg,
+            rgb(255 255 255 / 16%),
+            rgb(255 255 255 / 4%) 46%,
+            rgb(var(--bar-rim) / 10%)
+        );
+        -webkit-backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+        backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 42%),
+            inset 0 -1px 0 rgb(var(--bar-rim) / 20%),
+            inset 1px 0 0 rgb(255 214 170 / 12%),
+            inset -1px 0 0 rgb(170 214 255 / 10%),
+            0 6px 18px rgb(0 0 0 / 22%);
+        pointer-events: none;
+        z-index: 0;
+        transform: translateX(var(--lens-x, 0)) scaleX(var(--lens-sx, 1))
+            scaleY(var(--lens-sy, 1));
+        /* The same curve the rest of the bar's motion uses, long enough to be
+           followed by eye and short enough not to lag the finger. */
+        transition:
+            transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+            width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* A warm bloom under the lens, travelling with it rather than switching on
+       beneath whichever tab happens to be selected. */
+    .arabut-bottom-bar__lens::after {
+        content: '';
+        position: absolute;
+        inset-inline: 12%;
+        bottom: -2px;
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgb(var(--bar-rim) / 85%),
+            transparent
+        );
+        filter: blur(1.5px);
+        opacity: 0.9;
+    }
+
+    /* While a finger is dragging it, the lens is placed frame by frame, so the
+       easing that makes a tap look considered would read as lag. It goes back
+       on release, which is what makes the settle feel like a settle. */
+    .arabut-bottom-bar__lens--dragging {
+        transition: none;
+    }
+
+    /* Reduced motion keeps the lens where it belongs and stops it travelling. */
+    @media (prefers-reduced-motion: reduce) {
+        .arabut-bottom-bar__lens {
+            transition: none;
+        }
+    }
+
     .arabut-bottom-bar__item {
         position: relative;
+        z-index: 1;
         display: flex;
         flex: 1 1 0;
         min-width: 0;
@@ -534,7 +615,6 @@ html.admin-document {
        the idle state and needs no box-shadow to read as raised. */
     .arabut-bottom-bar__item--active {
         color: var(--arabut-gold-bright);
-        background-color: rgb(212 168 67 / 16%);
     }
 
     /* The active glyph fills in rather than only changing colour, so selection
@@ -608,6 +688,90 @@ html.admin-document {
         /* Keep the pressed state legible without any movement. */
         .arabut-bottom-bar__item:active {
             opacity: 0.85;
+        }
+    }
+
+    /* ==========================================================================
+       Page transitions between Inertia visits.
+
+       Inertia drives `document.startViewTransition()` for every visit (see
+       `resources/js/lib/page-transitions.ts`), which is what replaced the
+       one-frame page swap that read as a jump. Three things are set here:
+
+       - The default cross-fade is disabled and replaced by a short lift on the
+         incoming page. A bare cross-fade between two dark pages reads as a
+         flicker rather than as movement, and it competes with the bar.
+       - The bar is named once so the browser captures the whole surface as ONE
+         element instead of cross-fading it with the page. Without a name the
+         glass would be caught mid-fade and its backdrop blur would visibly
+         re-rasterise.
+       - The destination that becomes current is named too, so the browser
+         interpolates it from the old slot to the new one. That is the movement
+         the bar was missing: before this the active item simply appeared.
+
+       Only one element may carry a given `view-transition-name` at a time, which
+       is why the name lives on the active item and is absent from the rest.
+       ========================================================================== */
+    .arabut-bottom-bar {
+        --arabut-bar-vt: arbut-bottom-bar;
+    }
+
+    .arabut-bottom-bar__inner {
+        view-transition-name: var(--arabut-bar-vt);
+    }
+
+    .arabut-bottom-bar__item--active {
+        --arabut-bar-item-vt: arbut-bottom-bar-item;
+        view-transition-name: var(--arabut-bar-item-vt);
+    }
+
+    /* Old and new pages overlap inside the root group, so an element's own
+       snapshot must not fade behind the other page's. */
+    ::view-transition-old(arbut-bottom-bar),
+    ::view-transition-new(arbut-bottom-bar),
+    ::view-transition-old(arbut-bottom-bar-item),
+    ::view-transition-new(arbut-bottom-bar-item) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
+
+    ::view-transition-group(arbut-bottom-bar),
+    ::view-transition-group(arbut-bottom-bar-item) {
+        animation-duration: 320ms;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
+
+    /* The incoming page rises into place. 8px, not 24: on a phone a long travel
+       makes a fast tap feel like it is waiting for the animation. */
+    ::view-transition-new(root) {
+        animation: arbut-page-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes arbut-page-enter {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* The JavaScript guard is the real control; this is the backstop for a
+       preference that changes between the tap and the swap. */
+    @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+            animation: none !important;
         }
     }
 
@@ -7825,15 +7989,98 @@ html.admin-document {
 }
 
 .account-order-track li[data-state='now'] > span {
-    background: linear-gradient(
-        to var(--account-track-end, left),
-        var(--arabut-gold) 60%,
-        rgb(212 168 67 / 16%) 60%
-    );
+    position: relative;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(212 168 67 / 16%);
 }
 
-[dir='ltr'] .account-order-track li[data-state='now'] > span {
-    --account-track-end: right;
+/* The step the order is on is the only one still moving, so it is the only one
+   that animates: the gold reaches out to where the work has got to, eases back,
+   and goes again. A static half-line reads as a rendering mistake; this reads as
+   something running. */
+.account-order-track li[data-state='now'] > span::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline: 0 auto;
+    width: 60%;
+    border-radius: inherit;
+    background: var(--arabut-gold);
+    transform-origin: var(--account-track-origin, right) center;
+    animation: account-track-work 1.6s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+}
+
+/* And a sheen travelling over it, kept from the first pass: the fill says how
+   far, the sheen says it is still running. */
+.account-order-track li[data-state='now'] > span::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(255 255 255 / 45%),
+        transparent
+    );
+    animation: account-track-sheen 1.6s ease-in-out infinite;
+}
+
+@keyframes account-track-sheen {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes account-track-work {
+    0% {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+
+    8% {
+        transform: scaleX(0.06);
+        opacity: 1;
+    }
+
+    68% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    /* It fills, then fades and begins again from the start. It never retracts:
+       a line running backwards reads as the order losing ground. */
+    86% {
+        transform: scaleX(1);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scaleX(0);
+        opacity: 0;
+    }
+}
+
+/* Reduced motion keeps the reading, drops the travel. */
+@media (prefers-reduced-motion: reduce) {
+    .account-order-track li[data-state='now'] > span::before {
+        animation: none;
+        opacity: 1;
+        transform: scaleX(0.6);
+    }
+
+    .account-order-track li[data-state='now'] > span::after {
+        animation: none;
+        opacity: 0;
+    }
+}
+
+[dir='ltr'] .account-order-track li[data-state='now'] > span::before {
+    --account-track-origin: left;
 }
 
 .account-invoice__items {
@@ -7891,6 +8138,60 @@ html.admin-document {
     white-space: nowrap;
 }
 
+/* The state, on the row, before anything is opened: a dot in the tone of the
+   state and the headline the tracking card would show. */
+.account-invoice__item-state {
+    display: inline-flex;
+    grid-column: 2 / -1;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    color: var(--arabut-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.account-invoice__item-state-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--arabut-gold-bright);
+    box-shadow: 0 0 0 0 rgb(212 168 67 / 55%);
+    animation: account-state-pulse 2.4s ease-out infinite;
+}
+
+.account-invoice__item-state-dot[data-tone='action'] {
+    background: var(--arabut-danger);
+    box-shadow: 0 0 0 0 rgb(255 180 169 / 55%);
+    animation: none;
+}
+
+.account-invoice__item-state-dot[data-tone='info'] {
+    background: #f59e0b;
+    animation: none;
+}
+
+@keyframes account-state-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgb(212 168 67 / 55%);
+    }
+
+    70% {
+        box-shadow: 0 0 0 0.35rem rgb(212 168 67 / 0%);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgb(212 168 67 / 0%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-invoice__item-state-dot {
+        animation: none;
+    }
+}
+
 .account-invoice__item-more {
     display: inline-flex;
     grid-column: 2 / -1;
@@ -7927,6 +8228,16 @@ html.admin-document {
     padding: 0.75rem;
 }
 
+/* Nothing but the tracking card inside, which carries its own surface: the
+   wrapper would be a box drawn around a box, and it narrows the card by its own
+   padding on the one screen where width is the scarce thing. */
+.account-invoice__item-details--bare {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    padding: 0;
+}
+
 .account-order-facts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7954,8 +8265,7 @@ html.admin-document {
     display: grid;
     gap: 0.5rem;
     margin: 0;
-    border-block-start: 1px solid var(--arabut-line);
-    padding-block-start: 0.85rem;
+    padding-block-start: 1.1rem;
 }
 
 .account-invoice__totals > div {
@@ -14734,7 +15044,8 @@ html.admin-document {
 
 @media (max-width: 47.99rem) {
     .chat-widget-root--account {
-        bottom: calc(120px + env(safe-area-inset-bottom));
+        /* Kept 98px clear of the bar, which is why this moved when the bar did. */
+        bottom: calc(108px + env(safe-area-inset-bottom));
         z-index: 70;
     }
 

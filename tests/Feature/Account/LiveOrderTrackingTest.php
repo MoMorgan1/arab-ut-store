@@ -1,6 +1,7 @@
 <?php
 
 use App\Account\Presenters\ItemTracking;
+use App\Enums\ChallengeState;
 use App\Enums\DeliveryPhase;
 use App\Enums\FulfillmentStatus;
 use App\Enums\HoldTone;
@@ -16,6 +17,7 @@ use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Suppliers\Translation\SupplierStateTranslator;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -889,3 +891,16 @@ test('workStarted is false on a challenge job until it completes, because a chal
 
     expect(ItemTracking::for($item->fresh(), 'en')['workStarted'])->toBeTrue();
 });
+
+test('a challenge wait is never labelled as a failure', function (string $sbcStatus): void {
+    // The aggregate resolves these six to Processing with an Info tone. A card
+    // chip reading "could not solve" beside that headline is the screen
+    // contradicting itself, which is how this was found: by looking at it.
+    $state = SupplierStateTranslator::challengeState($sbcStatus);
+
+    expect($state)->not->toBe(ChallengeState::Failed)
+        ->and($state->label('ar'))->not->toBe(ChallengeState::Failed->label('ar'))
+        // The tracker's own labels for the connection cases name the proxy.
+        ->and($state->label('ar'))->not->toContain('بروكسي')
+        ->and($state->label('en'))->not->toContain('proxy');
+})->with(SupplierStateTranslator::SBC_SYSTEM_INFO_STATUSES);

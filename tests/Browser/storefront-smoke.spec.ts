@@ -295,11 +295,11 @@ async function expectMobileAccountLauncherAboveNavigation(
 
     expect(safeAreaInsetBottom).toBeCloseTo(expectedSafeAreaInsetBottom, 1);
     expect(geometry.rootBottom).toBeCloseTo(
-        120 + expectedSafeAreaInsetBottom,
+        108 + expectedSafeAreaInsetBottom,
         1,
     );
     expect(geometry.navigationBottom).toBeCloseTo(
-        22 + expectedSafeAreaInsetBottom,
+        10 + expectedSafeAreaInsetBottom,
         1,
     );
     expect(geometry.rootZIndex).toBe(70);

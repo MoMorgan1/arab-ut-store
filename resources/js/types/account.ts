@@ -193,6 +193,46 @@ export type AccountTranslations = {
         playstation_codes: string;
         details: string;
         hide_details: string;
+        tracking: {
+            freshness_just_now: string;
+            freshness_minutes: string;
+            freshness_hours: string;
+            freshness_days: string;
+            eta: string;
+            eta_hours_minutes: string;
+            eta_minutes: string;
+            delivered: string;
+            remaining: string;
+            account_coins: string;
+            account_coins_preparing: string;
+            coins_unit: string;
+            action_required: string;
+            info: string;
+            edit_credentials: string;
+            resume: string;
+            retry_challenge: string;
+            retrying: string;
+            retrying_subline: string;
+            progress: string;
+            squads: string;
+            repeat: string;
+            coins_used: string;
+            show_status: string;
+            hide_status: string;
+            challenge_help: string;
+            help_action_label: string;
+            challenge_help_default: string;
+            close: string;
+            challenges_all_done: string;
+            challenges_count: string;
+            order_completed_ago: string;
+            challenge_completed_ago: string;
+            tab_coins: string;
+            tab_challenges: string;
+            console_playstation: string;
+            console_xbox: string;
+            console_pc: string;
+        };
         track_received: string;
         track_in_progress: string;
         track_completed: string;
@@ -452,6 +492,7 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             quantity: number;
             total: AccountMoney;
             credentialsPresent: boolean;
+            tracking: OrderItemTracking | null;
             manualFulfillment: {
                 credentialsUrl: string | null;
                 squadImageUrl: string | null;
@@ -468,6 +509,74 @@ export type AccountLiveOrderPageProps = AccountPageShellProps & {
             } | null;
         }>;
     };
+};
+
+/** One challenge card inside a Challenge item's tracking block. */
+export type OrderTrackingChallenge = {
+    /**
+     * Position in the placement's stored id list, never the challenge's own id:
+     * a supplier identifier does not cross to the client, and the server
+     * resolves the position back when an action names one.
+     */
+    target: number;
+    state: string;
+    stateLabel: string;
+    /** What the "?" opens: what the state is, and what to do about it. */
+    help: { title: string; desc: string; action: string };
+    squads: { done: number | null; total: number | null };
+    solves: { done: number | null; total: number | null };
+    holdReason: string | null;
+    holdMessage: string | null;
+    holdTone: 'action' | 'info' | null;
+    coinsUsed: number | null;
+    finishedAt: string | null;
+    actions: string[];
+};
+
+/**
+ * What the supplier last told us about one item, curated for the customer.
+ *
+ * Every value here is one the store chose: no supplier code, no challenge id,
+ * no mention that a supplier exists. `presentation` decides the headline,
+ * `holdTone` decides the action box's skin, and the two are computed
+ * separately on the server because one hold reason wears either skin
+ * depending on which code produced it.
+ */
+export type OrderItemTracking = {
+    kind: 'coins' | 'challenge' | 'manual';
+    phase: string | null;
+    presentation: string;
+    headline: string;
+    /** May contain a `:console` placeholder the client fills from the platform. */
+    subline: string;
+    holdReason: string | null;
+    holdMessage: string | null;
+    holdTone: 'action' | 'info' | null;
+    completedAt: string | null;
+    actions: string[];
+    supported: boolean;
+    observedAt: string | null;
+    accountCoins: {
+        amount: number | null;
+        state: 'known' | 'preparing' | 'unknown';
+    };
+    progress: {
+        coinsDelivered: number | null;
+        coinsOrdered: number | null;
+        squadsDone: number | null;
+        squadsTotal: number | null;
+        solvesDone: number | null;
+        solvesTotal: number | null;
+    } | null;
+    challenges: OrderTrackingChallenge[] | null;
+    coverage: { answered: number; requested: number } | null;
+    /**
+     * Whether work on the order has visibly begun. It travels on its own
+     * because the headline cannot stand in for it: a cooldown or a message can
+     * suppress the branch that would have shown movement, so the same headline
+     * is reachable with work started and not started.
+     */
+    workStarted: boolean;
 };
 
 export type AccountWalletEntryType =

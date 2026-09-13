@@ -2946,9 +2946,18 @@
                                 <p class="track-compact-card__subline">تم حفظ التغييرات، وجاري إعادة محاولة الطلب الآن. قد يستغرق تحديث الحالة لحظات.</p>
                             </div>
 
-                            <!-- Full SBC Vocabulary Chips Strip from SBC_STATUS_MAP -->
-                            <div class="track-compact-card">
-                                <span class="art__tag" style="width: fit-content;">قاموس شرائح حالات SBC المعتمدة (SBC_STATUS_MAP)</span>
+                            <!-- Full SBC Vocabulary Chips Strip from SBC_STATUS_MAP.
+                                 REFERENCE ONLY - NOT A DESIGN TO BUILD. See the note below. -->
+                            <div class="track-compact-card" style="border-color: rgba(251, 191, 36, 0.35);">
+                                <span class="art__tag" style="width: fit-content;">مرجع فقط — نصوص التراكر الخارجي، مش النصوص اللي الزبون هيشوفها</span>
+                                <p class="track-compact-card__subline" style="margin: 0 0 0.5rem;">
+                                    الشريط ده بيعرض مصطلحات التراكر الخارجي زي ما هي، عشان نعرف كل الحالات الموجودة فعلاً — وهو أقدم من قاعدة
+                                    «الزبون مايقراش عن السباكة» اللي المالك حطها بعد اعتماد الكانفاس. كل اللي فيه رموز تشخيص بتاعتنا إحنا:
+                                    <code>401</code>، <code>البروكسي</code>، وخلافه. <b>ماينقلش زي ما هو.</b> الحمولة أصلاً مابتطلعش الكلام ده:
+                                    الشريحة بتاخد نصها من <code>ChallengeState</code> (حوالي عشر حالات مجمّعة)، والتفسير بيجي من
+                                    <code>holdMessage</code>. اتساب هنا كسجل للمقارنة لما نراجع إن كل حالة في التراكر ليها مقابل عندنا.
+                                </p>
+                                <span class="art__tag" style="width: fit-content;">قاموس شرائح حالات SBC في التراكر (SBC_STATUS_MAP)</span>
                                 <div class="track-sbc-dict">
                                     <span class="track-challenge__chip track-challenge__chip--amber">في الانتظار</span>
                                     <span class="track-challenge__chip track-challenge__chip--amber">بانتظار التحدي السابق</span>
@@ -3218,6 +3227,13 @@
                                 شارة البطاقة بتجمع <code>WrongBA</code> و<code>WrongUserPass</code> في «فشل تسجيل الدخول» احترامًا لقاعدة حظر السباكة، بس الاتنين بيطلبوا من العميل يصلح حاجتين مختلفتين. فالبطاقة بقت تحمل سببها ونصها ولونها بنفسها.
                             </td>
                             <td>قاعدة حظر السباكة + وضوح الإجراء</td>
+                        </tr>
+                        <tr>
+                            <td><b>أرقام الإحصائيات مقاسة على صندوقها مش على الشاشة</b></td>
+                            <td>
+                                التراكر بيدي كل صندوق <code>padding: 14px 12px</code> وخط <code>clamp(18px, 3vw, 26px)</code> لأن الصف بيملأ عرض الصفحة. جوه الفاتورة الصف بقى 327px، يعني ثلثه 81px، والرقم من سبع خانات كان بيعدّي الحدود. فبقى الصندوق <code>container-type: inline-size</code>، والخط <code>clamp(11px, 18cqi, 26px)</code>، والحواف الجانبية 6px.
+                            </td>
+                            <td>طلب المالك: الرقم ما يخرجش من الصندوق</td>
                         </tr>
                         <tr>
                             <td><b>حذف الشريط الجانبي المخترع في شاشة سطح المكتب</b></td>

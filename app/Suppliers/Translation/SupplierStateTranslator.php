@@ -461,10 +461,12 @@ final class SupplierStateTranslator
         'WrongBA' => ChallengeState::SignInFailed,
         'loginLoop' => ChallengeState::SignInFailed,
 
-        // Proxy / connection errors
-        'FailProxyConn' => ChallengeState::Failed,
-        'FailedProxyConnectionError' => ChallengeState::Failed,
-        'FailProxy' => ChallengeState::Failed,
+        // Connection trouble on our side: the tracker shows these amber and says
+        // it is reconnecting, so they are a wait rather than a failure. Its own
+        // labels name the proxy, which the customer never reads about.
+        'FailProxyConn' => ChallengeState::Reconnecting,
+        'FailedProxyConnectionError' => ChallengeState::Reconnecting,
+        'FailProxy' => ChallengeState::Reconnecting,
 
         // Account / setup errors
         'failedNoClub' => ChallengeState::Failed,
@@ -493,9 +495,10 @@ final class SupplierStateTranslator
         // Financial / Cooldown errors
         'noFunds' => ChallengeState::Failed,
         'OutOfCoins' => ChallengeState::Failed,
-        'tempban' => ChallengeState::Failed,
-        'TempbanCooldown' => ChallengeState::Failed,
-        'dailyReceiverLimit' => ChallengeState::Failed,
+        // EA's own enforced rest, and the daily cap. Waits, both of them.
+        'tempban' => ChallengeState::Cooldown,
+        'TempbanCooldown' => ChallengeState::Cooldown,
+        'dailyReceiverLimit' => ChallengeState::Cooldown,
 
         // System errors
         'aborted' => ChallengeState::Failed,
