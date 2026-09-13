@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
  * Turns the order segment of a URL into an Order.
  *
  * Every human-visible order URL addresses the order by its short number
- * (AUT-1043, or an imported UT- number). Orders placed before the numbers
+ * (AUT-1043, or an imported Salla number such as 277538068). Orders placed before the numbers
  * existed are still reachable by the old 26-character ULID public_id: such a
  * request resolves normally and is then sent a permanent (301) redirect to the
  * same route with the order number, so a link already sitting in an old email
@@ -24,11 +24,22 @@ use Illuminate\Support\Str;
 final class OrderHandle
 {
     /**
-     * The order-number shape written by the Salla order import: the store's
-     * `UT-` prefix followed by the numeric order number. The importer stores the
-     * CSV value verbatim, so the digits are not fixed-width.
+     * The order-number shapes written by the Salla order import.
+     *
+     * The importer stores the CSV value verbatim (`ImportSallaOrders.php:458`),
+     * and what Salla puts in that column is its own bare numeric order number -
+     * `277538068`, not `UT-277538068`. Every one of the 31,983 imported orders
+     * in production carries the bare shape and none carries the prefix, so the
+     * prefixed pattern this class shipped with matched no row that exists: it
+     * was written from an assumption about the data rather than from the data.
+     * Both shapes are recognised because the prefixed form is what the fixtures
+     * and some development databases hold, and a handle class that refuses a
+     * shape the database contains is exactly the bug being fixed here.
      */
     public const IMPORTED_PATTERN = '/^UT-[0-9]+$/';
+
+    /** Salla's own order number, as the importer stores it: bare digits. */
+    public const IMPORTED_NUMERIC_PATTERN = '/^[0-9]+$/';
 
     /**
      * The order route constraint: broad enough for a short number and a ULID
@@ -48,13 +59,15 @@ final class OrderHandle
     /**
      * Whether the segment has a shape this store issues for an order number:
      * the sequential AUT- number, the older random AUT- number, or an imported
-     * UT- number. Anything else must not be treated as an order number.
+     * Salla number in either shape it is stored in. Anything else must not be
+     * treated as an order number.
      */
     public static function looksLikeOrderNumber(string $handle): bool
     {
         return preg_match(OrderNumber::PATTERN, $handle) === 1
             || preg_match(OrderNumber::LEGACY_PATTERN, $handle) === 1
-            || preg_match(self::IMPORTED_PATTERN, $handle) === 1;
+            || preg_match(self::IMPORTED_PATTERN, $handle) === 1
+            || preg_match(self::IMPORTED_NUMERIC_PATTERN, $handle) === 1;
     }
 
     /** An order the given customer owns, resolved by short number or ULID. */
