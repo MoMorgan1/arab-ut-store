@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminMfaSession;
+use App\Auth\TrustedDeviceRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +16,11 @@ use Laravel\Fortify\Fortify;
 
 final class ConfirmTwoFactorController extends Controller
 {
+    public function __construct(
+        private readonly AdminMfaSession $mfaSession,
+        private readonly TrustedDeviceRegistry $trustedDevices,
+    ) {}
+
     public function create(Request $request): InertiaResponse|RedirectResponse
     {
         $user = $request->user();
@@ -28,7 +35,7 @@ final class ConfirmTwoFactorController extends Controller
             return redirect()->to(route($prefix.'settings', absolute: false));
         }
 
-        if ($request->session()->has('auth.two_factor_confirmed_at')) {
+        if ($this->mfaSession->satisfied($user, $request)) {
             return redirect()->intended(route($prefix.'overview', absolute: false));
         }
 
@@ -101,8 +108,10 @@ final class ConfirmTwoFactorController extends Controller
             ]);
         }
 
-        $request->session()->put('auth.two_factor_confirmed_at', now()->timestamp);
+        $this->mfaSession->stampChallenge($request);
 
-        return redirect()->intended(route($prefix.'overview', absolute: false));
+        return redirect()
+            ->intended(route($prefix.'overview', absolute: false))
+            ->withCookie($this->trustedDevices->remember($user, $request));
     }
 }
