@@ -98,10 +98,18 @@ What that rules out, with what replaced it when this was swept:
 | `عشان` | `حتى` / `لأن` |
 | `دي` / `دا` as a demonstrative | `هذه` / `هذا` |
 | `مش متاح` | `غير متاح` |
+| `مفيش` | `لا يوجد` / `ما فيه` |
+| `لسه` | `ما زال` |
+| `خالص` (as "at all") | `تماماً` / `أبداً` |
 | `بيكمل` / `بنرسل` (the `ب-` present) | `يكمل` / `نرسل` |
 | `يفرّق معنا` | `يهمنا` |
 
 `تقدر`, `تبي`, `فالك التوفيق` and `أول ما` are Gulf-natural and stay.
+
+The table is not a specification, it is what has been caught so far - Mohamed found `مفيش` in a
+string written the same day the rule was added. Grep for these words before shipping customer copy,
+then read every hit: most matches are substrings (`دي` inside `التحدي`, `دة` inside `إعادة`), and the
+real ones are what survive reading, not what the grep counted.
 
 Ported copy is not exempt. `track.arab-ut.com`'s message catalogue is the specification for **what**
 each message says, never for which dialect says it - the tracker is written in Egyptian throughout.
