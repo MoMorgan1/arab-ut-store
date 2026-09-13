@@ -70,6 +70,19 @@ return [
         'circuit_cooldown_seconds' => 60,
         'circuit_failure_window_seconds' => 600,
 
+        // The scheduled read loop's cadences. Literals rather than env entries,
+        // so only real credentials live in the environment. The fast band is
+        // for orders a customer is watching (last_viewed_at fresh), the slow
+        // band for everything else; the ceiling caps the failure backoff.
+        'poll' => [
+            'attention_window_seconds' => 180,
+            'attention_cadence_seconds' => 25,
+            'background_cadence_seconds' => 180,
+            'backoff_ceiling_seconds' => 600,
+            'lease_seconds' => 30,
+            'deadline_seconds' => 50,
+        ],
+
         'fft' => [
             'base_url' => env('SUPPLIER_FFT_BASE_URL', 'https://futtransfer.top'),
             'api_user' => env('SUPPLIER_FFT_API_USER'),

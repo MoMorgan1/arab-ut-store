@@ -3,26 +3,17 @@
 namespace App\Actions\Fulfillment;
 
 use App\Account\Presenters\ItemTracking;
-use App\Enums\DeliveryPhase;
+use App\Enums\ObservationResult;
 use App\Enums\OrderStatus;
 use App\Models\FulfillmentJob;
-use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Suppliers\Exceptions\SupplierNotConfigured;
-use App\Suppliers\Exceptions\SupplierUnavailable;
-use App\Suppliers\SupplierRegistry;
-use App\Suppliers\Translation\SupplierStateTranslator;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 final class RefreshItemTracking
 {
     public function __construct(
-        private readonly SupplierRegistry $registry,
-        private readonly SupplierStateTranslator $translator,
-        private readonly ApplySupplierObservation $applyObservation,
+        private readonly ObserveFulfillmentJob $observe,
     ) {}
 
     /**
@@ -116,138 +107,18 @@ final class RefreshItemTracking
             return ItemTracking::for($item, $locale);
         }
 
-        // Rule 1: Atomic cache lock keyed on the fulfillment job.
-        // A 10-second hold safely exceeds the 5-second polling timeout profile while bounding orphan holds.
-        // Cache::lock()->get() returns false immediately if already held. We do NOT block and wait:
-        // a concurrent viewer gets the current stored tracking object back immediately while the in-flight
-        // refresh updates storage for the next page load.
-        $lock = Cache::lock("tracking-refresh:job:{$job->id}", 10);
+        $outcome = $this->observe->execute($job, $item, $order);
 
-        if (! $lock->get()) {
-            return ItemTracking::for($item, $locale);
-        }
-
-        try {
-            /** @var FulfillmentPlacement|null $placement */
-            $placement = $job->relationLoaded('placements')
-                ? $job->placements->first(fn ($p) => $p->delivery_phase === DeliveryPhase::Challenge)
-                : $job->placements()->where('delivery_phase', DeliveryPhase::Challenge->value)->latest('id')->first();
-
-            $challengeSupplier = $placement->supplier ?? $job->supplier;
-
-            if ($job->delivery_phase === DeliveryPhase::Challenge && $challengeSupplier->handlesChallenges()) {
-                $challengeIds = $placement?->challengeIds() ?? [];
-
-                if ($challengeIds === []) {
-                    Log::warning('No challenge IDs found for challenge placement on fulfillment job {job_id}', [
-                        'job_id' => $job->id,
-                        'order_item_id' => $item->id,
-                    ]);
-
-                    return ItemTracking::for($item, $locale);
-                }
-
-                try {
-                    $client = $this->registry->for($challengeSupplier);
-                    $bulk = $client->observeChallenges($challengeIds);
-                } catch (SupplierUnavailable) {
-                    return ItemTracking::for($item, $locale);
-                } catch (SupplierNotConfigured $exception) {
-                    // A missing key is ours to fix, not the customer's to see. It is
-                    // logged loudly and the stored state is returned, because the page
-                    // that opened this read must still render.
-                    Log::error('Supplier not configured while reading challenges for fulfillment job {job_id}', [
-                        'job_id' => $job->id,
-                        'supplier' => $challengeSupplier->value,
-                        'reason' => $exception->reason,
-                    ]);
-
-                    return ItemTracking::for($item, $locale);
-                }
-
-                // A response naming none of our ids told us nothing. The comparison lives in
-                // the translator so there is one implementation of it, not two that can drift.
-                if (! $this->translator->challengeResponseAnswersRequest($challengeIds, $bulk)) {
-                    Log::warning('Bulk challenge response contained no requested challenge IDs for fulfillment job {job_id}', [
-                        'job_id' => $job->id,
-                        'challenge_ids' => $challengeIds,
-                    ]);
-
-                    return ItemTracking::for($item, $locale);
-                }
-
-                $job->forceFill(['last_viewed_at' => CarbonImmutable::now()])->save();
-
-                $orderStatus = $order instanceof Order ? $order->status : OrderStatus::InProgress;
-
-                $translated = $this->translator->translateChallenge(
-                    $challengeSupplier,
-                    $challengeIds,
-                    $bulk,
-                    $orderStatus,
-                );
-
-                $this->applyObservation->execute(
-                    $job,
-                    $translated,
-                    CarbonImmutable::now(),
-                    $bulk,
-                );
-
-                $item->refresh()->load('fulfillmentJob');
-
-                return ItemTracking::for($item, $locale);
-            }
-
-            // Rule 3: Use the POLLING timeout profile (3s connect / 5s total), not the action profile (5s / 12s).
-            // A customer pressing refresh already has a value on screen, so a slow supplier should give up quickly
-            // rather than hold their request open for twelve seconds. The longer profile is for actions that must land.
-            // SupplierClient::observe() inherently uses SupplierCallProfile::Polling.
-            try {
-                $client = $this->registry->for($job->supplier);
-                $observation = $client->observe((string) $job->supplier_order_id);
-            } catch (SupplierUnavailable) {
-                // Rule 4: A supplier failure is not a 500. Return the stored tracking object unchanged
-                // and let the page keep showing the old value with its age. Do not swallow anything else.
-                return ItemTracking::for($item, $locale);
-            } catch (SupplierNotConfigured $exception) {
-                // Same answer for the same reason, and the same rule holds now that
-                // opening the page is what triggers this read: a deployment with a
-                // missing key must not turn a customer's order into an error page.
-                Log::error('Supplier not configured while reading fulfillment job {job_id}', [
-                    'job_id' => $job->id,
-                    'supplier' => $job->supplier->value,
-                    'reason' => $exception->reason,
-                ]);
-
-                return ItemTracking::for($item, $locale);
-            }
-
-            // Rule 5: Stamp attention on a successful supplier read. A refresh press proves a user is actively
-            // watching this order, which scheduled sweeps prioritize for faster polling cadences.
+        // Rule 5: Stamp attention on a successful supplier read. A refresh press proves
+        // a user is actively watching this order, which scheduled sweeps prioritize for
+        // faster polling cadences. The sweep deliberately does not stamp, so only this
+        // human path reaches here.
+        if ($outcome->result === ObservationResult::Observed) {
             $job->forceFill(['last_viewed_at' => CarbonImmutable::now()])->save();
-
-            // Rule 6: Never write canonical state directly. Translate into domain state and delegate to
-            // ApplySupplierObservation for transactional reconciliation, status transitions, and invariants.
-            $orderStatus = $order instanceof Order ? $order->status : OrderStatus::InProgress;
-            $translated = $this->translator->translate(
-                $observation,
-                $orderStatus,
-                $job->delivery_phase,
-            );
-
-            $this->applyObservation->execute(
-                $job,
-                $translated,
-                $observation->fetchedAt,
-                $observation->payload,
-            );
-
-            $item->refresh()->load('fulfillmentJob');
-
-            return ItemTracking::for($item, $locale);
-        } finally {
-            $lock->release();
         }
+
+        $item->refresh()->load('fulfillmentJob');
+
+        return ItemTracking::for($item, $locale);
     }
 }

@@ -8,7 +8,7 @@ test('all expected schedule events are registered with correct frequencies and o
     $schedule = app(Schedule::class);
     $events = collect($schedule->events());
 
-    expect($events)->toHaveCount(10);
+    expect($events)->toHaveCount(11);
 
     $findEvent = function (string $commandSubstring) use ($events): ?Event {
         return $events->first(fn (Event $event): bool => str_contains((string) $event->command, $commandSubstring));
@@ -78,4 +78,12 @@ test('all expected schedule events are registered with correct frequencies and o
         ->and($queueWork->command)->toContain('--max-time=55')
         ->and($queueWork->command)->toContain('--tries=3')
         ->and($queueWork->command)->toContain('--backoff=30');
+
+    // 11. PollFulfillmentJobs - every minute, run in background, deliberately no
+    // withoutOverlapping: the command's own Cache::lock is the lease.
+    $pollJobs = $findEvent('fulfillment:poll');
+    expect($pollJobs)->not->toBeNull()
+        ->and($pollJobs->expression)->toBe('* * * * *')
+        ->and($pollJobs->withoutOverlapping)->toBeFalse()
+        ->and($pollJobs->runInBackground)->toBeTrue();
 });

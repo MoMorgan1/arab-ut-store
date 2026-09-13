@@ -838,6 +838,40 @@ so this is a replacement, not a port. Whapi's OTP sender is a bare HTTP call
 
 ---
 
+### D3 is three tasks, and only the first can be built now — 2026-09-13
+
+Scoping it for implementation showed the number covers three separate pieces with different
+prerequisites, so it ships as three:
+
+**D3a — the sweep.** The read loop itself: bands, lease, deadline, backoff, instrumentation. It
+depends on nothing that does not already exist and is the one that removes the current defect -
+that state only moves when a customer opens the page.
+
+**D3b — stall detection.** The plan calls this free inside the same loop, and it is, but "an open
+job whose newest observation is older than the cadence expected for its phase" needs a phase
+cadence table nobody has written, and the only honest source for one is the latency D3a's
+instrumentation is there to measure. So it waits for a week of D3a's numbers rather than guessing.
+
+**D3c — notification.** Blocked on Mohamed, not on code: every message is customer-visible
+WhatsApp copy, and the catalogue ported from `Customer Notifier` has to be read and approved before
+it is sent to anyone. The de-duplication work (a durable transition identifier and a unique
+delivery claim on `notification_deliveries`) can be designed before that, but nothing sends.
+
+**A trap found while scoping D3a, worth writing down because it would have shipped.**
+`RefreshItemTracking` stamps `last_viewed_at` on every successful supplier read
+(`RefreshItemTracking.php:179`, `:228`), and `last_viewed_at` is exactly what the plan's attention
+band reads to decide between the 25-second and the 3-minute cadence. Had the sweep reused that
+action - the obvious thing to do, since it is the read path - every background read would have
+stamped its own job as recently viewed. The fast band would never drain, every job in the system
+would settle into a 25-second poll forever, and the symptom would have been a supplier bill rather
+than a failing test.
+
+So the read is extracted into `ObserveFulfillmentJob`, which reads and reconciles and returns an
+outcome; `RefreshItemTracking` keeps the refusals, the attention stamp and the presenter on top of
+it. `last_viewed_at` means a human looked, and only a human-triggered path may write it.
+
+---
+
 ## Slice G — manual orders, and retiring the tracker (Claude)
 
 This is what makes `track.arab-ut.com` deletable, which is why it is not "later".
