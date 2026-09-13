@@ -1,0 +1,1748 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="admin-document">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Arab UT · canvas · manual order, inside the orders page</title>
+        <!-- The real compiled stylesheet, so every utility class below renders
+             exactly as the admin dashboard ships it today. -->
+        <link rel="stylesheet" href="/build/assets/app-DLduELMl.css" />
+        <style>
+            /* `html.admin-document` carries the admin palette, and an artboard
+               cannot be the html element, so the same tokens are mirrored onto
+               a scope class. The values are copied from resources/css/app.css
+               without changing one of them. */
+            .admin-scope {
+                color-scheme: dark;
+                --background: #080705;
+                --foreground: #ede4d0;
+                --card: #14110e;
+                --card-foreground: #ede4d0;
+                --popover: #1c1814;
+                --popover-foreground: #ede4d0;
+                --primary: #d4a843;
+                --primary-foreground: #080705;
+                --secondary: #241e18;
+                --secondary-foreground: #ede4d0;
+                --muted: #241e18;
+                --muted-foreground: #a89880;
+                --accent: #241e18;
+                --accent-foreground: #ede4d0;
+                --destructive: #ffb4a9;
+                --destructive-foreground: #080705;
+                --border: rgb(212 168 67 / 16%);
+                --input: rgb(212 168 67 / 20%);
+                --ring: #d4a843;
+                --status-success: #67e89a;
+                --status-warning: #e4b756;
+                --status-info: #d4a843;
+                --status-danger: #ffb4a9;
+                --status-neutral: #a89880;
+
+                background: var(--background);
+                color: var(--foreground);
+                font-family:
+                    'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+            }
+
+            body {
+                margin: 0;
+                background:
+                    radial-gradient(
+                        circle at 12% 0%,
+                        rgb(212 168 67 / 6%),
+                        transparent 42%
+                    ),
+                    #060504;
+                color: #ede4d0;
+                font-family:
+                    'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+            }
+
+            .canvas {
+                max-width: 1480px;
+                margin: 0 auto;
+                padding: 2.5rem 2.5rem 6rem;
+            }
+
+            .canvas__intro h1 {
+                margin: 0 0 0.35rem;
+                font-size: 1.5rem;
+                font-weight: 800;
+                letter-spacing: -0.01em;
+                color: #e4b756;
+            }
+
+            .canvas__intro p {
+                margin: 0 0 0.6rem;
+                max-width: 78ch;
+                color: #a89880;
+                line-height: 1.65;
+                font-size: 0.9rem;
+            }
+
+            .canvas__intro strong {
+                color: #ede4d0;
+                font-weight: 600;
+            }
+
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: flex-start;
+                gap: 2rem;
+                margin-top: 2.5rem;
+            }
+
+            .board {
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+
+            .board__label {
+                display: flex;
+                align-items: baseline;
+                gap: 0.5rem;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.09em;
+                color: #a89880;
+            }
+
+            .board__label b {
+                color: #e4b756;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+            }
+
+            .board__note {
+                max-width: 34ch;
+                font-size: 0.78rem;
+                line-height: 1.55;
+                color: #8d7f6b;
+                text-transform: none;
+                letter-spacing: 0;
+            }
+
+            /* An artboard is a viewport, so it is exactly the CSS width it
+               claims and it scrolls its own overflow rather than the page. */
+            .frame {
+                border: 1px solid rgb(212 168 67 / 22%);
+                border-radius: 14px;
+                overflow: hidden;
+                box-shadow: 0 22px 50px -28px rgb(0 0 0 / 80%);
+            }
+
+            .frame--390 {
+                width: 390px;
+            }
+
+            .frame--1440 {
+                width: 1440px;
+                max-width: 100%;
+            }
+
+            .frame__scroll {
+                height: 760px;
+                overflow: auto;
+                scrollbar-width: thin;
+            }
+
+            .frame--short .frame__scroll {
+                height: 560px;
+            }
+
+            /* Notes */
+            .notes {
+                margin-top: 3.5rem;
+                display: grid;
+                gap: 1.25rem;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+
+            .note {
+                border: 1px solid rgb(212 168 67 / 18%);
+                border-radius: 12px;
+                background: #14110e;
+                padding: 1.1rem 1.2rem;
+            }
+
+            .note h3 {
+                margin: 0 0 0.5rem;
+                font-size: 0.9rem;
+                color: #e4b756;
+            }
+
+            .note p,
+            .note li {
+                margin: 0 0 0.5rem;
+                font-size: 0.83rem;
+                line-height: 1.6;
+                color: #bdb1a0;
+            }
+
+            .note ul {
+                margin: 0;
+                padding-inline-start: 1.1rem;
+            }
+
+            .note code {
+                font-family: ui-monospace, SFMono-Regular, monospace;
+                font-size: 0.78rem;
+                color: #e4b756;
+            }
+
+            .note--ask {
+                border-color: rgb(228 183 86 / 45%);
+                background: #1c1814;
+            }
+
+            .note--reject {
+                border-color: rgb(255 180 169 / 32%);
+            }
+
+            .note--reject h3 {
+                color: #ffb4a9;
+            }
+
+            .divider {
+                margin: 3.25rem 0 0;
+                border: 0;
+                border-top: 1px solid rgb(212 168 67 / 14%);
+            }
+
+            .section-title {
+                margin: 2.5rem 0 0;
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #ede4d0;
+            }
+
+            .section-title + p {
+                margin: 0.35rem 0 0;
+                max-width: 78ch;
+                font-size: 0.85rem;
+                line-height: 1.6;
+                color: #a89880;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="canvas">
+            <header class="canvas__intro">
+                <h1>Manual order — inside the orders page</h1>
+                <p>
+                    Slice G1. A manual order is what makes
+                    <code>track.arab-ut.com</code> deletable: the tracker can
+                    hold an order the store never sold, and until the store can
+                    create one too, the old site cannot be switched off.
+                </p>
+                <p>
+                    <strong>Owner decision, 2026-09-13:</strong> it lives inside
+                    the orders page, not on a screen of its own — same list,
+                    same filters, one place to control from. The store already
+                    has a pattern for exactly that: the coupons screen creates
+                    and edits through a <code>Sheet</code> drawer opened from
+                    its toolbar, with twenty-odd fields in it
+                    (<code>admin-coupon-drawer.tsx</code>). This extends that
+                    vocabulary rather than inventing a second one.
+                </p>
+                <p>
+                    <strong>Owner decision, 2026-09-13:</strong> cashback and
+                    loyalty are earned on a bank-transfer manual order and not
+                    on a gift. Real money in, real rewards out. The form says so
+                    where the choice is made, not in a footnote.
+                </p>
+                <p>
+                    Admin is English-only (owner decision, 2026-08-21). The
+                    phone artboard leads, at 390px, and every screen below is
+                    the real compiled stylesheet — not a mockup of it.
+                </p>
+            </header>
+
+            <h2 class="section-title">1 · Where it starts</h2>
+            <p>
+                One primary action on the orders toolbar. Nothing else about the
+                list changes, and no new navigation item appears.
+            </p>
+
+            <div class="row">
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>390 px</b> · orders list
+                        <span class="board__note"
+                            >The button sits above the search field, where the
+                            thumb already is on a phone. The list, the filters
+                            and the cards are untouched.</span
+                        >
+                    </figcaption>
+                    <div class="frame frame--390 frame--short">
+                        <div class="frame__scroll admin-scope">
+                            <div class="p-4">
+                                <div
+                                    class="mb-4 flex items-start justify-between gap-3"
+                                >
+                                    <div>
+                                        <h1
+                                            class="text-xl font-semibold text-foreground"
+                                        >
+                                            Orders
+                                        </h1>
+                                        <p
+                                            class="mt-1 text-xs text-muted-foreground"
+                                        >
+                                            View and filter all customer orders
+                                            across services and platforms.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    class="mb-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.2"
+                                        stroke-linecap="round"
+                                    >
+                                        <path d="M12 5v14M5 12h14" />
+                                    </svg>
+                                    New order
+                                </button>
+
+                                <div
+                                    class="flex h-11 items-center gap-2 rounded-md border border-input px-3"
+                                >
+                                    <svg
+                                        class="text-muted-foreground"
+                                        width="15"
+                                        height="15"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <circle cx="11" cy="11" r="7" />
+                                        <path d="m20 20-3.5-3.5" />
+                                    </svg>
+                                    <span class="text-sm text-muted-foreground"
+                                        >Search orders</span
+                                    >
+                                </div>
+
+                                <div class="mt-3 space-y-2.5">
+                                    <div
+                                        class="rounded-md border border-border bg-card p-3"
+                                    >
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <span
+                                                class="font-mono text-sm text-foreground"
+                                                >277538068</span
+                                            >
+                                            <span
+                                                class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                                style="
+                                                    color: var(
+                                                        --status-success
+                                                    );
+                                                    background: rgb(
+                                                        103 232 154 / 12%
+                                                    );
+                                                "
+                                                >Completed</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="mt-1.5 flex items-center justify-between text-xs text-muted-foreground"
+                                        >
+                                            <span>Coins · PS / Xbox</span>
+                                            <span
+                                                class="font-medium text-foreground"
+                                                style="
+                                                    font-variant-numeric: tabular-nums;
+                                                "
+                                                >450.00 SAR</span
+                                            >
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="rounded-md border border-border bg-card p-3"
+                                    >
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <span
+                                                class="font-mono text-sm text-foreground"
+                                                >AUT-1043</span
+                                            >
+                                            <span
+                                                class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                                style="
+                                                    color: var(
+                                                        --status-warning
+                                                    );
+                                                    background: rgb(
+                                                        228 183 86 / 12%
+                                                    );
+                                                "
+                                                >In progress</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="mt-1.5 flex items-center justify-between text-xs text-muted-foreground"
+                                        >
+                                            <span>Manual · bank transfer</span>
+                                            <span
+                                                class="font-medium text-foreground"
+                                                style="
+                                                    font-variant-numeric: tabular-nums;
+                                                "
+                                                >300.00 SAR</span
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>1440 px</b> · orders list
+                        <span class="board__note"
+                            >Same action, moved onto the header row beside the
+                            existing export control, because on desktop the
+                            header has the room the phone does not.</span
+                        >
+                    </figcaption>
+                    <div
+                        class="frame frame--short"
+                        style="width: 880px; max-width: 100%"
+                    >
+                        <div class="frame__scroll admin-scope">
+                            <div class="p-6">
+                                <div
+                                    class="mb-5 flex items-end justify-between gap-4"
+                                >
+                                    <div>
+                                        <h1
+                                            class="text-2xl font-semibold text-foreground"
+                                        >
+                                            Orders
+                                        </h1>
+                                        <p
+                                            class="mt-1 text-sm text-muted-foreground"
+                                        >
+                                            View and filter all customer orders
+                                            across services and platforms.
+                                        </p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            class="inline-flex h-9 items-center gap-2 rounded-md border border-input px-4 text-sm font-medium text-foreground hover:bg-accent"
+                                        >
+                                            Export CSV
+                                        </button>
+                                        <button
+                                            class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                                        >
+                                            <svg
+                                                width="15"
+                                                height="15"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2.2"
+                                                stroke-linecap="round"
+                                            >
+                                                <path d="M12 5v14M5 12h14" />
+                                            </svg>
+                                            New order
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="overflow-hidden rounded-md border border-border bg-card"
+                                >
+                                    <table class="w-full text-sm">
+                                        <thead>
+                                            <tr
+                                                class="border-b border-border text-left text-xs text-muted-foreground"
+                                            >
+                                                <th class="px-4 py-2.5">
+                                                    Order
+                                                </th>
+                                                <th class="px-4 py-2.5">
+                                                    Customer
+                                                </th>
+                                                <th class="px-4 py-2.5">
+                                                    Channel
+                                                </th>
+                                                <th class="px-4 py-2.5">
+                                                    Status
+                                                </th>
+                                                <th
+                                                    class="px-4 py-2.5 text-right"
+                                                >
+                                                    Total
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-border">
+                                                <td
+                                                    class="px-4 py-3 font-mono text-foreground"
+                                                >
+                                                    277538068
+                                                </td>
+                                                <td
+                                                    class="px-4 py-3 text-muted-foreground"
+                                                >
+                                                    Salla import
+                                                </td>
+                                                <td
+                                                    class="px-4 py-3 text-muted-foreground"
+                                                >
+                                                    salla_import
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <span
+                                                        class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                                        style="
+                                                            color: var(
+                                                                --status-success
+                                                            );
+                                                            background: rgb(
+                                                                103 232 154 /
+                                                                    12%
+                                                            );
+                                                        "
+                                                        >Completed</span
+                                                    >
+                                                </td>
+                                                <td
+                                                    class="px-4 py-3 text-right font-medium text-foreground"
+                                                    style="
+                                                        font-variant-numeric: tabular-nums;
+                                                    "
+                                                >
+                                                    450.00
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td
+                                                    class="px-4 py-3 font-mono text-foreground"
+                                                >
+                                                    AUT-1043
+                                                </td>
+                                                <td
+                                                    class="px-4 py-3 text-muted-foreground"
+                                                >
+                                                    Faisal A.
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <span
+                                                        class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                                        style="
+                                                            color: var(
+                                                                --status-info
+                                                            );
+                                                            background: rgb(
+                                                                212 168 67 / 12%
+                                                            );
+                                                        "
+                                                        >manual</span
+                                                    >
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <span
+                                                        class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                                        style="
+                                                            color: var(
+                                                                --status-warning
+                                                            );
+                                                            background: rgb(
+                                                                228 183 86 / 12%
+                                                            );
+                                                        "
+                                                        >In progress</span
+                                                    >
+                                                </td>
+                                                <td
+                                                    class="px-4 py-3 text-right font-medium text-foreground"
+                                                    style="
+                                                        font-variant-numeric: tabular-nums;
+                                                    "
+                                                >
+                                                    300.00
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="mt-3 text-xs text-muted-foreground">
+                                    A manual order is a row in this list like
+                                    any other, marked by its channel. It is not
+                                    a separate kind of record and it is not
+                                    filtered out of anything.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+            </div>
+
+            <hr class="divider" />
+
+            <h2 class="section-title">2 · The drawer, phone first</h2>
+            <p>
+                One drawer, four groups, and a footer that stays put. The type
+                of order is the first decision because it changes what the rest
+                of the form asks for — the money group and the fulfillment group
+                are both branches of it.
+            </p>
+
+            <div class="row">
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>390 px</b> · drawer · customer + items
+                        <span class="board__note"
+                            >The customer field searches; it does not make you
+                            choose between searching and creating up front. Add
+                            new is the fallback, one tap away.</span
+                        >
+                    </figcaption>
+                    <div class="frame frame--390">
+                        <div class="frame__scroll admin-scope">
+                            <div class="flex min-h-full flex-col">
+                                <div
+                                    class="flex items-start justify-between gap-3 border-b border-border p-4"
+                                >
+                                    <div>
+                                        <h2
+                                            class="text-base font-semibold text-foreground"
+                                        >
+                                            New order
+                                        </h2>
+                                        <p
+                                            class="mt-0.5 text-xs text-muted-foreground"
+                                        >
+                                            Creates a real order on the same
+                                            path as checkout. It gets an
+                                            <span class="font-mono">AUT-</span>
+                                            number, a tracking page and a
+                                            shareable link.
+                                        </p>
+                                    </div>
+                                    <button
+                                        class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
+                                        aria-label="Close"
+                                    >
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                        >
+                                            <path d="M18 6 6 18M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div class="flex-1 space-y-5 p-4">
+                                    <!-- Type -->
+                                    <div>
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Type</span
+                                        >
+                                        <div
+                                            class="mt-2 grid grid-cols-2 gap-1 rounded-md border border-input p-1"
+                                        >
+                                            <button
+                                                class="h-11 rounded-sm bg-primary text-sm font-semibold text-primary-foreground"
+                                            >
+                                                Bank transfer
+                                            </button>
+                                            <button
+                                                class="h-11 rounded-sm text-sm font-medium text-muted-foreground"
+                                            >
+                                                Gift
+                                            </button>
+                                        </div>
+                                        <p
+                                            class="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed"
+                                            style="color: var(--status-success)"
+                                        >
+                                            <svg
+                                                class="mt-px shrink-0"
+                                                width="13"
+                                                height="13"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2.4"
+                                                stroke-linecap="round"
+                                            >
+                                                <path d="M20 6 9 17l-5-5" />
+                                            </svg>
+                                            Earns cashback and loyalty. A gift
+                                            does not.
+                                        </p>
+                                    </div>
+
+                                    <!-- Customer -->
+                                    <div>
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Customer</span
+                                        >
+                                        <div
+                                            class="mt-2 flex h-11 items-center gap-2 rounded-md border border-input px-3"
+                                        >
+                                            <svg
+                                                class="shrink-0 text-muted-foreground"
+                                                width="15"
+                                                height="15"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                            >
+                                                <circle cx="11" cy="11" r="7" />
+                                                <path d="m20 20-3.5-3.5" />
+                                            </svg>
+                                            <span
+                                                class="text-base text-foreground"
+                                                >0555…</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="mt-1.5 overflow-hidden rounded-md border border-border bg-popover"
+                                        >
+                                            <button
+                                                class="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-accent"
+                                            >
+                                                <span>
+                                                    <span
+                                                        class="block text-sm text-foreground"
+                                                        >Faisal Alharbi</span
+                                                    >
+                                                    <span
+                                                        class="block text-xs text-muted-foreground"
+                                                        >+966 55 512 4408 · 6
+                                                        orders</span
+                                                    >
+                                                </span>
+                                                <span
+                                                    class="text-[11px]"
+                                                    style="
+                                                        color: var(--primary);
+                                                    "
+                                                    >Select</span
+                                                >
+                                            </button>
+                                            <div class="border-t border-border">
+                                                <button
+                                                    class="flex h-11 w-full items-center gap-2 px-3 text-left text-sm hover:bg-accent"
+                                                    style="
+                                                        color: var(--primary);
+                                                    "
+                                                >
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2.2"
+                                                        stroke-linecap="round"
+                                                    >
+                                                        <path
+                                                            d="M12 5v14M5 12h14"
+                                                        />
+                                                    </svg>
+                                                    Add a new customer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Item -->
+                                    <div>
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <span
+                                                class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                                >Item 1</span
+                                            >
+                                            <button
+                                                class="-me-2 inline-flex h-11 items-center px-2 text-[11px]"
+                                                style="
+                                                    color: var(--status-danger);
+                                                "
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                        <div
+                                            class="mt-2 space-y-3 rounded-md border border-border bg-card p-3"
+                                        >
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Service</label
+                                                >
+                                                <div
+                                                    class="flex h-11 items-center justify-between rounded-md border border-input px-3"
+                                                >
+                                                    <span
+                                                        class="text-base text-foreground"
+                                                        >Coins</span
+                                                    >
+                                                    <svg
+                                                        class="text-muted-foreground"
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                    >
+                                                        <path
+                                                            d="m6 9 6 6 6-6"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Platform</label
+                                                >
+                                                <div
+                                                    class="grid grid-cols-2 gap-1 rounded-md border border-input p-1"
+                                                >
+                                                    <button
+                                                        class="h-11 rounded-sm bg-primary text-sm font-semibold text-primary-foreground"
+                                                    >
+                                                        PS / Xbox
+                                                    </button>
+                                                    <button
+                                                        class="h-11 rounded-sm text-sm font-medium text-muted-foreground"
+                                                    >
+                                                        PC
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label
+                                                        class="mb-1 block text-xs text-muted-foreground"
+                                                        >Quantity (K)</label
+                                                    >
+                                                    <div
+                                                        class="flex h-11 items-center rounded-md border border-input px-3"
+                                                    >
+                                                        <span
+                                                            class="text-base text-foreground"
+                                                            style="
+                                                                font-variant-numeric: tabular-nums;
+                                                            "
+                                                            >1250</span
+                                                        >
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="mb-1 block text-xs text-muted-foreground"
+                                                        >Unit price</label
+                                                    >
+                                                    <div
+                                                        class="flex h-11 items-center justify-between rounded-md border border-input px-3"
+                                                    >
+                                                        <span
+                                                            class="text-base text-foreground"
+                                                            style="
+                                                                font-variant-numeric: tabular-nums;
+                                                            "
+                                                            >300.00</span
+                                                        >
+                                                        <span
+                                                            class="text-xs text-muted-foreground"
+                                                            >SAR</span
+                                                        >
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p
+                                                class="text-[11px] text-muted-foreground"
+                                            >
+                                                Priced from the live catalogue.
+                                                Override it and the difference
+                                                is recorded on the order.
+                                            </p>
+                                        </div>
+                                        <button
+                                            class="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-input text-sm font-medium text-foreground hover:bg-accent"
+                                        >
+                                            <svg
+                                                width="15"
+                                                height="15"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2.2"
+                                                stroke-linecap="round"
+                                            >
+                                                <path d="M12 5v14M5 12h14" />
+                                            </svg>
+                                            Add another item
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="sticky bottom-0 border-t border-border bg-card p-4"
+                                >
+                                    <div
+                                        class="mb-3 flex items-center justify-between text-sm"
+                                    >
+                                        <span class="text-muted-foreground"
+                                            >Order total</span
+                                        >
+                                        <span
+                                            class="text-base font-semibold text-foreground"
+                                            style="
+                                                font-variant-numeric: tabular-nums;
+                                            "
+                                            >300.00 SAR</span
+                                        >
+                                    </div>
+                                    <button
+                                        class="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                                    >
+                                        Continue to payment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>390 px</b> · drawer · money + fulfillment
+                        <span class="board__note"
+                            >Everything here is a consequence of the type chosen
+                            at the top. A gift hides the amount and the
+                            reference, because there is no money to
+                            record.</span
+                        >
+                    </figcaption>
+                    <div class="frame frame--390">
+                        <div class="frame__scroll admin-scope">
+                            <div class="flex min-h-full flex-col">
+                                <div
+                                    class="flex items-center gap-2 border-b border-border p-4"
+                                >
+                                    <button
+                                        class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
+                                        aria-label="Back"
+                                    >
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                        >
+                                            <path d="m15 18-6-6 6-6" />
+                                        </svg>
+                                    </button>
+                                    <div>
+                                        <h2
+                                            class="text-base font-semibold text-foreground"
+                                        >
+                                            Payment and delivery
+                                        </h2>
+                                        <p
+                                            class="mt-0.5 text-xs text-muted-foreground"
+                                        >
+                                            Faisal Alharbi · Coins 1250K · PS /
+                                            Xbox
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1 space-y-5 p-4">
+                                    <!-- Payment -->
+                                    <div>
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Payment received</span
+                                        >
+                                        <div
+                                            class="mt-2 space-y-3 rounded-md border border-border bg-card p-3"
+                                        >
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label
+                                                        class="mb-1 block text-xs text-muted-foreground"
+                                                        >Amount</label
+                                                    >
+                                                    <div
+                                                        class="flex h-11 items-center justify-between rounded-md border border-input px-3"
+                                                    >
+                                                        <span
+                                                            class="text-base text-foreground"
+                                                            style="
+                                                                font-variant-numeric: tabular-nums;
+                                                            "
+                                                            >300.00</span
+                                                        >
+                                                        <span
+                                                            class="text-xs text-muted-foreground"
+                                                            >SAR</span
+                                                        >
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="mb-1 block text-xs text-muted-foreground"
+                                                        >Received on</label
+                                                    >
+                                                    <div
+                                                        class="flex h-11 items-center rounded-md border border-input px-3"
+                                                    >
+                                                        <span
+                                                            class="text-base text-foreground"
+                                                            >13/09/2026</span
+                                                        >
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Transfer reference</label
+                                                >
+                                                <div
+                                                    class="flex h-11 items-center rounded-md border border-input px-3"
+                                                >
+                                                    <span
+                                                        class="font-mono text-base text-foreground"
+                                                        >FT2609134471</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <p
+                                                class="text-[11px] leading-relaxed text-muted-foreground"
+                                            >
+                                                Recorded as a payment on the
+                                                order, so the money shows up in
+                                                the same reports as a Paylink
+                                                order.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- EA account -->
+                                    <div>
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >EA account</span
+                                        >
+                                        <div
+                                            class="mt-2 space-y-3 rounded-md border border-border bg-card p-3"
+                                        >
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Email</label
+                                                >
+                                                <div
+                                                    class="flex h-11 items-center rounded-md border border-input px-3"
+                                                >
+                                                    <span
+                                                        class="text-base text-foreground"
+                                                        >faisal@example.com</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Password</label
+                                                >
+                                                <div
+                                                    class="flex h-11 items-center justify-between rounded-md border border-input px-3"
+                                                >
+                                                    <span
+                                                        class="text-base tracking-widest text-foreground"
+                                                        >••••••••••</span
+                                                    >
+                                                    <span
+                                                        class="text-xs text-muted-foreground"
+                                                        >Show</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Backup codes</label
+                                                >
+                                                <div
+                                                    class="grid grid-cols-3 gap-2"
+                                                >
+                                                    <div
+                                                        class="flex h-11 items-center justify-center rounded-md border border-input"
+                                                    >
+                                                        <span
+                                                            class="font-mono text-base text-foreground"
+                                                            >8FJ2</span
+                                                        >
+                                                    </div>
+                                                    <div
+                                                        class="flex h-11 items-center justify-center rounded-md border border-input"
+                                                    >
+                                                        <span
+                                                            class="font-mono text-base text-foreground"
+                                                            >K4QM</span
+                                                        >
+                                                    </div>
+                                                    <div
+                                                        class="flex h-11 items-center justify-center rounded-md border border-input"
+                                                    >
+                                                        <span
+                                                            class="font-mono text-base text-muted-foreground"
+                                                            >—</span
+                                                        >
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p
+                                                class="text-[11px] leading-relaxed text-muted-foreground"
+                                            >
+                                                Stored encrypted on the item,
+                                                the way checkout stores them.
+                                                They never appear in the page
+                                                payload, the audit record or a
+                                                log line.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fulfillment -->
+                                    <div>
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Delivery</span
+                                        >
+                                        <div class="mt-2 space-y-2">
+                                            <label
+                                                class="flex cursor-pointer items-start gap-3 rounded-md border p-3"
+                                                style="
+                                                    border-color: var(
+                                                        --primary
+                                                    );
+                                                    background: rgb(
+                                                        212 168 67 / 7%
+                                                    );
+                                                "
+                                            >
+                                                <span
+                                                    class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border"
+                                                    style="
+                                                        border-color: var(
+                                                            --primary
+                                                        );
+                                                    "
+                                                    ><span
+                                                        class="size-2 rounded-full"
+                                                        style="
+                                                            background: var(
+                                                                --primary
+                                                            );
+                                                        "
+                                                    ></span
+                                                ></span>
+                                                <span>
+                                                    <span
+                                                        class="block text-sm font-medium text-foreground"
+                                                        >Send it to the
+                                                        supplier</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block text-xs leading-relaxed text-muted-foreground"
+                                                        >Runs the same
+                                                        fulfillment path as a
+                                                        paid order. The tracking
+                                                        page follows it from
+                                                        here.</span
+                                                    >
+                                                </span>
+                                            </label>
+                                            <label
+                                                class="flex cursor-pointer items-start gap-3 rounded-md border border-input p-3"
+                                            >
+                                                <span
+                                                    class="mt-0.5 size-4 shrink-0 rounded-full border border-input"
+                                                ></span>
+                                                <span>
+                                                    <span
+                                                        class="block text-sm font-medium text-foreground"
+                                                        >I already placed it by
+                                                        hand</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block text-xs leading-relaxed text-muted-foreground"
+                                                        >Paste the supplier
+                                                        reference instead. The
+                                                        order is bound to it at
+                                                        creation and tracked
+                                                        from the next
+                                                        read.</span
+                                                    >
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="sticky bottom-0 border-t border-border bg-card p-4"
+                                >
+                                    <p
+                                        class="mb-2.5 text-[11px] leading-relaxed text-muted-foreground"
+                                    >
+                                        Creating this records who created it,
+                                        when, and every field above except the
+                                        EA credentials.
+                                    </p>
+                                    <button
+                                        class="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                                    >
+                                        Create order
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>390 px</b> · gift, and the manual-reference branch
+                        <span class="board__note"
+                            >The same drawer with the other two answers chosen.
+                            Nothing is greyed out — a field that does not apply
+                            is not there.</span
+                        >
+                    </figcaption>
+                    <div class="frame frame--390">
+                        <div class="frame__scroll admin-scope">
+                            <div class="flex min-h-full flex-col">
+                                <div
+                                    class="flex items-center gap-2 border-b border-border p-4"
+                                >
+                                    <button
+                                        class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary"
+                                        aria-label="Back"
+                                    >
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                        >
+                                            <path d="m15 18-6-6 6-6" />
+                                        </svg>
+                                    </button>
+                                    <div>
+                                        <h2
+                                            class="text-base font-semibold text-foreground"
+                                        >
+                                            Payment and delivery
+                                        </h2>
+                                        <p
+                                            class="mt-0.5 text-xs text-muted-foreground"
+                                        >
+                                            Gift · SBC solve · PS / Xbox
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1 space-y-5 p-4">
+                                    <div
+                                        class="rounded-md border p-3"
+                                        style="
+                                            border-color: rgb(228 183 86 / 40%);
+                                            background: rgb(228 183 86 / 8%);
+                                        "
+                                    >
+                                        <p
+                                            class="text-sm font-medium text-foreground"
+                                        >
+                                            No payment on a gift
+                                        </p>
+                                        <p
+                                            class="mt-1 text-xs leading-relaxed text-muted-foreground"
+                                        >
+                                            The order carries a zero total and
+                                            no payment record, and it earns no
+                                            cashback or loyalty. It still shows
+                                            the customer a real price of 0.00
+                                            SAR rather than an empty field.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Delivery</span
+                                        >
+                                        <div class="mt-2 space-y-2">
+                                            <label
+                                                class="flex cursor-pointer items-start gap-3 rounded-md border border-input p-3"
+                                            >
+                                                <span
+                                                    class="mt-0.5 size-4 shrink-0 rounded-full border border-input"
+                                                ></span>
+                                                <span
+                                                    class="block text-sm font-medium text-foreground"
+                                                    >Send it to the
+                                                    supplier</span
+                                                >
+                                            </label>
+                                            <label
+                                                class="flex cursor-pointer items-start gap-3 rounded-md border p-3"
+                                                style="
+                                                    border-color: var(
+                                                        --primary
+                                                    );
+                                                    background: rgb(
+                                                        212 168 67 / 7%
+                                                    );
+                                                "
+                                            >
+                                                <span
+                                                    class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border"
+                                                    style="
+                                                        border-color: var(
+                                                            --primary
+                                                        );
+                                                    "
+                                                    ><span
+                                                        class="size-2 rounded-full"
+                                                        style="
+                                                            background: var(
+                                                                --primary
+                                                            );
+                                                        "
+                                                    ></span
+                                                ></span>
+                                                <span
+                                                    class="block text-sm font-medium text-foreground"
+                                                    >I already placed it by
+                                                    hand</span
+                                                >
+                                            </label>
+                                        </div>
+
+                                        <div
+                                            class="mt-2 space-y-3 rounded-md border border-border bg-card p-3"
+                                        >
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Supplier</label
+                                                >
+                                                <div
+                                                    class="grid grid-cols-2 gap-1 rounded-md border border-input p-1"
+                                                >
+                                                    <button
+                                                        class="h-11 rounded-sm bg-primary text-sm font-semibold text-primary-foreground"
+                                                    >
+                                                        FFT
+                                                    </button>
+                                                    <button
+                                                        class="h-11 rounded-sm text-sm font-medium text-muted-foreground"
+                                                    >
+                                                        UTT
+                                                    </button>
+                                                </div>
+                                                <p
+                                                    class="mt-1.5 text-[11px] text-muted-foreground"
+                                                >
+                                                    UTT delivers coins only, so
+                                                    an SBC solve leaves FFT as
+                                                    the only choice.
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Supplier order
+                                                    reference</label
+                                                >
+                                                <div
+                                                    class="flex h-11 items-center rounded-md border border-input px-3"
+                                                >
+                                                    <span
+                                                        class="font-mono text-base text-foreground"
+                                                        >84172</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="mb-1 block text-xs text-muted-foreground"
+                                                    >Phase</label
+                                                >
+                                                <div
+                                                    class="flex h-11 items-center justify-between rounded-md border border-input px-3"
+                                                >
+                                                    <span
+                                                        class="text-base text-foreground"
+                                                        >Challenge</span
+                                                    >
+                                                    <svg
+                                                        class="text-muted-foreground"
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                    >
+                                                        <path
+                                                            d="m6 9 6 6 6-6"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="sticky bottom-0 border-t border-border bg-card p-4"
+                                >
+                                    <button
+                                        class="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                                    >
+                                        Create order
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+            </div>
+
+            <hr class="divider" />
+
+            <h2 class="section-title">3 · The same drawer at desktop width</h2>
+            <p>
+                The <code>Sheet</code> primitive caps itself at
+                <code>sm:max-w-sm</code> — 384 pixels — so the coupon drawer is
+                a narrow column on a 1440 screen as well. That is fine for
+                coupons. It is the one place this form may have to differ, and
+                it is a question for you below.
+            </p>
+
+            <div class="row">
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>1440 px</b> · drawer as the pattern ships (384 px)
+                        <span class="board__note"
+                            >Consistent with coupons, and a lot of scrolling for
+                            a form with four groups in it.</span
+                        >
+                    </figcaption>
+                    <div class="frame frame--short" style="width: 1000px">
+                        <div
+                            class="frame__scroll admin-scope"
+                            style="position: relative"
+                        >
+                            <div class="p-6 opacity-40">
+                                <h1
+                                    class="text-2xl font-semibold text-foreground"
+                                >
+                                    Orders
+                                </h1>
+                                <div
+                                    class="mt-4 h-64 rounded-md border border-border bg-card"
+                                ></div>
+                            </div>
+                            <div
+                                class="absolute inset-y-0 right-0 border-l border-border bg-card p-4"
+                                style="width: 384px"
+                            >
+                                <h2
+                                    class="text-base font-semibold text-foreground"
+                                >
+                                    New order
+                                </h2>
+                                <div class="mt-3 space-y-2.5">
+                                    <div
+                                        class="h-11 rounded-md border border-input"
+                                    ></div>
+                                    <div
+                                        class="h-11 rounded-md border border-input"
+                                    ></div>
+                                    <div
+                                        class="h-28 rounded-md border border-border bg-background"
+                                    ></div>
+                                    <div
+                                        class="h-28 rounded-md border border-border bg-background"
+                                    ></div>
+                                    <p
+                                        class="pt-1 text-[11px] text-muted-foreground"
+                                    >
+                                        …three more groups below the fold
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+
+                <figure class="board">
+                    <figcaption class="board__label">
+                        <b>1440 px</b> · widened to
+                        <code>sm:max-w-2xl</code> (672 px)
+                        <span class="board__note"
+                            >Two columns fit, so customer and item sit side by
+                            side and the whole form is visible at once. Costs
+                            one deliberate deviation from the coupon
+                            drawer.</span
+                        >
+                    </figcaption>
+                    <div class="frame frame--short" style="width: 1000px">
+                        <div
+                            class="frame__scroll admin-scope"
+                            style="position: relative"
+                        >
+                            <div class="p-6 opacity-40">
+                                <h1
+                                    class="text-2xl font-semibold text-foreground"
+                                >
+                                    Orders
+                                </h1>
+                                <div
+                                    class="mt-4 h-64 rounded-md border border-border bg-card"
+                                ></div>
+                            </div>
+                            <div
+                                class="absolute inset-y-0 right-0 border-l border-border bg-card p-5"
+                                style="width: 672px"
+                            >
+                                <h2
+                                    class="text-base font-semibold text-foreground"
+                                >
+                                    New order
+                                </h2>
+                                <div class="mt-4 grid grid-cols-2 gap-4">
+                                    <div class="space-y-2.5">
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Customer</span
+                                        >
+                                        <div
+                                            class="h-9 rounded-md border border-input"
+                                        ></div>
+                                        <span
+                                            class="block pt-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Payment</span
+                                        >
+                                        <div
+                                            class="h-9 rounded-md border border-input"
+                                        ></div>
+                                        <div
+                                            class="h-9 rounded-md border border-input"
+                                        ></div>
+                                    </div>
+                                    <div class="space-y-2.5">
+                                        <span
+                                            class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Item 1</span
+                                        >
+                                        <div
+                                            class="h-40 rounded-md border border-border bg-background"
+                                        ></div>
+                                        <span
+                                            class="block pt-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                            >Delivery</span
+                                        >
+                                        <div
+                                            class="h-9 rounded-md border border-input"
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 border-t border-border pt-4">
+                                    <button
+                                        class="h-9 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
+                                    >
+                                        Create order
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </figure>
+            </div>
+
+            <hr class="divider" />
+
+            <h2 class="section-title">4 · What this costs behind the screen</h2>
+
+            <div class="notes">
+                <div class="note">
+                    <h3>It reuses checkout, it does not copy it</h3>
+                    <p>
+                        <code>PlaceOrder</code> writes the order, the items, the
+                        credentials and the number. The admin skill forbids an
+                        admin-only duplicate of checkout, and a second checkout
+                        is how two code paths start disagreeing about price.
+                    </p>
+                    <p>New values it needs:</p>
+                    <ul>
+                        <li>
+                            <code>orders.channel</code> gains
+                            <code>manual</code> (today: <code>store</code>,
+                            <code>salla_import</code>)
+                        </li>
+                        <li>
+                            a payment provider for a bank transfer (today:
+                            <code>wallet</code>, <code>paylink</code>)
+                        </li>
+                        <li>
+                            an admin permission of its own, so creating orders
+                            is not implied by viewing them
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="note">
+                    <h3>One feature, not two</h3>
+                    <p>
+                        You asked for a manual order and for a bare supplier
+                        link. They are the same screen, because
+                        <code>fulfillment_jobs.order_item_id</code> is NOT NULL:
+                        a link pointing at a supplier order with no store order
+                        has nowhere to live.
+                    </p>
+                    <p>
+                        Making that column nullable would produce order-less
+                        jobs floating free — which is exactly the split that let
+                        the tracker drift away from the store in the first
+                        place.
+                    </p>
+                </div>
+
+                <div class="note">
+                    <h3>Cashback, as decided</h3>
+                    <p>
+                        A bank transfer earns cashback and loyalty; a gift earns
+                        neither. The completion effects already fire exactly
+                        once per order from reconciliation, so this is a
+                        condition on one branch and not a second reward path.
+                    </p>
+                    <p>
+                        The form states it at the point of choice, so nobody has
+                        to remember the rule.
+                    </p>
+                </div>
+
+                <div class="note">
+                    <h3>Audit, and what never reaches it</h3>
+                    <p>
+                        Every creation is a staff audit record: who, when, the
+                        customer, the items, the money and the delivery choice.
+                    </p>
+                    <p>
+                        The EA password and backup codes are not in it, not in
+                        the page payload, not in a URL and not in a log line.
+                        They are stored encrypted on the item the way checkout
+                        stores them, and read back only through the existing
+                        reveal path with a fresh password confirmation.
+                    </p>
+                </div>
+            </div>
+
+            <div class="notes">
+                <div class="note note--ask">
+                    <h3>Needs your answer</h3>
+                    <ul>
+                        <li>
+                            <strong>Drawer width on desktop.</strong> Keep the
+                            384px column the coupon drawer uses, or widen this
+                            one to 672px for the two-column layout above? The
+                            phone is identical either way.
+                        </li>
+                        <li>
+                            <strong
+                                >Can a manual order use wallet balance?</strong
+                            >
+                            A customer with balance might reasonably pay that
+                            way, but it is a third money path on this form and I
+                            would leave it out of the first version.
+                        </li>
+                        <li>
+                            <strong>Who may create one?</strong> Admin only, or
+                            support staff too? It creates money records, so my
+                            recommendation is admin only to start.
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="note note--reject">
+                    <h3>What I did not do, and why</h3>
+                    <p>
+                        <strong
+                            >A separate
+                            <code>/admin/orders/new</code> page.</strong
+                        >
+                        It was my first instinct for a form this long, and it is
+                        the wrong call here: the store already creates a
+                        twenty-field coupon in a drawer from its list screen, so
+                        a page would be a second way to do the same thing. Your
+                        reading was right — same list, same place.
+                    </p>
+                    <p>
+                        <strong>A multi-step wizard.</strong> Steps are for a
+                        sequence a person cannot see the end of. This form is
+                        four groups you can scroll, and a wizard would hide the
+                        total behind a Next button.
+                    </p>
+                    <p>
+                        <strong>A new navigation item.</strong> A manual order
+                        is an order. It belongs in the orders list, marked by
+                        its channel, and nowhere else.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
