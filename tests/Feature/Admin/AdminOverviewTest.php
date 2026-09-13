@@ -304,6 +304,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         [
             'dashboard.view',
             'orders.view',
+            'orders.create',
             'orders.update',
             'orders.cancel',
             'orders.refund',
@@ -337,6 +338,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         [
             'dashboard.view',
             'orders.view',
+            'orders.create',
             'orders.update',
             'orders.cancel',
             'order_credentials.view',

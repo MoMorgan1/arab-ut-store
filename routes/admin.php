@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\FaqEntryVisibilityController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
+use App\Http\Controllers\Admin\ManualOrderController;
 use App\Http\Controllers\Admin\MoreController;
 use App\Http\Controllers\Admin\MoveFaqEntryController;
 use App\Http\Controllers\Admin\OrderDetailController;
@@ -143,6 +144,18 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $orders->defaults('locale', $locale);
+                }
+
+                // Posting to the collection creates a manual order. It sits
+                // beside the list rather than under a screen of its own,
+                // because the drawer that submits it is on the list (owner
+                // decision, 2026-09-13).
+                $manualOrder = Route::post('/orders', [ManualOrderController::class, 'store'])
+                    ->middleware(['can:orders.create', 'throttle:staff-writes'])
+                    ->name('orders.store');
+
+                if ($locale !== null) {
+                    $manualOrder->defaults('locale', $locale);
                 }
 
                 $orderDetail = Route::get('/orders/{order}', OrderDetailController::class)

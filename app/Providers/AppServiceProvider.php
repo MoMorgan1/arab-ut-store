@@ -190,6 +190,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('staff-payments', fn (Request $request): Limit => Limit::perMinute(10)
             ->by('staff-payments:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
+        // Creating an order writes money records, so it gets its own budget
+        // rather than sharing the read limits. Keyed on the staff member per
+        // the Failures rule: a limiter keyed on an order number is no limiter.
+        RateLimiter::for('staff-writes', fn (Request $request): Limit => Limit::perMinute(20)
+            ->by('staff-writes:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
         RateLimiter::for('staff-identity', fn (Request $request): Limit => Limit::perMinute(10)
             ->by('staff-identity:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
 

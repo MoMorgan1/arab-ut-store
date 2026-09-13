@@ -6,7 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 
-test('the admin permission enum contains exactly the approved twenty-six abilities', function (): void {
+test('the admin permission enum contains exactly the approved twenty-seven abilities', function (): void {
     expect(array_map(
         static fn (AdminPermission $permission): string => $permission->value,
         AdminPermission::cases(),
@@ -45,6 +45,10 @@ function adminPermissionMatrix(): array
     $staffAbilities = [
         'dashboard.view',
         'orders.view',
+        // Owner decision, 2026-09-13, against a recommendation of admin-only:
+        // support staff may create a manual order, gifts included. The control
+        // is the staff audit row every creation writes, not the permission.
+        'orders.create',
         'orders.update',
         'orders.cancel',
         'order_credentials.view',
@@ -67,6 +71,7 @@ function adminPermissionAbilities(): array
     return [
         'dashboard.view',
         'orders.view',
+        'orders.create',
         'orders.update',
         'orders.cancel',
         'orders.refund',
