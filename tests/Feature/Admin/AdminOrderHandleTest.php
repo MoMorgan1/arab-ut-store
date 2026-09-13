@@ -38,6 +38,26 @@ test('the admin order detail resolves by the order number', function (): void {
         ->assertOk();
 });
 
+/**
+ * Every order in production is an imported Salla order, and Salla's order
+ * number is bare digits - the importer stores the CSV value verbatim. The
+ * handle class shipped recognising `UT-277538068` and nothing recognising
+ * `277538068`, so the list linked to a URL its own resolver refused and all
+ * 31,983 of them answered 404. Every factory and every test in this file used
+ * an `AUT-` number, which is why a green suite said nothing about it.
+ */
+test('the admin order detail resolves by an imported Salla order number', function (): void {
+    $admin = createStaffTestActor(UserRole::Admin);
+    Order::factory()->for(User::factory()->create())->create([
+        'order_number' => '277538068',
+        'status' => OrderStatus::Received,
+    ]);
+
+    $this->actingAs($admin)
+        ->get('/admin/orders/277538068')
+        ->assertOk();
+});
+
 test('an unknown order handle returns 404', function (): void {
     $admin = createStaffTestActor(UserRole::Admin);
 

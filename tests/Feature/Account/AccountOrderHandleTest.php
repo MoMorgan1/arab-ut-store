@@ -41,6 +41,20 @@ test('a legacy ULID account order URL keeps its query string through the redirec
         ->assertRedirect('/my-account/orders/AUT-2044?step=review');
 });
 
+/**
+ * The same defect on the customer's own page: an imported order is the only
+ * kind of order the store has, and its number is bare digits. A customer
+ * could open their orders list and not one row would open.
+ */
+test('the account order detail resolves by an imported Salla order number', function (): void {
+    $owner = User::factory()->create();
+    accountOrderHandleOrder($owner, '277486750');
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/277486750')
+        ->assertOk();
+});
+
 test('the account order detail resolves by order number and redirects a legacy ULID', function (): void {
     $owner = User::factory()->create();
     $order = accountOrderHandleOrder($owner, 'AUT-2045');
