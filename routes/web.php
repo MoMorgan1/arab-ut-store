@@ -29,6 +29,7 @@ use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Controllers\Store\SitemapController;
 use App\Http\Controllers\Store\SitemapPageController;
+use App\Http\Controllers\Store\TrackedOrderController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
@@ -85,6 +86,10 @@ Route::post('/orders/{order}/items/{item}/actions/retry-challenge', [ItemTrackin
     ->where('order', OrderHandle::routePattern())
     ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
     ->name('store.orders.items.actions.retry-challenge');
+Route::get('/orders/track/{token}', TrackedOrderController::class)
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware([NoStore::class, 'throttle:order-tracking-link'])
+    ->name('store.orders.track');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.show');
@@ -223,6 +228,10 @@ Route::prefix('{locale}')
             ->where('order', OrderHandle::routePattern())
             ->middleware(['auth', NoStore::class, 'throttle:account-tracking-action'])
             ->name('localized.store.orders.items.actions.retry-challenge');
+        Route::get('/orders/track/{token}', TrackedOrderController::class)
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->middleware([NoStore::class, 'throttle:order-tracking-link'])
+            ->name('localized.store.orders.track');
         Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.credentials.show');

@@ -343,6 +343,9 @@ return [
         'cancelled' => 'ملغي',
         'refunded' => 'تم الاسترجاع',
     ],
+    'track_order' => [
+        'title' => 'تتبع الطلب',
+    ],
     'actions' => [
         'view_order' => 'عرض الطلب',
         'view_all' => 'عرض الكل',

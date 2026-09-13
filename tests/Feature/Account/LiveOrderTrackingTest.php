@@ -289,6 +289,9 @@ test('rule 5: holdMessage is the localised text and holdReason is the raw enum v
         'hold_reason' => OrderHoldReason::BackupCodes,
     ]);
 
+    // Compared against the translator rather than a transcribed sentence: the
+    // rule under test is that holdMessage carries the localised text for the
+    // reason, and the copy itself changes whenever the owner rewrites it.
     // Arabic locale
     $arResponse = $this->actingAs($owner)
         ->get('/my-account/orders/'.$order->order_number)
@@ -298,7 +301,7 @@ test('rule 5: holdMessage is the localised text and holdReason is the raw enum v
         ->where('order.items.0.tracking.holdReason', 'backup_codes')
         ->where(
             'order.items.0.tracking.holdMessage',
-            'الأكواد الاحتياطية للحساب غير صحيحة أو مستخدمة من قبل. أنشئ أكواد جديدة من إعدادات الأمان في حساب EA ثم حدّث بيانات الطلب.'
+            trans('orders.hold_reasons.backup_codes', locale: 'ar')
         )
     );
 
@@ -311,7 +314,7 @@ test('rule 5: holdMessage is the localised text and holdReason is the raw enum v
         ->where('order.items.0.tracking.holdReason', 'backup_codes')
         ->where(
             'order.items.0.tracking.holdMessage',
-            'The backup codes on the account are wrong or already used. Create new codes from the security settings of your EA account, then update the order details.'
+            trans('orders.hold_reasons.backup_codes', locale: 'en')
         )
     );
 });

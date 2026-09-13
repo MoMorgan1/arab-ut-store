@@ -397,6 +397,9 @@ export type AccountTranslations = {
         unavailable_description: string;
     };
     statuses: Record<AccountOrderStatus, string>;
+    track_order: {
+        title: string;
+    };
     actions: {
         view_order: string;
         view_all: string;

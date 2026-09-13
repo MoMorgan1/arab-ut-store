@@ -343,6 +343,9 @@ return [
         'cancelled' => 'Cancelled',
         'refunded' => 'Refunded',
     ],
+    'track_order' => [
+        'title' => 'Track order',
+    ],
     'actions' => [
         'view_order' => 'View order',
         'view_all' => 'View all',

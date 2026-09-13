@@ -108,6 +108,26 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // A capability URL is opened by whoever holds the token, so the token is
+        // the one thing the caller actually owns here. Keying on it - not on an
+        // order number anyone can guess - is what makes a stranger unable to empty
+        // someone else's bucket (AGENTS.md, Failures rule 6). The IP bucket is the
+        // wider net that stops the route being used to enumerate tokens at all.
+        RateLimiter::for('order-tracking-link', function (Request $request): array {
+            $token = (string) $request->route('token');
+
+            return [
+                // Opening this page asks the suppliers about every automated item
+                // on the order, so the bucket is sized for a person looking rather
+                // than for a script: one open every five seconds is already far
+                // more than anyone reads. The per-job lock and the per-supplier
+                // limiter are what actually cap supplier traffic; this keeps an
+                // unauthenticated caller from spending that budget on one order.
+                Limit::perMinute(12)->by('order-tracking-link-token:'.hash('sha256', $token)),
+                Limit::perMinute(60)->by('order-tracking-link-ip:'.$request->ip()),
+            ];
+        });
+
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
 
