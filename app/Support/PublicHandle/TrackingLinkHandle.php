@@ -29,13 +29,16 @@ final class TrackingLinkHandle
         $link->forceFill(['last_used_at' => CarbonImmutable::now()])->save();
 
         // The column selection is this feature's own narrow allowlist: nothing
-        // about money, the account, the order's public_id, or the items'
-        // public_ids is loaded, because none of it may reach the presenter.
+        // about money, the account, or the order's public_id is loaded, because
+        // none of it may reach the presenter. The item's public_id is loaded
+        // because the action URLs name the item they act on, and the ULID is the
+        // opaque handle - never the internal id - so nothing enumerable leaves.
         return Order::query()
             ->select(['id', 'order_number', 'status', 'placed_at', 'created_at'])
             ->with(['items' => fn ($items) => $items
                 ->select([
                     'id',
+                    'public_id',
                     'order_id',
                     'product_variant_id',
                     'name_ar',

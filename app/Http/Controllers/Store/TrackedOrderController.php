@@ -49,7 +49,7 @@ final class TrackedOrderController extends Controller
         $this->refreshTracking->execute($order, $locale);
 
         return Inertia::render('store/track-order', [
-            'order' => $this->order->execute($order, $locale),
+            'order' => $this->order->execute($order, $token, $locale),
             'accountUi' => trans('account', locale: $locale),
         ]);
     }

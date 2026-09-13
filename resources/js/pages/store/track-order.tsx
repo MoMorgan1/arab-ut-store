@@ -1,4 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 import OrderTracking from '@/components/account/order-tracking';
 import StoreLayout from '@/layouts/store-layout';
@@ -19,6 +20,11 @@ type TrackOrderItem = {
     imageUrl: string;
     status: AccountOrderStatus;
     quantity: number;
+    actionUrls: {
+        editCredentials: string;
+        resume: string;
+        retryChallenge: string;
+    };
     tracking: OrderItemTracking | null;
 };
 
@@ -109,26 +115,54 @@ export default function StoreTrackOrder() {
                 </div>
 
                 {trackedItems.map((item, index) => (
-                    <OrderTracking
-                        // The presenter blanks every action list on purpose (acting
-                        // over a bearer link is a later task), so the card renders no
-                        // buttons and these URLs and the callback are never read.
-                        actionUrls={{
-                            editCredentials: '',
-                            resume: '',
-                            retryChallenge: '',
-                        }}
-                        imageUrl={item.imageUrl}
-                        itemName={item.name}
+                    <TrackedItemCard
+                        item={item}
                         key={`${item.name}-${index}`}
                         locale={props.locale}
-                        onTracking={() => undefined}
-                        platform={item.platform}
                         strings={accountUi.orders.tracking}
-                        tracking={item.tracking}
                     />
                 ))}
             </section>
         </StoreLayout>
+    );
+}
+
+/**
+ * One item's tracking card. It holds the answer to an action the same way the
+ * account page does: as an override of the reading it replaced, so a later page
+ * load that hands down a newer reading wins without an effect to sync it.
+ */
+function TrackedItemCard({
+    item,
+    locale,
+    strings,
+}: {
+    item: TrackOrderItem & { tracking: OrderItemTracking };
+    locale: 'ar' | 'en';
+    strings: AccountTranslations['orders']['tracking'];
+}) {
+    const [override, setOverride] = useState<{
+        of: OrderItemTracking | null;
+        value: OrderItemTracking;
+    } | null>(null);
+
+    const tracking =
+        override !== null && override.of === item.tracking
+            ? override.value
+            : item.tracking;
+
+    return (
+        <OrderTracking
+            actionUrls={item.actionUrls}
+            imageUrl={item.imageUrl}
+            itemName={item.name}
+            locale={locale}
+            onTracking={(next) =>
+                setOverride({ of: item.tracking, value: next })
+            }
+            platform={item.platform}
+            strings={strings}
+            tracking={tracking}
+        />
     );
 }

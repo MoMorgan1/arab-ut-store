@@ -128,6 +128,21 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Each of these actions is a supplier request on the long timeout
+        // profile, so the ceiling matches what a signed-in customer gets per
+        // order (three a minute) plus a wider per-IP net. The token is the one
+        // thing this caller owns (AGENTS.md, Failures rule 6), and it is hashed
+        // before it becomes a key so the raw capability never lands in the cache
+        // store; the IP bucket stops the route being used to enumerate tokens.
+        RateLimiter::for('order-tracking-link-action', function (Request $request): array {
+            $token = (string) $request->route('token');
+
+            return [
+                Limit::perMinute(3)->by('order-tracking-link-action-token:'.hash('sha256', $token)),
+                Limit::perMinute(10)->by('order-tracking-link-action-ip:'.$request->ip()),
+            ];
+        });
+
         RateLimiter::for('automation-catalog', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
 

@@ -29,6 +29,7 @@ use App\Http\Controllers\Store\SbcCartController;
 use App\Http\Controllers\Store\SimpleStorePageController;
 use App\Http\Controllers\Store\SitemapController;
 use App\Http\Controllers\Store\SitemapPageController;
+use App\Http\Controllers\Store\TrackedOrderActionController;
 use App\Http\Controllers\Store\TrackedOrderController;
 use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequireCatalogCartJson;
@@ -90,6 +91,18 @@ Route::get('/orders/track/{token}', TrackedOrderController::class)
     ->where('token', '[A-Za-z0-9]{48}')
     ->middleware([NoStore::class, 'throttle:order-tracking-link'])
     ->name('store.orders.track');
+Route::post('/orders/track/{token}/items/{item}/actions/edit-credentials', [TrackedOrderActionController::class, 'editCredentials'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware([NoStore::class, 'throttle:order-tracking-link-action'])
+    ->name('store.orders.track.actions.edit-credentials');
+Route::post('/orders/track/{token}/items/{item}/actions/resume', [TrackedOrderActionController::class, 'resume'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware([NoStore::class, 'throttle:order-tracking-link-action'])
+    ->name('store.orders.track.actions.resume');
+Route::post('/orders/track/{token}/items/{item}/actions/retry-challenge', [TrackedOrderActionController::class, 'retryChallenge'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->middleware([NoStore::class, 'throttle:order-tracking-link-action'])
+    ->name('store.orders.track.actions.retry-challenge');
 Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
     ->middleware([NoStore::class, 'throttle:coins-cart'])
     ->name('cart.items.credentials.show');
@@ -232,6 +245,18 @@ Route::prefix('{locale}')
             ->where('token', '[A-Za-z0-9]{48}')
             ->middleware([NoStore::class, 'throttle:order-tracking-link'])
             ->name('localized.store.orders.track');
+        Route::post('/orders/track/{token}/items/{item}/actions/edit-credentials', [TrackedOrderActionController::class, 'editCredentials'])
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->middleware([NoStore::class, 'throttle:order-tracking-link-action'])
+            ->name('localized.store.orders.track.actions.edit-credentials');
+        Route::post('/orders/track/{token}/items/{item}/actions/resume', [TrackedOrderActionController::class, 'resume'])
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->middleware([NoStore::class, 'throttle:order-tracking-link-action'])
+            ->name('localized.store.orders.track.actions.resume');
+        Route::post('/orders/track/{token}/items/{item}/actions/retry-challenge', [TrackedOrderActionController::class, 'retryChallenge'])
+            ->where('token', '[A-Za-z0-9]{48}')
+            ->middleware([NoStore::class, 'throttle:order-tracking-link-action'])
+            ->name('localized.store.orders.track.actions.retry-challenge');
         Route::get('/cart/items/{cartItem}/credentials', [CartItemCredentialsController::class, 'show'])
             ->middleware([NoStore::class, 'throttle:coins-cart'])
             ->name('localized.cart.items.credentials.show');

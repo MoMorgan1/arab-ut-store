@@ -1,7 +1,19 @@
 # Order tracking in the store — implementation plan
 
-**Status:** Revised 2026-09-12 after an adversarial review (Codex/sol, read-only) that found
-twenty-five issues in the first draft. Awaiting owner approval before any brief is dispatched.
+**Status:** In build. Revised 2026-09-12 after an adversarial review (Codex/sol, read-only) that
+found twenty-five issues in the first draft; approved and dispatched since.
+
+**Shipped on `feat/order-tracking-slice-a-b`** (branch, not merged):
+A, B0-B3, B5, C1-C3, D1, and as of 2026-09-13 **D3a** (the scheduled sweep) and **D2 + C4** (the
+signed per-order link and its own presenter). D2b - the three actions over that link - is the task
+in flight; nothing retires the tracker until it lands.
+
+**Not started:** B4 (the store placing orders itself), B6, D3b (stall detection - waits on the
+cadence numbers D3a's instrumentation produces), E1, F1-F3, G1-G2.
+
+**Blocked on Mohamed:** D3c's message catalogue (approved 2026-09-13 with three corrections - see
+below), G1's admin screen (needs a `/design` canvas), and the FFT/UTT key rotation (explicitly
+deferred by the owner, 2026-09-13, not forgotten).
 **Spec:** `docs/decisions/2026-09-12-order-tracking-in-store-design.md`
 **ADR:** `docs/decisions/2026-09-12-ea-credentials-in-placement-payload.md`
 **Glossary:** `CONTEXT.md`
@@ -869,6 +881,46 @@ than a failing test.
 So the read is extracted into `ObserveFulfillmentJob`, which reads and reconciles and returns an
 outcome; `RefreshItemTracking` keeps the refusals, the attention stamp and the presenter on top of
 it. `last_viewed_at` means a human looked, and only a human-triggered path may write it.
+
+---
+
+### The notification copy, approved with three corrections — 2026-09-13
+
+The `Customer Notifier` catalogue was read back to Mohamed message by message and approved. What
+changed in the reading:
+
+- **The coin minimum is 1,500.** The WhatsApp message said 6,000 and the order card said 1,500.
+  Only one could be right and the card's number won.
+- **The market instruction is "play 3 matches a day until it opens."** Both routes to unlocking the
+  market are real, but a customer does not act on "enough hours of play". The message also carries
+  the comparison image from the coins configurator's own help modal, composed into one picture
+  (`public/images/store/coins/market-compare.webp`) so it travels as a single image with a caption.
+- **The copy points at the button, not at support** - and not uniformly, because the button is not
+  uniform. Derived from `EDIT_STATES` / `RESUME_STATES`: `credentials` and `backup_codes` offer only
+  the edit form, nine reasons offer «تشغيل الطلب», and three offer nothing at all. Naming a button a
+  reason never renders would be worse than the sentence it replaced.
+
+**The platform hold is not the dead end it looked like.** The field stays locked because platforms
+are priced differently; the customer sends an account on the platform that was ordered, or tells us
+the order's platform is itself wrong. Owner's decision.
+
+**Eight reasons get a message for the first time.** `two_factor_off`, `email_confirm`,
+`web_app_locked`, `no_club`, `transfer_list_full`, `captcha`, `unassigned` and `account_banned` all
+hold an order on the customer, and the tracker says nothing about any of them. Their wording is
+lifted from the card's own approved copy so the message and the screen cannot drift apart. Cancelled
+and refunded also split into two messages, because the tracker sends one that says "cancelled or
+refunded" and the store knows which.
+
+**Seven reasons stay silent on purpose** - the automatic-recovery set. A message about something
+that fixes itself is noise.
+
+### The store writes for Gulf readers — owner rule, 2026-09-13
+
+"المتجر مستهدف الخليجيين". The ported catalogue had kept the tracker's Egyptian wording verbatim,
+and five strings already shipped in the store carried it too. `AGENTS.md` now has a `Customer copy`
+section with the table; the rule that matters is the one written after Mohamed found a word the
+table itself had missed: **grep, then read every hit** - most matches are substrings, and the real
+ones are what survive reading.
 
 ---
 

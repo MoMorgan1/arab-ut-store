@@ -34,11 +34,12 @@ final class ReadTrackedOrder
      *         imageUrl: string,
      *         status: string,
      *         quantity: int,
+     *         actionUrls: array{editCredentials: string, resume: string, retryChallenge: string},
      *         tracking: array<string, mixed>|null,
      *     }>,
      * }
      */
-    public function execute(Order $order, string $locale): array
+    public function execute(Order $order, string $token, string $locale): array
     {
         $terminal = in_array($order->status, [
             OrderStatus::Completed,
@@ -57,9 +58,11 @@ final class ReadTrackedOrder
         // forwarded screenshot - so it shows the state of the work and nothing
         // about the money or the account. Every money field, paymentMethod,
         // walletPayment, analytics (the purchase double-count), review,
-        // cancelUrl, paymentStartUrl, credentialsPresent, manualFulfillment, the
-        // order's public_id, the item's public_id and actionUrls are deliberately
-        // absent for that reason.
+        // cancelUrl, paymentStartUrl, credentialsPresent, manualFulfillment,
+        // the order's public_id and the item's public_id are deliberately
+        // absent for that reason. The action URLs do carry the token, which is
+        // correct: the viewer already holds it, and the route is NoStore so the
+        // page that carries it is never cached.
         return [
             'number' => (string) $order->getAttribute('order_number'),
             'status' => $order->status->forCustomer()->value,
@@ -67,7 +70,7 @@ final class ReadTrackedOrder
             'placedAt' => $placedAt instanceof CarbonInterface ? $placedAt->toIso8601String() : '',
             'refreshable' => ! $terminal,
             'items' => array_values(array_map(
-                fn (OrderItem $item): array => $this->item($item, $locale),
+                fn (OrderItem $item): array => $this->item($item, $token, $locale),
                 $order->items->all(),
             )),
         ];
@@ -80,10 +83,11 @@ final class ReadTrackedOrder
      *     imageUrl: string,
      *     status: string,
      *     quantity: int,
+     *     actionUrls: array{editCredentials: string, resume: string, retryChallenge: string},
      *     tracking: array<string, mixed>|null,
      * }
      */
-    private function item(OrderItem $item, string $locale): array
+    private function item(OrderItem $item, string $token, string $locale): array
     {
         return [
             'name' => (string) $item->getAttribute($locale === 'en' ? 'name_en' : 'name_ar'),
@@ -91,39 +95,34 @@ final class ReadTrackedOrder
             'imageUrl' => ItemArtwork::for($item),
             'status' => $item->status->forCustomer()->value,
             'quantity' => (int) $item->getAttribute('quantity'),
-            'tracking' => $this->tracking($item, $locale),
+            'actionUrls' => $this->itemActionUrls($item, $token, $locale),
+            'tracking' => ItemTracking::for($item, $locale),
         ];
     }
 
-    /** @return array<string, mixed>|null */
-    private function tracking(OrderItem $item, string $locale): ?array
+    /**
+     * Where the card's three buttons post to.
+     *
+     * The URLs travel with the item, and they carry the capability token: the
+     * viewer already holds it, so nothing is handed to anyone who did not have
+     * it. A URL is not a permission - the server re-authorises every press.
+     *
+     * @return array{editCredentials: string, resume: string, retryChallenge: string}
+     */
+    private function itemActionUrls(OrderItem $item, string $token, string $locale): array
     {
-        $tracking = ItemTracking::for($item, $locale);
+        $prefix = $locale === 'en' ? 'localized.store' : 'store';
+        $parameters = [
+            ...($locale === 'en' ? ['locale' => 'en'] : []),
+            'token' => $token,
+            'item' => $item->public_id,
+        ];
 
-        if ($tracking === null) {
-            return null;
-        }
-
-        // Actions are blanked in this slice on purpose. Acting over a bearer
-        // link needs its own authorisation path and its own audit identity -
-        // SecretAccessLog.user_id has no user to name when nobody signed in -
-        // and that is the next task. Blanking the lists, not dropping the keys,
-        // leaves the card with no buttons (its two `actions.length` guards)
-        // without changing the tracking shape, so this is not a presenter that
-        // forgot to copy a field.
-        $tracking['actions'] = [];
-
-        $challenges = $tracking['challenges'] ?? null;
-
-        if (is_array($challenges)) {
-            foreach (array_keys($challenges) as $index) {
-                $challenges[$index]['actions'] = [];
-            }
-
-            $tracking['challenges'] = $challenges;
-        }
-
-        return $tracking;
+        return [
+            'editCredentials' => route("{$prefix}.orders.track.actions.edit-credentials", $parameters, absolute: false),
+            'resume' => route("{$prefix}.orders.track.actions.resume", $parameters, absolute: false),
+            'retryChallenge' => route("{$prefix}.orders.track.actions.retry-challenge", $parameters, absolute: false),
+        ];
     }
 
     /** The same note the account page shows: the newest order-level entry, while it still describes the current status. */

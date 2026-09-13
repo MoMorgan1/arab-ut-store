@@ -107,29 +107,46 @@ async function expectNoHorizontalOverflow(page: Page) {
 
 /**
  * A number is inside its box when its own rectangle does not cross its
- * container's padding edge. One pixel of slack absorbs sub-pixel layout, which
- * differs between a phone width and a desktop one.
+ * container's edge.
+ *
+ * Both rectangles are read inside one `evaluate`, in the same frame. Measuring
+ * them with two round trips - even under `Promise.all` - lets a reflow land
+ * between them, and the comparison then holds two different layouts against
+ * each other: it reported a four-pixel overflow at one width and sixty-five at
+ * another, from a page that was merely still settling.
  */
-async function expectContained(child: Locator, container: Locator) {
-    const [inner, outer] = await Promise.all([
-        child.boundingBox(),
-        container.boundingBox(),
-    ]);
+async function expectContained(container: Locator, childSelector: string) {
+    const box = await container.evaluate((stat, selector) => {
+        const child = stat.querySelector(selector);
 
-    expect(inner).not.toBeNull();
-    expect(outer).not.toBeNull();
+        if (child === null) {
+            return null;
+        }
 
-    if (inner === null || outer === null) {
+        const outer = stat.getBoundingClientRect();
+        const inner = child.getBoundingClientRect();
+
+        return {
+            text: (child.textContent ?? '').trim(),
+            leftSlack: inner.left - outer.left,
+            rightSlack: outer.right - inner.right,
+            topSlack: inner.top - outer.top,
+            bottomSlack: outer.bottom - inner.bottom,
+        };
+    }, childSelector);
+
+    expect(box).not.toBeNull();
+
+    if (box === null) {
         return;
     }
 
-    expect(inner.x).toBeGreaterThanOrEqual(outer.x - 1);
-    expect(inner.x + inner.width).toBeLessThanOrEqual(
-        outer.x + outer.width + 1,
-    );
-    expect(inner.y).toBeGreaterThanOrEqual(outer.y - 1);
-    expect(inner.y + inner.height).toBeLessThanOrEqual(
-        outer.y + outer.height + 1,
+    // A pixel of slack absorbs sub-pixel layout, which differs by width.
+    expect(box.leftSlack, `left of "${box.text}"`).toBeGreaterThanOrEqual(-1);
+    expect(box.rightSlack, `right of "${box.text}"`).toBeGreaterThanOrEqual(-1);
+    expect(box.topSlack, `top of "${box.text}"`).toBeGreaterThanOrEqual(-1);
+    expect(box.bottomSlack, `bottom of "${box.text}"`).toBeGreaterThanOrEqual(
+        -1,
     );
 }
 
@@ -172,11 +189,7 @@ for (const { locale, dir } of DIRECTIONS) {
                 expect(count).toBeGreaterThan(0);
 
                 for (let index = 0; index < count; index++) {
-                    const stat = stats.nth(index);
-                    await expectContained(
-                        stat.locator('.track-stat__val'),
-                        stat,
-                    );
+                    await expectContained(stats.nth(index), '.track-stat__val');
                 }
 
                 await expectNoHorizontalOverflow(page);

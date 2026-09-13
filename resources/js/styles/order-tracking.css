@@ -549,6 +549,13 @@
 .track-btn {
     width: 100%;
     margin-top: 15px;
+    /* 10px of padding around a 13px label comes to 39.5px, which is under the
+       44px this project requires of anything a thumb has to hit - measured on a
+       390px viewport, not guessed. The padding stays for the look; the minimum
+       guarantees the target, and the flex centering above keeps the label in the
+       middle of the taller box. The tracker this was ported from had the same
+       gap. */
+    min-height: 44px;
     padding: 10px;
     border: none;
     border-radius: 10px;

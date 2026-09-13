@@ -3,6 +3,7 @@
 namespace App\Actions\Fulfillment;
 
 use App\Account\Presenters\ItemTracking;
+use App\Enums\CredentialCorrectionSource;
 use App\Enums\SupplierAction;
 use App\Models\OrderItem;
 use App\Models\OrderItemSecret;
@@ -37,7 +38,8 @@ final class SubmitCredentialCorrection
      */
     public function execute(
         OrderItem $item,
-        User $user,
+        ?User $user,
+        CredentialCorrectionSource $source,
         string $ipAddress,
         array $validated,
         string $locale,
@@ -63,7 +65,7 @@ final class SubmitCredentialCorrection
         }
 
         try {
-            return $this->correct($item, $resolved, $credentials, $user, $ipAddress, $locale);
+            return $this->correct($item, $resolved, $credentials, $user, $source, $ipAddress, $locale);
         } finally {
             $lock->release();
         }
@@ -78,7 +80,8 @@ final class SubmitCredentialCorrection
         OrderItem $item,
         ActionableItem $resolved,
         EaAccountCredentials $credentials,
-        User $user,
+        ?User $user,
+        CredentialCorrectionSource $source,
         string $ipAddress,
         string $locale,
     ): array {
@@ -89,7 +92,7 @@ final class SubmitCredentialCorrection
         // supplier, the store would still hold the original, and phase two would be
         // placed against an account that does not exist. Our record is the source of
         // truth, so it is written first and the supplier is told second.
-        $version = $this->writeSecret($item, $credentials, $user, $ipAddress);
+        $version = $this->writeSecret($item, $credentials, $user, $source, $ipAddress);
 
         try {
             $client = $this->registry->for($resolved->supplier);
@@ -143,21 +146,23 @@ final class SubmitCredentialCorrection
     private function writeSecret(
         OrderItem $item,
         EaAccountCredentials $credentials,
-        User $user,
+        ?User $user,
+        CredentialCorrectionSource $source,
         string $ipAddress,
     ): int {
         // The payload and its audit row are one write. Without this a failing log
         // insert left the credentials changed with nothing recording who changed
         // them, and the caller was told the whole thing failed.
-        return DB::transaction(function () use ($item, $credentials, $user, $ipAddress): int {
-            return $this->persistSecret($item, $credentials, $user, $ipAddress);
+        return DB::transaction(function () use ($item, $credentials, $user, $source, $ipAddress): int {
+            return $this->persistSecret($item, $credentials, $user, $source, $ipAddress);
         });
     }
 
     private function persistSecret(
         OrderItem $item,
         EaAccountCredentials $credentials,
-        User $user,
+        ?User $user,
+        CredentialCorrectionSource $source,
         string $ipAddress,
     ): int {
         $secret = OrderItemSecret::query()->where('order_item_id', $item->id)->first();
@@ -186,8 +191,15 @@ final class SubmitCredentialCorrection
 
         SecretAccessLog::create([
             'order_item_secret_id' => $secret->id,
-            'user_id' => $user->id,
-            'purpose' => 'customer_credential_correction',
+            // Who did it and how they were authorised are two facts, and the
+            // row carries both separately. Deriving the second from the first
+            // was wrong: a signed-in customer who taps the link in their
+            // WhatsApp message would have been logged as an ordinary account
+            // correction, with nothing showing that a capability token was what
+            // let it through. Over a link with no session, `user_id` is null and
+            // the IP is the only identity there is.
+            'user_id' => $user?->id,
+            'purpose' => $source->value,
             'ip_address' => $ipAddress,
         ]);
 

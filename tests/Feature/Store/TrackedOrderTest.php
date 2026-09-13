@@ -133,35 +133,9 @@ test('the payload carries none of the excluded keys', function (): void {
             ->missing('order.public_id')
             ->missing('order.items.0.id')
             ->missing('order.items.0.public_id')
-            ->missing('order.items.0.actionUrls')
             ->missing('order.items.0.credentialsPresent')
             ->missing('order.items.0.manualFulfillment')
         );
-});
-
-test('every item and challenge action list is blanked', function (): void {
-    $order = trackLinkOrder();
-
-    $coins = trackLinkItem($order, ServiceType::Coins);
-    trackLinkJob($coins, ['allowed_actions' => ['resume']]);
-
-    trackLinkChallengeItem($order);
-
-    $response = $this->get(trackLinkPath($order))->assertOk();
-
-    $items = $response->inertiaPage()['props']['order']['items'];
-
-    foreach ($items as $item) {
-        if ($item['tracking'] === null) {
-            continue;
-        }
-
-        expect($item['tracking']['actions'])->toBe([]);
-
-        foreach ($item['tracking']['challenges'] ?? [] as $challenge) {
-            expect($challenge['actions'])->toBe([]);
-        }
-    }
 });
 
 test('an unknown token 404s', function (): void {
