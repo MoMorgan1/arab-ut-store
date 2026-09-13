@@ -1,0 +1,400 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+    body {
+      margin: 0;
+      background: #080705;
+      color: #ede4d0;
+      font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: #d4a843; text-decoration: none; }
+    a:hover { color: #e4b756; }
+
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+    .grp { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a89880; }
+    .lbl { display: block; margin-bottom: 5px; font-size: 12px; color: #a89880; }
+    .opt { color: #8d7f6b; font-weight: 400; letter-spacing: 0; text-transform: none; }
+    .hint { margin: 0; font-size: 11px; line-height: 1.55; color: #a89880; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    .field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid rgb(212 168 67 / 20%);
+      border-radius: 6px;
+      font-size: 16px;
+      color: #ede4d0;
+    }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+
+    .card {
+      border: 1px solid rgb(212 168 67 / 16%);
+      border-radius: 6px;
+      background: #14110e;
+      padding: 12px;
+    }
+
+    .seg {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid rgb(212 168 67 / 20%);
+      border-radius: 6px;
+    }
+
+    .seg button {
+      height: 44px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #a89880;
+    }
+
+    .seg button[data-on='true'] {
+      background: #d4a843;
+      color: #080705;
+      font-weight: 600;
+    }
+
+    .radio {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgb(212 168 67 / 20%);
+      border-radius: 6px;
+      text-align: start;
+    }
+
+    .radio[data-on='true'] { border-color: #d4a843; background: rgb(212 168 67 / 7%); }
+
+    .radio__dot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      border: 1px solid rgb(212 168 67 / 40%);
+      border-radius: 999px;
+    }
+
+    .radio[data-on='true'] .radio__dot { border-color: #d4a843; }
+    .radio__dot span { width: 8px; height: 8px; border-radius: 999px; background: #d4a843; }
+    .radio__title { display: block; font-size: 14px; font-weight: 500; color: #ede4d0; }
+    .radio__body { display: block; margin-top: 3px; font-size: 12px; line-height: 1.5; color: #a89880; }
+
+    .primary {
+      width: 100%;
+      height: 44px;
+      border-radius: 6px;
+      background: #d4a843;
+      color: #080705;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ghost {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      height: 44px;
+      border: 1px solid rgb(212 168 67 / 20%);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #ede4d0;
+    }
+
+    .divider { height: 1px; border: 0; margin: 4px 0; background: rgb(212 168 67 / 12%); }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; min-height: 844px; background: #080705">
+
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid rgb(212 168 67 / 16%)">
+    <div>
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #ede4d0">New order</h2>
+      <p style="margin: 3px 0 0; font-size: 12px; line-height: 1.5; color: #a89880">
+        A real order on the customer's account: an AUT- number, a tracking page and a link you can send.
+      </p>
+    </div>
+    <button style="display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 6px; color: #a89880" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+    </button>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 20px; flex-grow: 1; padding: 16px">
+
+    <!-- Type first: it decides whether there is money to record at all -->
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="grp">Type</span>
+      <div class="seg">
+        <button data-on="{{ type.isTransfer }}" onClick="{{ pickTransfer }}">Bank transfer</button>
+        <button data-on="{{ type.isGift }}" onClick="{{ pickGift }}">Gift</button>
+      </div>
+      <p class="hint" style="display: flex; align-items: flex-start; gap: 6px; color: {{ type.rewardColor }}">
+        <svg style="flex: 0 0 auto; margin-top: 1px" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        {{ type.rewardNote }}
+      </p>
+    </div>
+
+    <!-- Customer: search only. A new customer is made on the customers page. -->
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="grp">Customer</span>
+      <div class="field" style="justify-content: flex-start">
+        <svg style="flex: 0 0 auto; color: #a89880" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        <span>0555</span>
+      </div>
+      <div style="overflow: hidden; border: 1px solid rgb(212 168 67 / 16%); border-radius: 6px; background: #1c1814">
+        <button style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 12px; text-align: start">
+          <span>
+            <span style="display: block; font-size: 14px; color: #ede4d0">Faisal Alharbi</span>
+            <span style="display: block; font-size: 12px; color: #a89880">+966 55 512 4408 &middot; 6 orders</span>
+          </span>
+          <span style="font-size: 11px; color: #d4a843">Select</span>
+        </button>
+      </div>
+      <p class="hint">Search by phone, email or name. A customer who does not exist yet is created on the customers page first.</p>
+    </div>
+
+    <!-- Delivery, above the items, because it decides what each item asks for -->
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="grp">Delivery</span>
+      <button class="radio" data-on="{{ delivery.isManual }}" onClick="{{ pickManual }}">
+        <span class="radio__dot"><sc-if value="{{ delivery.isManual }}" hint-placeholder-val="{{ true }}"><span></span></sc-if></span>
+        <span>
+          <span class="radio__title">I already placed it by hand</span>
+          <span class="radio__body">Paste each item's supplier reference below. The job is bound to it at creation and tracked from the next read.</span>
+        </span>
+      </button>
+      <button class="radio" data-on="{{ delivery.isDispatch }}" onClick="{{ pickDispatch }}">
+        <span class="radio__dot"><sc-if value="{{ delivery.isDispatch }}" hint-placeholder-val="{{ true }}"><span></span></sc-if></span>
+        <span>
+          <span class="radio__title">Send it to the supplier</span>
+          <span class="radio__body">Runs the same fulfillment path as a paid order. Needs the EA password on each item.</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- Items. One card each, and each carries its own supplier reference,
+         because a job is bound to an item and each item is its own order at
+         the supplier. -->
+    <sc-for list="{{ items }}" as="item" hint-placeholder-count="2">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span class="grp">Item {{ item.n }}</span>
+          <button style="height: 44px; margin-inline-end: -8px; padding: 0 8px; font-size: 11px; color: #ffb4a9">Remove</button>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+          <div>
+            <label class="lbl">Service</label>
+            <div class="field">
+              <span>{{ item.service }}</span>
+              <svg style="color: #a89880" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">Platform</label>
+            <div class="seg">
+              <button data-on="{{ item.isConsole }}">PS / Xbox</button>
+              <button data-on="{{ item.isPc }}">PC</button>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <div>
+              <label class="lbl">{{ item.quantityLabel }}</label>
+              <div class="field"><span class="num">{{ item.quantity }}</span></div>
+            </div>
+            <div>
+              <label class="lbl">Price</label>
+              <div class="field">
+                <span class="num">{{ item.price }}</span>
+                <span style="font-size: 12px; color: #a89880">SAR</span>
+              </div>
+            </div>
+          </div>
+          <p class="hint">{{ item.priceNote }}</p>
+
+          <hr class="divider">
+
+          <div>
+            <label class="lbl">EA email</label>
+            <div class="field" style="justify-content: flex-start"><span>{{ item.email }}</span></div>
+          </div>
+          <sc-if value="{{ delivery.isDispatch }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <label class="lbl">EA password</label>
+              <div class="field">
+                <span style="letter-spacing: 0.18em">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
+                <span style="font-size: 12px; color: #a89880">Show</span>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ delivery.isManual }}" hint-placeholder-val="{{ true }}">
+            <p class="hint">Password and backup codes are <span class="opt">optional</span> here &mdash; you have already signed in yourself. Add them only if a later phase will run from the store.</p>
+          </sc-if>
+
+          <sc-if value="{{ delivery.isManual }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <hr class="divider">
+              <label class="lbl">Supplier</label>
+              <div class="seg">
+                <button data-on="{{ item.isFft }}">FFT</button>
+                <button data-on="{{ item.isUtt }}">UTT</button>
+              </div>
+              <p class="hint" style="margin-top: 6px">{{ item.supplierNote }}</p>
+              <label class="lbl" style="margin-top: 12px">Supplier order reference</label>
+              <div class="field" style="justify-content: flex-start">
+                <span class="mono">{{ item.reference }}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+
+    <button class="ghost">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+      Add another item
+    </button>
+
+    <!-- Money, only where there is money -->
+    <sc-if value="{{ type.isTransfer }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="grp">Payment received</span>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <div>
+              <label class="lbl">Amount</label>
+              <div class="field">
+                <span class="num">420.00</span>
+                <span style="font-size: 12px; color: #a89880">SAR</span>
+              </div>
+            </div>
+            <div>
+              <label class="lbl">Received on</label>
+              <div class="field"><span>13/09/2026</span></div>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">Transfer reference</label>
+            <div class="field" style="justify-content: flex-start"><span class="mono">FT2609134471</span></div>
+          </div>
+          <p class="hint">Recorded as a payment on the order, so the money lands in the same reports as a Paylink order.</p>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ type.isGift }}" hint-placeholder-val="{{ true }}">
+      <div style="padding: 12px; border: 1px solid rgb(228 183 86 / 40%); border-radius: 6px; background: rgb(228 183 86 / 8%)">
+        <p style="margin: 0; font-size: 14px; font-weight: 500; color: #ede4d0">No payment on a gift</p>
+        <p class="hint" style="margin-top: 4px">
+          Zero total, no payment record, no cashback. That is also what marks it as a gift: a bank transfer always carries money, so the two cannot be confused.
+        </p>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding: 16px; border-top: 1px solid rgb(212 168 67 / 16%); background: #14110e">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 14px">
+      <span style="color: #a89880">Order total</span>
+      <span class="num" style="font-size: 16px; font-weight: 600; color: #ede4d0">{{ total }}</span>
+    </div>
+    <p class="hint" style="margin-bottom: 10px">Records who created it and when. The EA password is not in that record, or in the page, or in a log line.</p>
+    <button class="primary">Create order</button>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // Placed by hand is the default because it is what actually happens most of
+    // the time (owner, 2026-09-13) - and it is the case that makes the old
+    // tracker deletable.
+    this.state = { type: 'transfer', delivery: 'manual' };
+  }
+
+  renderVals() {
+    const isTransfer = this.state.type === 'transfer';
+    const isManual = this.state.delivery === 'manual';
+
+    return {
+      type: {
+        isTransfer: isTransfer,
+        isGift: !isTransfer,
+        rewardColor: isTransfer ? '#67e89a' : '#a89880',
+        rewardNote: isTransfer
+          ? 'Earns cashback and loyalty. A gift does not.'
+          : 'No cashback and no loyalty on a gift.',
+      },
+      delivery: { isDispatch: !isManual, isManual: isManual },
+      total: isTransfer ? '420.00 SAR' : '0.00 SAR',
+
+      items: [
+        {
+          n: 1,
+          service: 'Coins',
+          isConsole: true,
+          isPc: false,
+          quantityLabel: 'Quantity (K)',
+          quantity: '1250',
+          price: '300.00',
+          priceNote: 'Suggested from the live catalogue. Change it and the difference is recorded on the order.',
+          email: 'faisal@example.com',
+          isFft: true,
+          isUtt: false,
+          supplierNote: 'Either supplier delivers coins.',
+          reference: '84172',
+        },
+        {
+          n: 2,
+          service: 'SBC solve',
+          isConsole: true,
+          isPc: false,
+          quantityLabel: 'Challenges',
+          quantity: '3',
+          price: '120.00',
+          priceNote: 'Suggested from the live catalogue. Change it and the difference is recorded on the order.',
+          email: 'faisal@example.com',
+          isFft: true,
+          isUtt: false,
+          supplierNote: 'UTT delivers coins only, so a challenge leaves FFT as the only choice.',
+          reference: '84173',
+        },
+      ],
+
+      pickTransfer: () => this.setState({ type: 'transfer' }),
+      pickGift: () => this.setState({ type: 'gift' }),
+      pickDispatch: () => this.setState({ delivery: 'dispatch' }),
+      pickManual: () => this.setState({ delivery: 'manual' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+    body {
+      margin: 0;
+      background: #080705;
+      color: #ede4d0;
+      font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: #d4a843; text-decoration: none; }
+    a:hover { color: #e4b756; }
+
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+    .num { font-variant-numeric: tabular-nums; }
+
+    .pill {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .row {
+      border: 1px solid rgb(212 168 67 / 16%);
+      border-radius: 6px;
+      background: #14110e;
+      padding: 12px;
+    }
+  </style>
+</helmet>
+
+<div style="min-height: 844px; padding: 16px; background: #080705">
+  <div style="margin-bottom: 16px">
+    <h1 style="margin: 0; font-size: 20px; font-weight: 600; color: #ede4d0">Orders</h1>
+    <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: #a89880">
+      View and filter all customer orders across services and platforms.
+    </p>
+  </div>
+
+  <!-- The one new control on this screen, where the thumb already is -->
+  <button style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 44px; margin-bottom: 12px; border-radius: 6px; background: #d4a843; color: #080705; font-size: 14px; font-weight: 600">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+    New order
+  </button>
+
+  <div style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 1px solid rgb(212 168 67 / 20%); border-radius: 6px">
+    <svg style="flex: 0 0 auto; color: #a89880" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+    <span style="font-size: 16px; color: #a89880">Search orders</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px">
+    <sc-for list="{{ orders }}" as="order" hint-placeholder-count="4">
+      <div class="row">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+          <span style="font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; color: #ede4d0">{{ order.number }}</span>
+          <span class="pill" style="color: {{ order.tone }}; background: {{ order.wash }}">{{ order.status }}</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12px; color: #a89880">
+          <span>{{ order.detail }}</span>
+          <span class="num" style="font-weight: 500; color: #ede4d0">{{ order.total }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <p style="margin: 12px 0 0; font-size: 11px; line-height: 1.55; color: #a89880">
+    A manual order is a row in this list like any other. Nothing marks it: the table has no channel column today, and a rare order type does not earn one.
+  </p>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const success = { tone: '#67e89a', wash: 'rgb(103 232 154 / 12%)' };
+    const warning = { tone: '#e4b756', wash: 'rgb(228 183 86 / 12%)' };
+
+    return {
+      orders: [
+        { number: '277538068', status: 'Completed', detail: 'Coins · PS / Xbox', total: '450.00 SAR', ...success },
+        { number: 'AUT-1043', status: 'In progress', detail: 'Coins · PC', total: '300.00 SAR', ...warning },
+        { number: '277486750', status: 'Completed', detail: 'SBC solve · PS / Xbox', total: '120.00 SAR', ...success },
+        { number: 'AUT-1042', status: 'In progress', detail: 'SBC solve · PC', total: '0.00 SAR', ...warning },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
