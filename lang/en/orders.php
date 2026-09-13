@@ -187,4 +187,140 @@ Congratulations on the squad!',
         'failed' => 'Failed',
         'unknown' => 'Unknown',
     ],
+    // One label per raw supplier status, keyed identically in ar and en. Wording
+    // follows the tracker's SBC_STATUS_MAP except where it names plumbing
+    // (proxy, HTTP codes, our own click) — those are rewritten for the customer.
+    'challenge_statuses' => [
+        // Progress
+        'entered' => 'Waiting',
+        'waitingForOtherSolve' => 'Waiting for previous challenge',
+        'started' => 'Started',
+        'fetchSBCInfo' => 'Fetching challenge info',
+        'fetchChallengeInfo' => 'Fetching squads',
+        'solvingChallenge' => 'Solving squad',
+        'finished' => 'Completed',
+        // Auth / session errors
+        'sessionExpired' => 'Session expired',
+        'needEmailConfirm' => 'Email confirmation required',
+        'LoginFailed495' => 'Could not sign in',
+        'LoginFailed401' => 'Could not sign in',
+        'LoginFailedDeviceBan' => 'Device banned',
+        'LoginError' => 'Sign-in error',
+        'LoginFailed' => 'Sign-in failed',
+        'WrongUserPass' => 'Wrong email or password',
+        '2FADisabled' => 'Two-factor verification disabled',
+        'No2FA' => 'Two-factor verification disabled',
+        'WrongBA' => 'Wrong backup code',
+        'loginLoop' => 'Sign-in problem',
+        'loginFailed' => 'Sign-in failed',
+        // Proxy / connection errors
+        'FailProxyConn' => 'Temporary connection problem',
+        'FailedProxyConnectionError' => 'Temporary connection problem',
+        'FailProxy' => 'Temporary connection problem',
+        // Account / setup errors
+        'failedNoClub' => 'No club',
+        'consoleLoggedIn' => 'Account signed in to the game',
+        'FailedPersonaSwitch' => 'Wrong persona details',
+        'TMLocked' => 'Transfer market locked',
+        // SBC-specific errors
+        'setNotFound' => 'SBC not found',
+        'foundationNotSolved' => 'Base SBC not solved',
+        'alreadyCompleted' => 'Already completed',
+        'challengeDataMissing' => 'Squad data missing',
+        'noSolutionFound' => 'No solution',
+        'tooExpensive' => 'Solution too expensive',
+        'clickFailed' => 'Could not complete a step',
+        'submitFailed' => 'Submit failed',
+        'squadCreateFailed' => 'Failed to build squad',
+        // Player / market errors
+        'playerBuyFailed' => 'Failed to buy player',
+        'playerNotFound' => 'Player not found',
+        'playerNotMoved' => 'Player not moved',
+        'clubQueryFailed' => 'Could not read the club',
+        'tooManyExchanges' => 'Too many exchanges',
+        // Financial errors
+        'noFunds' => 'Insufficient balance',
+        'OutOfCoins' => 'Out of coins',
+        'tempban' => 'Safety cooldown',
+        'TempbanCooldown' => 'Waiting (cooldown)',
+        'dailyReceiverLimit' => 'Daily limit (safety)',
+        // System errors
+        'aborted' => 'Cancelled',
+        'failed' => 'Failed',
+        'FailUnassignedFound' => 'Unassigned items found',
+    ],
+    // Per-status help, layered above challenge_help. Written only where the coarse
+    // state help is wrong for this status; everything else falls back unchanged.
+    'challenge_status_help' => [
+        'sign_in_refused' => [
+            'title' => 'Could not sign in',
+            'desc' => 'EA refused the sign-in for now, usually because their servers are under pressure.',
+            'action' => 'Press "Try again" to retry. If you are sure the email is wrong, update it in the order details.',
+        ],
+        'two_factor_off' => [
+            'title' => 'Two-factor verification not enabled',
+            'desc' => 'Two-factor verification (2FA) is not enabled on the account, and we need it to continue.',
+            'action' => 'Enable two-factor verification from your EA account security settings, then update the order.',
+        ],
+        'WrongUserPass' => [
+            'title' => 'Wrong sign-in details',
+            'desc' => 'The email or password for your EA account is not correct.',
+            'action' => 'Update your sign-in details in the order settings, then try again.',
+        ],
+        'WrongBA' => [
+            'title' => 'Wrong backup codes',
+            'desc' => 'The backup codes you entered are wrong or already used.',
+            'action' => 'Create new codes from your EA account security settings and update the order details.',
+        ],
+        'TMLocked' => [
+            'title' => 'Transfer market locked',
+            'desc' => 'The market on this account is currently locked by EA.',
+            'action' => 'Give us another account with an open market, or wait until the market opens on this account.',
+        ],
+        'failedNoClub' => [
+            'title' => 'No club',
+            'desc' => 'The account has no Ultimate Team club in the game.',
+            'action' => 'Open the game, create your club, then let us know.',
+        ],
+        'consoleLoggedIn' => [
+            'title' => 'Account signed in to the game',
+            'desc' => 'The account is currently signed in to the game or the Companion app, so we cannot start.',
+            'action' => 'Sign out of the game and the Companion app completely, then try again.',
+        ],
+        'FailUnassignedFound' => [
+            'title' => 'Unassigned items found',
+            'desc' => 'There are unassigned items on the account blocking the solve.',
+            'action' => 'Remove the unassigned items from your account (below 50), then try again.',
+        ],
+        'LoginFailedDeviceBan' => [
+            'title' => 'Device banned',
+            'desc' => 'The account is banned on this device by EA.',
+            'action' => 'Message us to resolve it.',
+        ],
+        'tempban' => [
+            'title' => 'Safety cooldown',
+            'desc' => 'Paused as a safety measure to avoid an EA transfer market ban.',
+            'action' => 'It resumes on its own once the cooldown ends. You can play normally.',
+        ],
+        'TempbanCooldown' => [
+            'title' => 'Cooldown',
+            'desc' => 'Your account is in a mandatory cooldown because of too many exchanges, to avoid a market ban.',
+            'action' => 'Work resumes automatically soon.',
+        ],
+        'dailyReceiverLimit' => [
+            'title' => 'Daily receive limit',
+            'desc' => 'You have reached the daily limit, and we are waiting to protect your account from a ban.',
+            'action' => 'Please wait up to 36 hours. You can play normally in the meantime.',
+        ],
+        'FailedPersonaSwitch' => [
+            'title' => 'Wrong persona details',
+            'desc' => 'The persona details on the account are wrong or do not match.',
+            'action' => 'Message us to correct the persona details.',
+        ],
+        'needEmailConfirm' => [
+            'title' => 'Email confirmation required',
+            'desc' => 'EA is asking for your email to be confirmed before signing in.',
+            'action' => 'Confirm your email from EA, then try again.',
+        ],
+    ],
 ];

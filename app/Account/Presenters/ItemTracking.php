@@ -3,6 +3,7 @@
 namespace App\Account\Presenters;
 
 use App\Enums\ChallengeState;
+use App\Enums\ChallengeTone;
 use App\Enums\DeliveryPhase;
 use App\Enums\HoldTone;
 use App\Enums\OrderItemStatus;
@@ -15,6 +16,7 @@ use App\Models\FulfillmentJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Suppliers\ChallengeIds;
+use App\Suppliers\Translation\SbcStatusPresentation;
 use App\Suppliers\Translation\SupplierStateTranslator;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -64,6 +66,7 @@ final class ItemTracking
      *         target: int,
      *         state: string,
      *         stateLabel: string,
+     *         tone: string,
      *         help: array{title: string, desc: string, action: string},
      *         squads: array{done: int|null, total: int|null},
      *         solves: array{done: int|null, total: int|null},
@@ -246,11 +249,34 @@ final class ItemTracking
                         default => HoldTone::Action->value,
                     };
 
+                    // The label and tone come from the per-status presentation table when
+                    // this status has one, else from the coarse ChallengeState as before.
+                    $stateLabel = SbcStatusPresentation::has($rawStatus)
+                        ? SbcStatusPresentation::label($rawStatus, $locale)
+                        : $stateEnum->label($locale);
+
+                    $tone = SbcStatusPresentation::tone($rawStatus);
+
+                    // A finished card is not still working and not still waiting: whatever
+                    // the supplier last said, the order is over, so a "moving" or "paused"
+                    // tone would contradict the header above it. Which way it collapses is
+                    // the order's own answer - a delivered order says the work landed even
+                    // if the last thing the supplier reported was a solve in flight, and a
+                    // cancelled one says it stopped where it stood.
+                    if ($tone === ChallengeTone::Working || $tone === ChallengeTone::Waiting) {
+                        $tone = match ($terminalPresentation) {
+                            TrackingPresentation::Completed => ChallengeTone::Success,
+                            TrackingPresentation::Cancelled, TrackingPresentation::Refunded => ChallengeTone::Danger,
+                            default => $tone,
+                        };
+                    }
+
                     // The "?" explains the state, and on a live order it ends with what
                     // the customer should do. On a finished one there is nothing to do,
                     // so the instruction goes even though the explanation stays - the
-                    // same reason the buttons and the hold went.
-                    $cardHelp = $stateEnum->help($locale);
+                    // same reason the buttons and the hold went. Per-status help wins when
+                    // the status has its own; otherwise the state's help is used unchanged.
+                    $cardHelp = SbcStatusPresentation::help($rawStatus, $stateEnum, $locale);
 
                     if ($orderIsTerminal) {
                         $cardHelp['action'] = '';
@@ -259,7 +285,8 @@ final class ItemTracking
                     $challengesList[] = [
                         'target' => $target,
                         'state' => $stateEnum->value,
-                        'stateLabel' => $stateEnum->label($locale),
+                        'stateLabel' => $stateLabel,
+                        'tone' => $tone->value,
                         'help' => $cardHelp,
                         'squads' => [
                             'done' => isset($entry['challengesDone']) && is_numeric($entry['challengesDone']) ? (int) $entry['challengesDone'] : null,
@@ -281,6 +308,7 @@ final class ItemTracking
                         'target' => $target,
                         'state' => ChallengeState::Unknown->value,
                         'stateLabel' => ChallengeState::Unknown->label($locale),
+                        'tone' => SbcStatusPresentation::toneForState(ChallengeState::Unknown)->value,
                         'help' => ChallengeState::Unknown->help($locale),
                         'squads' => ['done' => null, 'total' => null],
                         'solves' => ['done' => null, 'total' => null],
@@ -383,6 +411,7 @@ final class ItemTracking
      *         target: int,
      *         state: string,
      *         stateLabel: string,
+     *         tone: string,
      *         help: array{title: string, desc: string, action: string},
      *         squads: array{done: int|null, total: int|null},
      *         solves: array{done: int|null, total: int|null},

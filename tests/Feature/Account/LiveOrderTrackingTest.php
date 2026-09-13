@@ -17,6 +17,7 @@ use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Suppliers\Translation\SbcStatusPresentation;
 use App\Suppliers\Translation\SupplierStateTranslator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
@@ -62,6 +63,44 @@ function trackingJob(OrderItem $item, array $attributes = []): FulfillmentJob
         'supplier_order_id' => 'fft-'.$item->id,
         ...$attributes,
     ]);
+}
+
+/**
+ * A placed SBC item whose challenge observation reports one sbcStatus per
+ * challenge id, returning the presenter payload for the given locale.
+ *
+ * @param  list<string>  $sbcStatuses
+ */
+function challengeTracking(array $sbcStatuses, ?OrderStatus $orderStatus = null, string $locale = 'en'): array
+{
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner, $orderStatus ?? OrderStatus::InProgress);
+    $item = trackingItem($order, ServiceType::Sbc);
+
+    $ids = [];
+    $observation = [];
+    foreach (array_values($sbcStatuses) as $i => $status) {
+        $id = sprintf('1803b7a6-0000-0000-0000-%012x', $i + 1);
+        $ids[] = $id;
+        $observation[$id] = ['sbcStatus' => $status];
+    }
+
+    $job = trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observation' => $observation,
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => $job->supplier_order_id,
+        'supplier_challenge_ids' => $ids,
+        'idempotency_key' => 'placement-'.fake()->unique()->word(),
+        'placed_at' => now(),
+    ]);
+
+    return ItemTracking::for($item, $locale);
 }
 
 test('rule 1: observedAt is an ISO 8601 timestamp in UTC and not a precomputed relative age', function (): void {
@@ -905,6 +944,93 @@ test('a challenge wait is never labelled as a failure', function (string $sbcSta
         ->and($state->label('ar'))->not->toContain('بروكسي')
         ->and($state->label('en'))->not->toContain('proxy');
 })->with(SupplierStateTranslator::SBC_SYSTEM_INFO_STATUSES);
+
+test('every tracker status has its own label in both languages, without naming plumbing', function (): void {
+    $statuses = [
+        'entered', 'waitingForOtherSolve', 'started', 'fetchSBCInfo', 'fetchChallengeInfo', 'solvingChallenge', 'finished',
+        'sessionExpired', 'needEmailConfirm', 'LoginFailed495', 'LoginFailed401', 'LoginFailedDeviceBan', 'LoginError', 'LoginFailed', 'WrongUserPass', '2FADisabled', 'No2FA', 'WrongBA', 'loginLoop', 'loginFailed',
+        'FailProxyConn', 'FailedProxyConnectionError', 'FailProxy',
+        'failedNoClub', 'consoleLoggedIn', 'FailedPersonaSwitch', 'TMLocked',
+        'setNotFound', 'foundationNotSolved', 'alreadyCompleted', 'challengeDataMissing', 'noSolutionFound', 'tooExpensive', 'clickFailed', 'submitFailed', 'squadCreateFailed',
+        'playerBuyFailed', 'playerNotFound', 'playerNotMoved', 'clubQueryFailed', 'tooManyExchanges',
+        'noFunds', 'OutOfCoins', 'tempban', 'TempbanCooldown', 'dailyReceiverLimit',
+        'aborted', 'failed', 'FailUnassignedFound',
+    ];
+
+    $forbidden = ['بروكسي', 'proxy', '401', '495', 'fft', 'utt'];
+
+    foreach ($statuses as $status) {
+        expect(SbcStatusPresentation::has($status))->toBeTrue("{$status} is missing from the presentation table");
+
+        foreach (['ar', 'en'] as $locale) {
+            $label = trans("orders.challenge_statuses.{$status}", [], $locale);
+
+            expect($label)->toBeString()->not->toBe('')->not->toBe("orders.challenge_statuses.{$status}");
+
+            foreach ($forbidden as $word) {
+                expect(mb_strtolower($label))->not->toContain($word);
+            }
+        }
+    }
+});
+
+test('a challenge tone comes from the status, not from the hold message', function (string $sbcStatus, string $expectedTone): void {
+    $tracking = challengeTracking([$sbcStatus]);
+
+    expect($tracking['challenges'][0]['tone'])->toBe($expectedTone);
+})->with([
+    'finished is done' => ['finished', 'success'],
+    'a solve in flight is working' => ['solvingChallenge', 'working'],
+    'a cooldown waits' => ['tempban', 'waiting'],
+    'the daily limit waits' => ['dailyReceiverLimit', 'waiting'],
+    'no-hold too expensive is stopped' => ['tooExpensive', 'danger'],
+    'no-hold click failure is stopped' => ['clickFailed', 'danger'],
+    'no-hold failure is stopped' => ['failed', 'danger'],
+]);
+
+test('a failure with no hold reason still reads as stopped, not in-progress', function (string $sbcStatus): void {
+    $tracking = challengeTracking([$sbcStatus]);
+
+    expect($tracking['challenges'][0]['holdReason'])->toBeNull()
+        ->and($tracking['challenges'][0]['tone'])->toBe('danger')
+        ->and($tracking['challenges'][0]['state'])->toBe('failed');
+})->with(['tooExpensive', 'clickFailed', 'failed']);
+
+test('LoginFailed401 help does not blame the password; WrongUserPass help does', function (): void {
+    $refused = challengeTracking(['LoginFailed401']);
+    $refusedHelp = $refused['challenges'][0]['help'];
+
+    expect($refusedHelp['title'])->not->toContain('password')
+        ->and($refusedHelp['desc'])->not->toContain('password')
+        ->and($refusedHelp['action'])->not->toContain('password');
+
+    $wrong = challengeTracking(['WrongUserPass']);
+    $wrongHelp = $wrong['challenges'][0]['help'];
+
+    expect($wrongHelp['desc'])->toContain('password')
+        ->and($wrongHelp['action'])->toContain('details');
+});
+
+test('TMLocked help does not tell the customer to retry', function (): void {
+    $tracking = challengeTracking(['TMLocked']);
+    $help = $tracking['challenges'][0]['help'];
+
+    expect($help['action'])->not->toContain('retry')
+        ->and($help['action'])->not->toContain('Try again')
+        ->and($help['action'])->not->toContain('إعادة المحاولة');
+});
+
+test('a status absent from the presentation table still returns a label and a tone', function (): void {
+    // noPriceFound is a real SBC status the tracker's display map does not name;
+    // the presenter falls back to the coarse state instead of crashing.
+    expect(SbcStatusPresentation::has('noPriceFound'))->toBeFalse();
+
+    $tracking = challengeTracking(['noPriceFound']);
+
+    expect($tracking['challenges'][0]['stateLabel'])->toBeString()->not->toBe('')
+        ->and($tracking['challenges'][0]['tone'])->toBeString()->not->toBe('')
+        ->and($tracking['challenges'][0]['help'])->toHaveKeys(['title', 'desc', 'action']);
+});
 
 test('opening the order page asks the supplier, and shows what it just said', function (): void {
     // The owner's decision: "opening the page is the refresh". There is no button

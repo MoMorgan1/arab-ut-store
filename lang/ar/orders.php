@@ -187,4 +187,140 @@ return [
         'failed' => 'فشل',
         'unknown' => 'غير معروف',
     ],
+    // One label per raw supplier status, keyed identically in ar and en. Wording
+    // follows the tracker's SBC_STATUS_MAP except where it names plumbing
+    // (proxy, HTTP codes, our own click) — those are rewritten for the customer.
+    'challenge_statuses' => [
+        // Progress
+        'entered' => 'في الانتظار',
+        'waitingForOtherSolve' => 'بانتظار التحدي السابق',
+        'started' => 'بدأ المعالجة',
+        'fetchSBCInfo' => 'جاري جلب معلومات التحدي',
+        'fetchChallengeInfo' => 'جاري جلب التشكيلات',
+        'solvingChallenge' => 'جاري حل التشكيلة',
+        'finished' => 'مكتمل بنجاح',
+        // Auth / session errors
+        'sessionExpired' => 'انتهت الجلسة',
+        'needEmailConfirm' => 'مطلوب تأكيد الإيميل',
+        'LoginFailed495' => 'تعذّر الدخول',
+        'LoginFailed401' => 'تعذّر الدخول',
+        'LoginFailedDeviceBan' => 'الجهاز محظور',
+        'LoginError' => 'خطأ في الدخول',
+        'LoginFailed' => 'فشل الدخول',
+        'WrongUserPass' => 'إيميل أو كلمة مرور خاطئة',
+        '2FADisabled' => 'التحقق الثنائي معطل',
+        'No2FA' => 'التحقق الثنائي معطل',
+        'WrongBA' => 'كود احتياطي خاطئ',
+        'loginLoop' => 'مشكلة في الدخول',
+        'loginFailed' => 'فشل الدخول',
+        // Proxy / connection errors
+        'FailProxyConn' => 'مشكلة اتصال مؤقتة',
+        'FailedProxyConnectionError' => 'مشكلة اتصال مؤقتة',
+        'FailProxy' => 'مشكلة اتصال مؤقتة',
+        // Account / setup errors
+        'failedNoClub' => 'لا يوجد نادي',
+        'consoleLoggedIn' => 'الحساب متصل باللعبة',
+        'FailedPersonaSwitch' => 'معلومات الشخصية غير صحيحة',
+        'TMLocked' => 'سوق الانتقالات مقفل',
+        // SBC-specific errors
+        'setNotFound' => 'SBC غير موجود',
+        'foundationNotSolved' => 'SBC الأساسي لم يُحل',
+        'alreadyCompleted' => 'مكتمل مسبقاً',
+        'challengeDataMissing' => 'بيانات التشكيلة مفقودة',
+        'noSolutionFound' => 'لا يوجد حل',
+        'tooExpensive' => 'الحل مكلف جداً',
+        'clickFailed' => 'تعذّر إكمال خطوة',
+        'submitFailed' => 'فشل الإرسال',
+        'squadCreateFailed' => 'فشل إنشاء الفريق',
+        // Player / market errors
+        'playerBuyFailed' => 'فشل شراء اللاعب',
+        'playerNotFound' => 'اللاعب غير موجود',
+        'playerNotMoved' => 'اللاعب لم ينتقل',
+        'clubQueryFailed' => 'تعذّر الوصول إلى النادي',
+        'tooManyExchanges' => 'تبادلات كثيرة جداً',
+        // Financial errors
+        'noFunds' => 'رصيد غير كافٍ',
+        'OutOfCoins' => 'نفذت الكوينز',
+        'tempban' => 'فترة راحة لحماية الأمان',
+        'TempbanCooldown' => 'جاري الانتظار (فترة راحة)',
+        'dailyReceiverLimit' => 'الحد اليومي (حماية)',
+        // System errors
+        'aborted' => 'تم الإلغاء',
+        'failed' => 'فشل',
+        'FailUnassignedFound' => 'عناصر غير معينة موجودة',
+    ],
+    // Per-status help, layered above challenge_help. Written only where the coarse
+    // state help is wrong for this status; everything else falls back unchanged.
+    'challenge_status_help' => [
+        'sign_in_refused' => [
+            'title' => 'تعذّر الدخول للحساب',
+            'desc' => 'رفضت خوادم EA تسجيل الدخول في الوقت الحالي، وغالباً يكون الضغط من عندهم.',
+            'action' => 'اضغط "إعادة المحاولة" للمحاولة مرة ثانية، وإذا كنت متأكداً أن الإيميل مكتوب خطأ حدّثه من بيانات الطلب.',
+        ],
+        'two_factor_off' => [
+            'title' => 'التحقق الثنائي غير مفعّل',
+            'desc' => 'التحقق الثنائي (2FA) غير مفعّل على الحساب، ونحتاجه عشان نكمل.',
+            'action' => 'فعّل التحقق الثنائي من إعدادات أمان حساب EA، ثم حدّث الطلب.',
+        ],
+        'WrongUserPass' => [
+            'title' => 'بيانات الدخول غير صحيحة',
+            'desc' => 'الإيميل أو كلمة المرور الخاصة بحساب EA غير صحيحة.',
+            'action' => 'حدّث بيانات الدخول من إعدادات الطلب، ثم أعد المحاولة.',
+        ],
+        'WrongBA' => [
+            'title' => 'الأكواد الاحتياطية غير صحيحة',
+            'desc' => 'الأكواد الاحتياطية (Backup Codes) المدخلة غير صحيحة أو مستخدمة من قبل.',
+            'action' => 'استخرج أكواداً جديدة من إعدادات أمان حساب EA وحدّث بيانات الطلب.',
+        ],
+        'TMLocked' => [
+            'title' => 'سوق الانتقالات مقفل',
+            'desc' => 'السوق في حسابك هذا مقفل حالياً من EA.',
+            'action' => 'زوّدنا بحساب بديل يكون سوقه مفتوح، أو انتظر حتى يفتح السوق في حسابك.',
+        ],
+        'failedNoClub' => [
+            'title' => 'لا يوجد نادي',
+            'desc' => 'الحساب لا يحتوي على نادي (Club) في اللعبة.',
+            'action' => 'افتح اللعبة وأنشئ ناديك، ثم أخبرنا.',
+        ],
+        'consoleLoggedIn' => [
+            'title' => 'الحساب متصل باللعبة',
+            'desc' => 'الحساب متصل حالياً من اللعبة أو تطبيق الجوال، ولا نقدر نبدأ.',
+            'action' => 'سجّل الخروج من اللعبة وتطبيق الجوال بالكامل، ثم أعد المحاولة.',
+        ],
+        'FailUnassignedFound' => [
+            'title' => 'عناصر غير معينة موجودة',
+            'desc' => 'توجد عناصر غير معينة (Unassigned) في الحساب تمنع الحل.',
+            'action' => 'أزل العناصر غير المعينة من حسابك حتى يقل العدد عن 50، ثم أعد المحاولة.',
+        ],
+        'LoginFailedDeviceBan' => [
+            'title' => 'الجهاز محظور',
+            'desc' => 'الحساب محظور على الجهاز من قبل EA.',
+            'action' => 'راسلنا لحل المشكلة.',
+        ],
+        'tempban' => [
+            'title' => 'فترة راحة لحماية الأمان',
+            'desc' => 'تم الإيقاف مؤقتاً كإجراء أمني لتجنب حظر سوق الانتقالات من EA.',
+            'action' => 'لا تقلق، سيعود العمل تلقائياً بعد انتهاء الفترة. تقدر تلعب بشكل طبيعي.',
+        ],
+        'TempbanCooldown' => [
+            'title' => 'فترة انتظار',
+            'desc' => 'الحساب في فترة راحة إجبارية بسبب كثرة التبادلات، لتجنب حظر السوق.',
+            'action' => 'سيتم استئناف العمل تلقائياً قريباً.',
+        ],
+        'dailyReceiverLimit' => [
+            'title' => 'الحد اليومي للاستلام',
+            'desc' => 'وصلت للحد اليومي، وجاري الانتظار لحماية حسابك من الحظر.',
+            'action' => 'يرجى الانتظار حتى 36 ساعة. تقدر تلعب الآن بشكل طبيعي.',
+        ],
+        'FailedPersonaSwitch' => [
+            'title' => 'معلومات الشخصية غير صحيحة',
+            'desc' => 'بيانات الشخصية (Persona) في الحساب غير صحيحة أو غير مطابقة.',
+            'action' => 'راسلنا لتصحيح معلومات الشخصية.',
+        ],
+        'needEmailConfirm' => [
+            'title' => 'مطلوب تأكيد الإيميل',
+            'desc' => 'EA يطلب تأكيد بريدك الإلكتروني قبل تسجيل الدخول.',
+            'action' => 'أكّد بريدك الإلكتروني من بريد EA، ثم أعد المحاولة.',
+        ],
+    ],
 ];
