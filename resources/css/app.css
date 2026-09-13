@@ -15540,33 +15540,107 @@ html.admin-document {
 }
 
 /* ------------------------------------------------------------------------
-    Button language (2026-09-03, canvas-approved)
+    Control language (2026-09-14, canvas-approved)
 
-   One rule set for every storefront action, mapped onto the existing class
-   names so the markup stays put. Primary: gold gradient with a top sheen and
-   a soft glow, lifts on hover, presses on click; disabled is a dark, honest
-   "not yet" instead of washed-out gold. Secondary: glass with a gold hairline.
-   Tabs: one segmented bar with a gold indicator. Kept outside @layer so it
-   wins over the component layer without specificity games.
+   Replaces the opaque gold button language of 2026-09-03. Every storefront
+   control is now one glass material, mapped onto the same class names so the
+   markup stays put. The material is the bevel: a bright rim on the top-left
+   edge, a shade on the bottom-right, and one diagonal specular band across
+   the body. That bevel is deliberately PHYSICAL rather than logical — a light
+   source does not mirror when the text direction does, so the rim stays
+   top-left in Arabic exactly as in English.
+
+   What separates the three roles is the fill, never a second bevel:
+
+   - Primary is glass lit from within by gold, and the only lit thing on a
+     screen. Disabled drops the light instead of washing the gold out.
+   - Secondary is a different material, not a dimmer primary: dark smoked
+     glass with no gold at all, so it never competes for the eye.
+   - Fields read as pressed INTO the surface, never floating on it.
+
+   The specular band is a BACKGROUND LAYER, not a ::before. A positioned
+   pseudo-element paints above a button whose label is a bare text node, which
+   put the band over the label on every button that does not wrap its text —
+   and it would have collided with the ✓ pseudo the success state already
+   owns. As a background layer it always sits under the text, needs no
+   stacking context, and costs the rules that set `background` one extra var.
+
+   Tabs keep the bottom bar's lens (see `.arabut-bottom-bar__lens`): the
+   selected tab magnifies and brightens what is behind it instead of painting
+   a colour over it, which is what ties this language to what already ships.
+
+   Apple's HIG keeps this material in the control layer and out of the content
+   layer, so cards and panels stay the solid surfaces they are today.
+
+   Kept outside @layer so it wins over the component layer without specificity
+   games. Every glass surface here has an opaque fallback under @supports, and
+   `docs/design/glass-controls/` holds the canvas this was approved from.
    ------------------------------------------------------------------------ */
 :root {
-    --btn-radius: 0.75rem;
-    --btn-gold: linear-gradient(180deg, #f0ca70 0%, #d4a843 56%, #b88725 100%);
-    --btn-gold-hover: linear-gradient(
-        180deg,
-        #f7d78a 0%,
-        #e4b756 56%,
-        #c5922c 100%
+    /* Capsule, per the reference and the HIG's radius rule for buttons.
+       Fields keep a rounded rect, as they do on iOS. */
+    --btn-radius: 999px;
+    --field-radius: 1rem;
+    --btn-blur: blur(20px) saturate(180%) brightness(1.12);
+    --btn-band: linear-gradient(
+        152deg,
+        rgb(255 255 255 / 30%),
+        rgb(255 255 255 / 4%) 26%,
+        transparent 46%,
+        transparent 66%,
+        rgb(255 255 255 / 8%) 100%
     );
-    --btn-gold-border: rgb(240 202 112 / 72%);
-    --btn-sheen: inset 0 1px 0 rgb(255 255 255 / 38%);
-    --btn-shade: inset 0 -1px 0 rgb(0 0 0 / 18%);
-    --btn-glow: 0 10px 24px -12px rgb(212 168 67 / 80%);
-    --btn-glow-hover: 0 14px 30px -12px rgb(212 168 67 / 95%);
+    --btn-band-quiet: linear-gradient(
+        152deg,
+        rgb(255 255 255 / 12%),
+        rgb(255 255 255 / 2%) 26%,
+        transparent 46%,
+        transparent 66%,
+        rgb(255 255 255 / 3%) 100%
+    );
+    --btn-gold: linear-gradient(
+        152deg,
+        rgb(246 214 140 / 42%),
+        rgb(212 168 67 / 20%) 46%,
+        rgb(176 128 32 / 28%)
+    );
+    --btn-gold-hover: linear-gradient(
+        152deg,
+        rgb(250 224 158 / 52%),
+        rgb(224 182 84 / 26%) 46%,
+        rgb(190 140 38 / 34%)
+    );
+    --btn-gold-solid: linear-gradient(180deg, #5a4418, #3b2c0f);
+    --btn-gold-border: rgb(244 212 132 / 62%);
+    --btn-gold-border-hover: rgb(248 220 148 / 82%);
+    --btn-gold-ink: #fdf3dc;
+    --btn-rim: rgb(255 244 216 / 66%);
+    --btn-glow: 0 16px 34px -14px rgb(212 168 67 / 72%);
+    --btn-glow-hover: 0 20px 40px -14px rgb(212 168 67 / 88%);
+    /* The four-part bevel, shared by every control. */
+    --btn-bevel:
+        inset 1px 1px 0 var(--btn-rim),
+        inset 2px 2px 7px rgb(255 255 255 / 14%),
+        inset -1px -1px 0 rgb(0 0 0 / 30%), inset -2px -3px 9px rgb(0 0 0 / 24%);
+    --btn-bevel-quiet:
+        inset 1px 1px 0 rgb(255 255 255 / 16%),
+        inset -1px -1px 0 rgb(0 0 0 / 42%);
+    --btn-smoke: linear-gradient(152deg, rgb(22 18 13 / 66%), rgb(8 7 5 / 50%));
+    --btn-smoke-hover: linear-gradient(
+        152deg,
+        rgb(32 26 19 / 78%),
+        rgb(14 11 8 / 62%)
+    );
+    --btn-smoke-border: rgb(237 228 208 / 16%);
     --btn-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --field-fill: linear-gradient(180deg, rgb(8 7 5 / 58%), rgb(14 11 8 / 44%));
+    --field-border: rgb(212 168 67 / 22%);
+    --field-blur: blur(14px) saturate(150%);
+    --field-inset:
+        inset 0 2px 6px rgb(0 0 0 / 48%), inset 0 -1px 0 rgb(255 255 255 / 7%);
 }
 
-/* Primary */
+/* Shape, material and motion, shared by every action. */
 .manual-configurator__submit,
 .coins-primary-action,
 .coins-fast-suggestion__action,
@@ -15578,13 +15652,22 @@ html.admin-document {
 .account-order-review__submit,
 .account-order-card__action,
 .account-overview__empty-cta,
-.store-catalog-toolbar__submit {
-    border: 1px solid var(--btn-gold-border);
+.store-cart-empty a:first-child,
+.store-catalog-toolbar__submit,
+.coins-secondary-action,
+.store-hero__cta--secondary,
+.store-cart-phone__button,
+.store-cart-sheet__cart,
+.manual-squad-dropzone__button,
+.store-cart-empty a:not(:first-child),
+.auth-google-action {
+    /* A capsule needs room around its label or it reads as a pill of text, and
+       44px is the floor a finger needs. This is a floor, not a height: buttons
+       that are already taller keep their own. */
+    min-height: 2.75rem;
     border-radius: var(--btn-radius);
-    background: var(--btn-gold);
-    color: var(--arabut-navy-deep);
-    font-weight: 800;
-    box-shadow: var(--btn-sheen), var(--btn-shade), var(--btn-glow);
+    -webkit-backdrop-filter: var(--btn-blur);
+    backdrop-filter: var(--btn-blur);
     transition:
         transform 180ms var(--btn-ease),
         box-shadow 180ms var(--btn-ease),
@@ -15592,6 +15675,27 @@ html.admin-document {
         border-color 160ms ease,
         color 160ms ease,
         opacity 160ms ease;
+}
+
+/* Primary: glass lit from within by gold. */
+.manual-configurator__submit,
+.coins-primary-action,
+.coins-fast-suggestion__action,
+.store-hero__cta--primary,
+.store-cart-checkout__action,
+.store-cart-sheet__checkout,
+.auth-shell .auth-form__submit,
+.account-profile-btn--primary,
+.account-order-review__submit,
+.account-order-card__action,
+.account-overview__empty-cta,
+.store-cart-empty a:first-child,
+.store-catalog-toolbar__submit {
+    border: 1px solid var(--btn-gold-border);
+    background: var(--btn-band), var(--btn-gold);
+    color: var(--btn-gold-ink);
+    font-weight: 700;
+    box-shadow: var(--btn-bevel), var(--btn-glow);
 }
 
 .manual-configurator__submit:hover:not(:disabled),
@@ -15605,14 +15709,16 @@ html.admin-document {
 .account-order-review__submit:hover:not(:disabled),
 .account-order-card__action:hover,
 .account-overview__empty-cta:hover,
+.store-cart-empty a:first-child:hover,
 .store-catalog-toolbar__submit:hover:not(:disabled) {
-    border-color: #f7d78a;
-    background: var(--btn-gold-hover);
-    color: var(--arabut-navy-deep);
+    border-color: var(--btn-gold-border-hover);
+    background: var(--btn-band), var(--btn-gold-hover);
+    color: var(--btn-gold-ink);
     transform: translateY(-1px);
-    box-shadow: var(--btn-sheen), var(--btn-shade), var(--btn-glow-hover);
+    box-shadow: var(--btn-bevel), var(--btn-glow-hover);
 }
 
+/* Pressed flips the bevel: the light moves under the finger. */
 .manual-configurator__submit:active:not(:disabled),
 .coins-primary-action:active:not(:disabled),
 .coins-fast-suggestion__action:active:not(:disabled),
@@ -15624,13 +15730,17 @@ html.admin-document {
 .account-order-review__submit:active:not(:disabled),
 .account-order-card__action:active,
 .account-overview__empty-cta:active,
+.store-cart-empty a:first-child:active,
 .store-catalog-toolbar__submit:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 20%),
-        0 4px 12px -8px rgb(212 168 67 / 60%);
+        inset 2px 3px 10px rgb(0 0 0 / 42%),
+        inset -1px -1px 0 rgb(255 255 255 / 12%),
+        0 3px 10px -8px rgb(0 0 0 / 70%);
 }
 
+/* Disabled drops the light rather than washing the gold out: a dark, honest
+   "not yet" instead of a faded version of the action. */
 .manual-configurator__submit:disabled,
 .coins-primary-action:disabled,
 .coins-fast-suggestion__action:disabled,
@@ -15638,16 +15748,19 @@ html.admin-document {
 .auth-shell .auth-form__submit:disabled,
 .account-order-review__submit:disabled,
 .store-catalog-toolbar__submit:disabled {
-    border-color: rgb(212 168 67 / 22%);
-    background: rgb(212 168 67 / 14%);
-    color: rgb(237 228 208 / 42%);
-    box-shadow: none;
+    border-color: rgb(255 255 255 / 10%);
+    background: var(--btn-band-quiet), rgb(255 255 255 / 4%);
+    color: rgb(237 228 208 / 38%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
     opacity: 1;
     cursor: not-allowed;
     transform: none;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
 
-/* Success: the same green check treatment as the catalog add buttons. */
+/* Success keeps the green check treatment, and drops the band: the state is
+   flat on purpose, so it reads as a result rather than as another action. */
 .manual-configurator__submit[data-state='success'],
 .manual-configurator__submit[data-state='success']:hover:not(:disabled) {
     display: inline-flex;
@@ -15657,7 +15770,9 @@ html.admin-document {
     border-color: rgb(103 232 154 / 55%);
     background: rgb(103 232 154 / 12%);
     color: var(--status-success);
-    box-shadow: 0 0 0 0.28rem rgb(103 232 154 / 12%);
+    box-shadow:
+        inset 1px 1px 0 rgb(255 255 255 / 22%),
+        0 0 0 0.28rem rgb(103 232 154 / 10%);
     transform: none;
 }
 
@@ -15666,24 +15781,21 @@ html.admin-document {
     font-weight: 900;
 }
 
-/* Secondary (glass with a gold hairline) */
+/* Secondary: smoked glass, no gold. A different material, not a dimmer copy. */
 .coins-secondary-action,
 .store-hero__cta--secondary,
 .store-cart-phone__button,
 .store-cart-sheet__cart,
 .manual-squad-dropzone__button,
+.store-cart-empty a:not(:first-child),
 .auth-google-action {
-    border: 1px solid rgb(212 168 67 / 38%);
-    border-radius: var(--btn-radius);
-    background: rgb(255 255 255 / 3.5%);
+    border: 1px solid var(--btn-smoke-border);
+    background: var(--btn-band-quiet), var(--btn-smoke);
     color: var(--arabut-ink);
-    font-weight: 750;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
-    transition:
-        transform 180ms var(--btn-ease),
-        background-color 160ms ease,
-        border-color 160ms ease,
-        color 160ms ease;
+    font-weight: 700;
+    box-shadow:
+        var(--btn-bevel-quiet),
+        0 8px 20px -14px rgb(0 0 0 / 80%);
 }
 
 .coins-secondary-action:hover:not(:disabled),
@@ -15691,42 +15803,119 @@ html.admin-document {
 .store-cart-phone__button:hover:not(:disabled),
 .store-cart-sheet__cart:hover,
 .manual-squad-dropzone__button:hover,
+.store-cart-empty a:not(:first-child):hover,
 .auth-google-action:hover {
-    border-color: var(--arabut-gold);
-    background: rgb(212 168 67 / 10%);
+    border-color: rgb(237 228 208 / 30%);
+    background: var(--btn-band-quiet), var(--btn-smoke-hover);
     color: #fff;
     transform: translateY(-1px);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
+    box-shadow:
+        var(--btn-bevel-quiet),
+        0 10px 24px -14px rgb(0 0 0 / 90%);
 }
 
-/* Round icon buttons (rail arrows) */
+.coins-secondary-action:active:not(:disabled),
+.store-hero__cta--secondary:active,
+.store-cart-phone__button:active:not(:disabled),
+.store-cart-sheet__cart:active,
+.manual-squad-dropzone__button:active,
+.store-cart-empty a:not(:first-child):active,
+.auth-google-action:active {
+    transform: translateY(1px);
+}
+
+/* Round icon buttons (rail arrows) take the same smoked glass. */
 .store-reviews__arrow {
-    border-color: rgb(212 168 67 / 32%);
-    background: rgb(8 8 8 / 40%);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+    border-color: var(--btn-smoke-border);
+    background: var(--btn-band-quiet), var(--btn-smoke);
+    -webkit-backdrop-filter: var(--btn-blur);
+    backdrop-filter: var(--btn-blur);
+    box-shadow: var(--btn-bevel-quiet);
 }
 
-/* Segmented tabs: one bar, a gold indicator */
+/* Fields: pressed into the surface, never floating on it. */
+.coins-credential-field > input,
+.coins-password-control,
+.coins-amount-input,
+.coins-backup-code > input,
+.auth-shell [data-slot='input'],
+.store-cart-credentials__form input,
+.store-cart-coupon input,
+.account-orders-search__input,
+.manual-played-matches__count input {
+    border: 1px solid var(--field-border);
+    border-radius: var(--field-radius);
+    background: var(--field-fill);
+    color: var(--arabut-ink);
+    box-shadow: var(--field-inset);
+    -webkit-backdrop-filter: var(--field-blur);
+    backdrop-filter: var(--field-blur);
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.coins-credential-field > input::placeholder,
+.coins-amount-input::placeholder,
+.coins-backup-code > input::placeholder,
+.auth-shell [data-slot='input']::placeholder,
+.store-cart-credentials__form input::placeholder,
+.store-cart-coupon input::placeholder,
+.account-orders-search__input::placeholder {
+    /* The muted token is too dim once it sits on the darker field fill. */
+    color: #b9a98e;
+}
+
+.coins-credential-field > input:focus-visible,
+.coins-password-control:has(input:focus-visible),
+.coins-amount-input:focus-visible,
+.coins-backup-code > input:focus-visible,
+.auth-shell [data-slot='input']:focus-visible,
+.store-cart-credentials__form input:focus-visible,
+.store-cart-coupon input:focus-visible,
+.account-orders-search__input:focus-visible,
+.manual-played-matches__count input:focus-visible {
+    border-color: var(--arabut-gold-bright);
+    outline: 0;
+    box-shadow:
+        var(--field-inset),
+        0 0 0 3px rgb(212 168 67 / 20%);
+}
+
+.coins-credential-field > input[aria-invalid='true'],
+.coins-password-control:has(input[aria-invalid='true']),
+.auth-shell [data-slot='input'][aria-invalid='true'] {
+    border-color: var(--arabut-danger);
+    box-shadow:
+        var(--field-inset),
+        0 0 0 3px rgb(255 180 169 / 18%);
+}
+
+/* Segmented tabs: a glass bar, and the selected tab is the bottom bar's lens. */
 .manual-service-tabs,
 .auth-login-method {
     gap: 0.25rem;
-    border: 1px solid rgb(212 168 67 / 20%);
-    border-radius: 0.9rem;
-    background: rgb(8 8 8 / 45%);
+    border: 1px solid rgb(212 168 67 / 24%);
+    border-radius: 1.125rem;
+    background: rgb(255 255 255 / 5%);
     padding: 0.25rem;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 12%),
+        inset 0 -1px 0 rgb(0 0 0 / 22%);
 }
 
 .manual-service-tabs__tab,
 .auth-login-method__tab {
-    min-height: 2.625rem;
+    min-height: 2.75rem;
     border: 0;
-    border-radius: 0.65rem;
+    border-radius: 0.875rem;
     background: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     color: var(--arabut-muted);
-    font-weight: 750;
+    font-weight: 700;
     transition:
         color 160ms ease,
         background-color 160ms ease,
@@ -15743,19 +15932,140 @@ html.admin-document {
 .manual-service-tabs__tab[aria-selected='true'],
 .auth-login-method__tab[aria-selected='true'] {
     border: 0;
-    background: var(--btn-gold);
-    color: var(--arabut-navy-deep);
+    /* The bottom bar's lens sits over a photographed page and gets most of its
+       brightness from the backdrop. A tab bar sits on near-black, where
+       brightness() has almost nothing to lift, so the fill carries more of the
+       work here — the selected tab still has to be unmistakable. */
+    background: linear-gradient(
+        160deg,
+        rgb(255 255 255 / 28%),
+        rgb(255 255 255 / 9%) 46%,
+        rgb(212 168 67 / 24%)
+    );
+    -webkit-backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+    backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+    color: #fdf3dc;
+    /* The warm and cool flanks are the dispersion a real lens edge shows, at
+       the same strengths the bottom bar's lens uses. */
     box-shadow:
-        var(--btn-sheen),
-        0 8px 18px -10px rgb(212 168 67 / 80%);
+        inset 0 1px 0 rgb(255 255 255 / 55%),
+        inset 0 -1px 0 rgb(212 168 67 / 30%),
+        inset 1px 0 0 rgb(255 214 170 / 12%),
+        inset -1px 0 0 rgb(170 214 255 / 10%),
+        0 6px 18px rgb(0 0 0 / 24%);
 }
 
-/* WhatsApp pill keeps its green, joins the sheen and glow */
+/* The auth form is built from shadcn components, so its controls carried
+   utility sizes rather than the store's: the submit came out 40px tall at 14px
+   while the Google button under it was 46px at 16px — the page's most
+   important action was its smallest control. These put every control on the
+   card on one 48px rhythm, which is also what the coins forms use.
+   `height: auto` is what beats the `h-10` utility; min-height alone loses. */
+.auth-shell .auth-form__submit,
+.auth-shell .auth-google-action {
+    height: auto;
+    min-height: 3rem;
+    padding-inline: 1.25rem;
+    font-size: 1rem;
+}
+
+/* One 48px rhythm for every control on the card, on every viewport. The card
+   used to run a 40px "compact" row on desktop and 44px on a phone (annotated
+   2026-08-22, guarded by two browser tests); Mohamed dropped that on
+   2026-09-14 — the sizes did not suit the card. A single height is also what
+   lets the tab bar, the fields and the two buttons line up as one column. */
+.auth-shell [data-slot='input'],
+.auth-shell .auth-form__control {
+    height: auto;
+    min-height: 3rem;
+    /* 11px + 24px line box + 2px border = the 48px the buttons stand at. */
+    padding: 0.6875rem 0.875rem;
+}
+
+.auth-shell .auth-login-method__tab {
+    min-height: 3rem;
+}
+
+/* "Remember me" came from the component defaults at a 16px box in a 40px row.
+   The box stays small because that is what a checkbox looks like; the row it
+   sits in is what the finger actually hits. */
+.auth-shell [data-slot='checkbox'] {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.4375rem;
+    border-color: var(--field-border);
+    background: var(--field-fill);
+    box-shadow: inset 0 2px 5px rgb(0 0 0 / 45%);
+}
+
+.auth-shell [data-slot='checkbox'] + label,
+.auth-shell :has(> [data-slot='checkbox']) {
+    min-height: 2.75rem;
+}
+
+/* WhatsApp pill keeps its green, and takes the same bevel. */
 .store-primary-nav__whatsapp-visual {
-    background: linear-gradient(180deg, #31de74, #1fb85a);
+    background:
+        var(--btn-band-quiet), linear-gradient(152deg, #35e47a, #1fb85a);
     box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 35%),
+        inset 1px 1px 0 rgb(255 255 255 / 38%),
+        inset -1px -1px 0 rgb(0 0 0 / 24%),
         0 8px 20px -10px rgb(37 211 102 / 80%);
+}
+
+/* Without backdrop-filter the glass becomes an honest opaque surface rather
+   than a near-invisible tint. */
+@supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+    .manual-configurator__submit,
+    .coins-primary-action,
+    .coins-fast-suggestion__action,
+    .store-hero__cta--primary,
+    .store-cart-checkout__action,
+    .store-cart-sheet__checkout,
+    .auth-shell .auth-form__submit,
+    .account-profile-btn--primary,
+    .account-order-review__submit,
+    .account-order-card__action,
+    .account-overview__empty-cta,
+    .store-cart-empty a:first-child,
+    .store-catalog-toolbar__submit {
+        background: var(--btn-band), var(--btn-gold-solid);
+    }
+
+    .coins-secondary-action,
+    .store-hero__cta--secondary,
+    .store-cart-phone__button,
+    .store-cart-sheet__cart,
+    .manual-squad-dropzone__button,
+    .store-cart-empty a:not(:first-child),
+    .auth-google-action,
+    .store-reviews__arrow {
+        background: var(--btn-band-quiet), rgb(28 24 20 / 96%);
+    }
+
+    .coins-credential-field > input,
+    .coins-password-control,
+    .coins-amount-input,
+    .coins-backup-code > input,
+    .auth-shell [data-slot='input'],
+    .store-cart-credentials__form input,
+    .store-cart-coupon input,
+    .account-orders-search__input,
+    .manual-played-matches__count input {
+        background: var(--arabut-navy-active);
+    }
+
+    .manual-service-tabs,
+    .auth-login-method {
+        background: rgb(13 11 8 / 96%);
+    }
+
+    .manual-service-tabs__tab[aria-selected='true'],
+    .auth-login-method__tab[aria-selected='true'] {
+        background: rgb(36 30 24 / 98%);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -15764,15 +16074,19 @@ html.admin-document {
     .coins-fast-suggestion__action,
     .store-hero__cta,
     .store-cart-checkout__action,
+    .store-cart-sheet__checkout,
     .auth-shell .auth-form__submit,
     .account-profile-btn--primary,
     .account-order-review__submit,
     .account-order-card__action,
     .account-overview__empty-cta,
+    .store-cart-empty a:first-child,
     .store-catalog-toolbar__submit,
     .coins-secondary-action,
     .store-cart-phone__button,
+    .store-cart-sheet__cart,
     .manual-squad-dropzone__button,
+    .store-cart-empty a:not(:first-child),
     .auth-google-action {
         transition: none;
         transform: none;
