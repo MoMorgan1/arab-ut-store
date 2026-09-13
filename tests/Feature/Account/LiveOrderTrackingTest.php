@@ -19,6 +19,7 @@ use App\Models\OrderItem;
 use App\Models\User;
 use App\Suppliers\Translation\SupplierStateTranslator;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function trackingOrder(User $user, OrderStatus $status = OrderStatus::InProgress): Order
@@ -904,3 +905,74 @@ test('a challenge wait is never labelled as a failure', function (string $sbcSta
         ->and($state->label('ar'))->not->toContain('بروكسي')
         ->and($state->label('en'))->not->toContain('proxy');
 })->with(SupplierStateTranslator::SBC_SYSTEM_INFO_STATUSES);
+
+test('opening the order page asks the supplier, and shows what it just said', function (): void {
+    // The owner's decision: "opening the page is the refresh". There is no button
+    // on the screen, so this is the only moment a customer can cause a read - and
+    // a page that answers from storage alone makes reopening it pointless.
+    config()->set('services.suppliers.fft.base_url', 'https://fft.example.test');
+    config()->set('services.suppliers.fft.api_user', 'store-fft');
+    config()->set('services.suppliers.fft.api_key', 'fft-key');
+    Http::preventStrayRequests();
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+
+    trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Coins,
+        'observed_state' => 'entered',
+        'observation' => ['status' => 'entered'],
+        'observed_at' => CarbonImmutable::parse('2026-09-12 10:00:00'),
+        'coins_delivered' => 0,
+        'coins_ordered' => 1000,
+    ]);
+
+    // FFT reports in thousands, which is why 400 here is 400,000 on the screen.
+    Http::fake([
+        'https://fft.example.test/orderStatusAPI' => Http::response([
+            'status' => 'transfersInProgress',
+            'economyState' => 'transfersInProgress',
+            'amount' => 400,
+            'amountOrdered' => 1000,
+        ]),
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->order_number)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('order.items.0.tracking.progress.coinsDelivered', 400_000));
+
+    Http::assertSentCount(1);
+});
+
+test('a supplier that is not configured leaves the order page standing', function (): void {
+    // A missing key is a deployment fault. Now that opening the page performs the
+    // read, an uncaught one would turn every customer's order into an error page.
+    config()->set('services.suppliers.fft.base_url', 'https://fft.example.test');
+    config()->set('services.suppliers.fft.api_user', null);
+    config()->set('services.suppliers.fft.api_key', null);
+    Http::preventStrayRequests();
+
+    $owner = User::factory()->create();
+    $order = trackingOrder($owner);
+    $item = trackingItem($order, ServiceType::Coins);
+
+    trackingJob($item, [
+        'delivery_phase' => DeliveryPhase::Coins,
+        'observed_state' => 'transfersInProgress',
+        'observation' => ['status' => 'transfersInProgress'],
+        'observed_at' => CarbonImmutable::parse('2026-09-12 10:00:00'),
+        'coins_delivered' => 250,
+        'coins_ordered' => 1000,
+    ]);
+
+    $this->actingAs($owner)
+        ->get('/my-account/orders/'.$order->order_number)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            // The stored reading survives, with its age, which is what the screen
+            // shows when it cannot get a fresher one.
+            ->where('order.items.0.tracking.progress.coinsDelivered', 250));
+});

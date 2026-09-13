@@ -246,11 +246,21 @@ final class ItemTracking
                         default => HoldTone::Action->value,
                     };
 
+                    // The "?" explains the state, and on a live order it ends with what
+                    // the customer should do. On a finished one there is nothing to do,
+                    // so the instruction goes even though the explanation stays - the
+                    // same reason the buttons and the hold went.
+                    $cardHelp = $stateEnum->help($locale);
+
+                    if ($orderIsTerminal) {
+                        $cardHelp['action'] = '';
+                    }
+
                     $challengesList[] = [
                         'target' => $target,
                         'state' => $stateEnum->value,
                         'stateLabel' => $stateEnum->label($locale),
-                        'help' => $stateEnum->help($locale),
+                        'help' => $cardHelp,
                         'squads' => [
                             'done' => isset($entry['challengesDone']) && is_numeric($entry['challengesDone']) ? (int) $entry['challengesDone'] : null,
                             'total' => isset($entry['totalChallenges']) && is_numeric($entry['totalChallenges']) ? (int) $entry['totalChallenges'] : null,

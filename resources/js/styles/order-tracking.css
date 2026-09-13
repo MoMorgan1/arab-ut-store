@@ -767,8 +767,11 @@
     color: var(--track-danger-soft);
 }
 
-/* `.sbc-help-btn` */
+/* `.sbc-help-btn` — the tracker's 20px circle, with the store's 44px hit area
+   hung off it. The ring stays small because it sits beside a challenge name;
+   the thing a thumb has to find does not have to be the thing the eye sees. */
 .track-challenge__help {
+    position: relative;
     width: 20px;
     height: 20px;
     flex-shrink: 0;
@@ -783,6 +786,18 @@
     font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s;
+}
+
+/* The hit area, hung off the visible ring so a thumb has 44px to find while
+   the circle beside the challenge name stays 20px. */
+.track-challenge__help::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
 }
 
 .track-challenge__help:hover {
@@ -1136,8 +1151,8 @@ a.track-challenge__name:hover {
 }
 
 .track-modal__close {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;

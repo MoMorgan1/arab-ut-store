@@ -298,20 +298,27 @@ final class ApplySupplierObservation
         }
         $job->observation = $maskedObservation;
 
-        if (! $withheldDueToAdmin) {
+        // The hold is one fact with four parts - the reason, its colour, the buttons
+        // it offers and the headline over them - and they are written together or not
+        // at all. Writing some and preserving others is what put an amber ring around
+        // the word "Transferring": the reason had cleared on recovery and the colour
+        // had not.
+        //
+        // An unsupported observation is the "not at all" case. It is a response we
+        // could not read, so it carries no news: everything stored stays, and the
+        // screen goes on showing it with the age of the reading it came from. A
+        // supported one is news either way, and a null in it means "no longer held"
+        // rather than "nothing to say".
+        if (! $withheldDueToAdmin && $state->supported) {
             $job->hold_reason = $state->holdReason;
+            $job->hold_tone = $state->holdTone;
             $job->allowed_actions = array_map(
                 fn (SupplierAction $action): string => $action->value,
                 $state->allowedActions,
             );
-            // Presentation and hold tone are only updated when non-null so earlier phases and
-            // established headlines are not erased by an unusable observation, matching the
-            // progress counters rule below. A cleared hold_reason is an intentional answer.
+
             if ($state->presentation !== null) {
                 $job->presentation = $state->presentation;
-            }
-            if ($state->holdTone !== null) {
-                $job->hold_tone = $state->holdTone;
             }
         }
 

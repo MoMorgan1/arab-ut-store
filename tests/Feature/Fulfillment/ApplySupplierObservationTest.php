@@ -1151,6 +1151,42 @@ it('test 13: a coins-phase payload is still stored flat and is unaffected', func
     }
 });
 
+it('clears a stored hold tone when a readable observation says the hold is over', function (): void {
+    // The hold is one fact: its reason, its colour, its buttons and its headline.
+    // Writing the reason on recovery while keeping the old colour is how an order
+    // ended up ringed amber underneath the word "Transferring".
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'presentation' => TrackingPresentation::CooldownTempban,
+            'hold_reason' => OrderHoldReason::Paused,
+            'hold_tone' => HoldTone::Info,
+            'allowed_actions' => [SupplierAction::Resume->value],
+            'observed_at' => CarbonImmutable::parse('2026-09-12 12:00:00'),
+        ],
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: true,
+            observedState: 'transfersInProgress',
+            presentation: TrackingPresentation::Transferring,
+            holdTone: null,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-12 12:05:00'),
+        rawPayload: ['economyState' => 'transfersInProgress'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBeNull()
+        ->and($freshJob->hold_tone)->toBeNull()
+        ->and($freshJob->allowed_actions)->toBe([])
+        ->and($freshJob->presentation)->toBe(TrackingPresentation::Transferring);
+});
+
 it('preserves established presentation and hold_tone when given an unsupported observation (Defect 2c)', function (): void {
     [$order, $item, $job] = createObservationContext(
         jobAttributes: [
@@ -1184,4 +1220,37 @@ it('preserves established presentation and hold_tone when given an unsupported o
     expect($freshJob->presentation)->toBe(TrackingPresentation::Transferring)
         ->and($freshJob->hold_tone)->toBe(HoldTone::Info)
         ->and($freshJob->observation_supported)->toBeFalse();
+});
+
+it('leaves the whole hold alone when the observation could not be read', function (): void {
+    // A response we could not parse carries no news, so it must not empty the
+    // action the customer is being asked to take either.
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'presentation' => TrackingPresentation::Stopped,
+            'hold_reason' => OrderHoldReason::Credentials,
+            'hold_tone' => HoldTone::Action,
+            'allowed_actions' => [SupplierAction::EditCredentials->value],
+        ],
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: false,
+            observedState: null,
+            presentation: null,
+            holdTone: null,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-12 12:05:00'),
+        rawPayload: ['garbage' => 'unparseable'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBe(OrderHoldReason::Credentials)
+        ->and($freshJob->hold_tone)->toBe(HoldTone::Action)
+        ->and($freshJob->allowed_actions)->toBe([SupplierAction::EditCredentials->value]);
 });

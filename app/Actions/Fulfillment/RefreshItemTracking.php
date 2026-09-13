@@ -9,6 +9,7 @@ use App\Models\FulfillmentJob;
 use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Suppliers\Exceptions\SupplierNotConfigured;
 use App\Suppliers\Exceptions\SupplierUnavailable;
 use App\Suppliers\SupplierRegistry;
 use App\Suppliers\Translation\SupplierStateTranslator;
@@ -151,6 +152,17 @@ final class RefreshItemTracking
                     $bulk = $client->observeChallenges($challengeIds);
                 } catch (SupplierUnavailable) {
                     return ItemTracking::for($item, $locale);
+                } catch (SupplierNotConfigured $exception) {
+                    // A missing key is ours to fix, not the customer's to see. It is
+                    // logged loudly and the stored state is returned, because the page
+                    // that opened this read must still render.
+                    Log::error('Supplier not configured while reading challenges for fulfillment job {job_id}', [
+                        'job_id' => $job->id,
+                        'supplier' => $challengeSupplier->value,
+                        'reason' => $exception->reason,
+                    ]);
+
+                    return ItemTracking::for($item, $locale);
                 }
 
                 // A response naming none of our ids told us nothing. The comparison lives in
@@ -197,6 +209,17 @@ final class RefreshItemTracking
             } catch (SupplierUnavailable) {
                 // Rule 4: A supplier failure is not a 500. Return the stored tracking object unchanged
                 // and let the page keep showing the old value with its age. Do not swallow anything else.
+                return ItemTracking::for($item, $locale);
+            } catch (SupplierNotConfigured $exception) {
+                // Same answer for the same reason, and the same rule holds now that
+                // opening the page is what triggers this read: a deployment with a
+                // missing key must not turn a customer's order into an error page.
+                Log::error('Supplier not configured while reading fulfillment job {job_id}', [
+                    'job_id' => $job->id,
+                    'supplier' => $job->supplier->value,
+                    'reason' => $exception->reason,
+                ]);
+
                 return ItemTracking::for($item, $locale);
             }
 

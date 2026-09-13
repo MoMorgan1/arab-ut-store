@@ -10,7 +10,7 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { formatInteger } from '@/lib/money';
 import { TrackingRing } from '@/lib/tracking-ring';
@@ -55,6 +55,16 @@ const ACTIVE_PRESENTATIONS = new Set([
 ]);
 
 const DANGER_PRESENTATIONS = new Set(['needs_review', 'stopped', 'cancelled']);
+
+/**
+ * The only presentations that carry a finishing time.
+ *
+ * The tracker offers one solely while coins are moving (`ui.js:660` gates on
+ * `economyState === 'transfersInProgress'`). A cooldown, a sign-in hold or an
+ * order the supplier has not reported on has no measurable end, and a card that
+ * explains a 36-hour daily limit must not promise minutes underneath it.
+ */
+const TIMED_PRESENTATIONS = new Set(['transferring', 'transferring_part_done']);
 
 function ringMode(
     presentation: string,
@@ -473,8 +483,11 @@ function ChallengeCard({
                 ? 'track-challenge__chip--red'
                 : 'track-challenge__chip--gold';
 
+    // A timestamp alone does not mean solved: a retried or failed challenge can
+    // keep the one from its earlier attempt, and the tracker gates the caption
+    // on the status itself (ui.js:1062), not on the presence of a time.
     const finished =
-        challenge.finishedAt !== null
+        challenge.state === 'done' && challenge.finishedAt !== null
             ? relativeTime(challenge.finishedAt, now, locale)
             : null;
 
@@ -651,7 +664,7 @@ export default function OrderTracking({
 
     const age = freshness(tracking.observedAt, now, locale, strings);
     const eta =
-        active && !complete && ordered > 0
+        TIMED_PRESENTATIONS.has(tracking.presentation) && ordered > 0
             ? estimate(remaining, locale, strings)
             : null;
     const completedAgo =
@@ -672,6 +685,27 @@ export default function OrderTracking({
     // explains a state the customer may want to read while looking at the
     // buttons underneath it.
     const [help, setHelp] = useState<OrderTrackingChallenge | null>(null);
+
+    // A dialog that does not take the keyboard leaves it on the page behind it,
+    // so the next Tab walks a screen the reader cannot see. Focus moves in when
+    // it opens, stays inside while it is open, and returns to the control that
+    // opened it on the way out.
+    const panel = useRef<HTMLDivElement | null>(null);
+    const opener = useRef<HTMLElement | null>(null);
+    const headingId = useId();
+
+    useEffect(() => {
+        if (help === null) {
+            const previous = opener.current;
+            opener.current = null;
+            previous?.focus?.();
+
+            return;
+        }
+
+        opener.current = document.activeElement as HTMLElement | null;
+        panel.current?.focus?.();
+    }, [help]);
 
     useEffect(() => {
         if (help === null && zoom === null) {
@@ -716,7 +750,7 @@ export default function OrderTracking({
 
     // The tracker drops the "remaining" box once nothing remains, and the row
     // closes up to two columns rather than leaving a zero on the screen.
-    const showRemaining = !complete && remaining > 0;
+    const showRemaining = remaining > 0;
     const statBoxes =
         (ordered > 0 ? 1 : 0) +
         (showRemaining ? 1 : 0) +
@@ -794,7 +828,12 @@ export default function OrderTracking({
                             }
                             indeterminate={ordered === 0 && !complete}
                             mode={mode}
-                            percent={complete ? 100 : percent}
+                            // The reported percentage, never a forced 100: a
+                            // completed item whose delivered count never
+                            // arrived would otherwise show a full ring above a
+                            // bar reading zero. The tracker rings the reported
+                            // figure too (ui.js:604).
+                            percent={percent}
                         />
 
                         <h4 className="track-headline">{tracking.headline}</h4>
@@ -949,17 +988,41 @@ export default function OrderTracking({
                     role="presentation"
                 >
                     <div
-                        aria-labelledby="track-help-title"
+                        aria-labelledby={headingId}
                         aria-modal="true"
                         className="track-modal__panel"
                         onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                            if (event.key !== 'Tab') {
+                                return;
+                            }
+
+                            const stops = Array.from(
+                                event.currentTarget.querySelectorAll<HTMLElement>(
+                                    'button, [href], [tabindex]:not([tabindex="-1"])',
+                                ),
+                            );
+                            const edge = event.shiftKey
+                                ? stops.at(0)
+                                : stops.at(-1);
+
+                            if (
+                                edge !== undefined &&
+                                document.activeElement === edge
+                            ) {
+                                event.preventDefault();
+                                (event.shiftKey
+                                    ? stops.at(-1)
+                                    : stops.at(0)
+                                )?.focus();
+                            }
+                        }}
+                        ref={panel}
                         role="dialog"
+                        tabIndex={-1}
                     >
                         <div className="track-modal__head">
-                            <h5
-                                className="track-modal__title"
-                                id="track-help-title"
-                            >
+                            <h5 className="track-modal__title" id={headingId}>
                                 <Info aria-hidden="true" />
                                 <span>{help.help.title}</span>
                             </h5>

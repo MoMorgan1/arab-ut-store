@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Account;
 
 use App\Account\Presenters\AccountShell;
 use App\Account\Queries\ReadLiveOrder;
+use App\Actions\Fulfillment\RefreshOrderTracking;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\PublicHandle\OrderHandle;
@@ -17,6 +18,7 @@ final class LiveOrderController extends Controller
     public function __construct(
         private readonly ReadLiveOrder $order,
         private readonly AccountShell $shell,
+        private readonly RefreshOrderTracking $refreshTracking,
     ) {}
 
     public function __invoke(Request $request, string $order): Response|RedirectResponse
@@ -32,6 +34,16 @@ final class LiveOrderController extends Controller
                 return $redirect;
             }
         }
+
+        // Opening the page is the refresh: the owner's decision, and the reason
+        // there is no refresh button on the screen. This runs before the read so
+        // what renders is what the supplier just said, not what it said last
+        // time. It resolves the same order the query below will, which also
+        // means an order that is not this customer's stops here with a 404.
+        $this->refreshTracking->execute(
+            OrderHandle::resolveForCustomer($user, $order),
+            $locale,
+        );
 
         return Inertia::render('account/live-order', [
             ...$this->shell->for($user, $locale),
