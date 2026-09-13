@@ -228,3 +228,27 @@ The same file carries a "Definitive classification of all API states" block that
 authoritative. Treat every comment there as a pointer to the lines worth reading, never as the rule.
 When a comment states a behaviour, find the code that implements it; if nothing does, the behaviour
 does not exist, and the commit should say so.
+
+## Orders the store did not sell
+
+**Channel** — where an Order came from, and the only attribute that changes how it behaves.
+`store` is a customer buying through checkout, `salla_import` is history brought over from
+the Salla store, and `manual` is staff creating one on a customer's behalf (owner decision,
+2026-09-13). A `manual` Order behaves like a `store` Order in every rule that today asks
+whether the channel is `salla_import` — cashback, loyalty spend, review invite and admin
+transitions all treat it as an ordinary Order.
+
+**Manual order** — an Order staff create for a customer who paid outside the store, or who
+is being given something. It is a real Order: a real number, real Items, the customer's own
+account, the tracking page and the capability link. It is rare, and it is what makes the
+standalone tracker deletable, because the tracker can hold work the store never sold.
+
+**Gift** — a manual Order with a zero total and no Payment. Nothing else marks it: a
+bank-transfer manual Order always carries money and a gift never does, so the two cannot be
+confused (owner decision, 2026-09-13). A gift earns no cashback and needs no rule saying so
+— the cashback basis is the total minus the wallet amount, which is zero.
+
+**Placed by hand** — an Item staff already lodged with a Supplier themselves. Fulfillment
+has therefore already happened outside the store, and what the store records is the Supplier
+Order Reference it produced. One reference per Item, never one per Order (owner decision,
+2026-09-13): each Item is its own order at the Supplier, and a job is bound to an Item.
