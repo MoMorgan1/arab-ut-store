@@ -683,11 +683,16 @@ test('desktop login keeps every credential control on one 48px rhythm', async ({
     );
     expect(passwordFieldHeight).toBeGreaterThan(48);
 
-    for (const control of [
+    // The Google button renders only where OAuth is configured, so it is
+    // measured when it is there rather than waited for.
+    const google = page.locator('.auth-google-action');
+    const controls = [
         page.locator('.auth-login-method__tab').first(),
         page.locator('.auth-form__submit'),
-        page.locator('.auth-google-action'),
-    ]) {
+        ...((await google.count()) > 0 ? [google] : []),
+    ];
+
+    for (const control of controls) {
         const height = await control.evaluate(
             (element) => element.getBoundingClientRect().height,
         );
