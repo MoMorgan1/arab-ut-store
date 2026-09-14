@@ -191,12 +191,24 @@ final class RecordSupplierPlacement
             }
         }
 
-        // A supplier reference identifies one supplier-side order for exactly
-        // one item and phase, so it can never be recorded on a second
-        // placement, whatever that placement is for.
+        // A supplier reference is one supplier-side order. It may be recorded
+        // on several items only when one shipment funds them all: the same
+        // order, the same coins phase - the way v14 merged a challenge's coins
+        // with the coins bought beside it, and ship-coins still does (owner
+        // decision, 2026-09-14). Anywhere else - another order, or the other
+        // phase of this item - it is a mistake, and refused. The order lock
+        // taken above is what keeps two concurrent reports for one shipment
+        // from both passing this check with a stale read.
         $boundElsewhere = FulfillmentPlacement::query()
             ->where('supplier', $supplier->value)
             ->where('supplier_order_id', $reference)
+            ->where(function ($query) use ($order, $phase): void {
+                $query->where('delivery_phase', '!=', DeliveryPhase::Coins->value)
+                    ->orWhere('delivery_phase', '!=', $phase->value)
+                    ->orWhereDoesntHave('fulfillmentJob.orderItem', function ($item) use ($order): void {
+                        $item->where('order_id', $order->id);
+                    });
+            })
             ->lockForUpdate()
             ->exists();
 
