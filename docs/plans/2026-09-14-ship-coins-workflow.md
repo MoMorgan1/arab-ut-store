@@ -98,11 +98,19 @@ shown on the tracking page. Question 4 asks what account that runs on.
 ## Sequence
 
 1. Store: timeout, contract sentence, and the answer to question 1 (one PR).
-2. `ship-coins` sources, build, tests, README with the import steps and the environment table
+2. `ship-coins` sources, build, tests, README with the import steps and the key table
    (`N8N_ORDER_PAID_KEY/SECRET`, `N8N_FULFILLMENT_KEY/SECRET`, `FFT_API_USER/KEY`,
-   `UTT_API_KEY`, `ARABUT_STORE_URL`, `OPS_WHATSAPP_TARGET`).
-3. Mohamed imports both workflows inactive, sets the environment, turns off execution-data
-   saving, sets concurrency 1, attaches the Whapi credential, activates.
+   `UTT_API_KEY`, `ARABUT_STORE_URL`, the ops Telegram chat).
+3. Mohamed imports both workflows inactive, pastes the keys into the `Config` node, turns off
+   execution-data saving, sets concurrency 1, attaches the Telegram credential, activates.
+
+   *Amended 2026-09-14 during the import.* The instance has no environment variables and
+   n8n's Variables (`$vars`) are behind a paid plan, so the owner chose to keep the values
+   inside the workflow: an Edit Fields node named `Config` between `Webhook` and
+   `Verify Request` holds every key as a field, the export ships `CONFIGURE_…` placeholders,
+   and every node reads `$('Config').first().json`. The values therefore sit unencrypted in
+   the workflow definition, readable by anyone who can open it. The EA account is unaffected:
+   it still travels in the request and is never stored (execution data off).
 4. Mohamed sets `N8N_ORDER_PAID_URL/KEY/SECRET` and `N8N_FULFILLMENT_KEY/SECRET` on the store.
 5. Acceptance run.
 

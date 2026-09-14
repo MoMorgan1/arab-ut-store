@@ -7,9 +7,9 @@
 // node sends raw, so the signature cannot drift from the payload.
 
 const crypto = require('crypto');
-const secret = $env.N8N_FULFILLMENT_SECRET;
-if (!secret || String(secret).length < 32) {
-    throw new Error('[report] N8N_FULFILLMENT_SECRET is missing or shorter than 32 characters');
+const secret = $('Config').first().json.N8N_FULFILLMENT_SECRET;
+if (!secret || /^CONFIGURE_/.test(String(secret)) || String(secret).length < 32) {
+    throw new Error('[report] N8N_FULFILLMENT_SECRET is not set in the Config node or shorter than 32 characters');
 }
 
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';

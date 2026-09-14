@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { test } from 'node:test';
 
-import { env, NOW_SECONDS, orderPaid, pipeline, webhookRequest } from './helpers.mjs';
+import { config, NOW_SECONDS, orderPaid, pipeline, webhookRequest } from './helpers.mjs';
 
-async function verify(request, environment = env()) {
-    const flow = pipeline({ env: environment });
+async function verify(request, pasted = config()) {
+    const flow = pipeline({ config: pasted });
 
     return flow.run('Verify Request', 'verify-request', request);
 }
@@ -70,17 +70,27 @@ test('only schema 2 of order.paid with items is accepted', async () => {
     await assert.rejects(verify(webhookRequest({ ...orderPaid(), eventType: 'order.refunded' })), /eventType/);
 });
 
-test('a missing environment variable or a missing raw body fails at the first node, by name', async () => {
+test('a key left unpasted in the Config node or a missing raw body fails at the first node, by name', async () => {
     await assert.rejects(
-        verify(webhookRequest(orderPaid()), env({ UTT_API_KEY: '' })),
-        /missing n8n environment variable\(s\): UTT_API_KEY/,
+        verify(webhookRequest(orderPaid()), config({ UTT_API_KEY: '' })),
+        /not set in the Config node: UTT_API_KEY/,
+    );
+    // The export's placeholder counts as unset.
+    await assert.rejects(
+        verify(webhookRequest(orderPaid()), config({ FFT_API_KEY: 'CONFIGURE_FFT_API_KEY' })),
+        /not set in the Config node: FFT_API_KEY/,
     );
     await assert.rejects(
-        verify(webhookRequest(orderPaid()), env({ N8N_ORDER_PAID_SECRET: 'short' })),
+        verify(webhookRequest(orderPaid()), config({ N8N_ORDER_PAID_SECRET: 'short' })),
         /shorter than 32/,
     );
 
     const request = webhookRequest(orderPaid());
     delete request.binary;
     await assert.rejects(verify(request), /Raw Body/);
+
+    // Filesystem binary mode with no helper to read it: refused, not decoded as base64.
+    const stored = webhookRequest(orderPaid());
+    stored.binary.data = { ...stored.binary.data, id: 'filesystem-v2:workflows/1/executions/2/binary_data/abc', data: 'filesystem-v2' };
+    await assert.rejects(verify(stored), /Raw Body/);
 });

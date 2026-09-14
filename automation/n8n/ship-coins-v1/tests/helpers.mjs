@@ -42,8 +42,10 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
  * from inside its Code node, so `helpers.httpRequest` is where a test scripts
  * UTT's predictions and FFT's preview.
  */
-export function pipeline({ env = {}, now = NOW, httpRequest } = {}) {
+export function pipeline({ config = {}, now = NOW, httpRequest } = {}) {
     const outputs = new Map();
+    // What the Config node (Edit Fields) produced: the pasted keys.
+    outputs.set('Config', toItems(config));
     const FixedDate = fixedDate(now);
     const calls = [];
     const helpers = {
@@ -60,6 +62,13 @@ export function pipeline({ env = {}, now = NOW, httpRequest } = {}) {
 
     async function run(nodeName, sourceName, input) {
         const items = toItems(input ?? []);
+
+        if (nodeName === 'Verify Request') {
+            // In the workflow the Webhook item reaches Verify Request through
+            // the Config node; the node reads it back by name.
+            outputs.set('Webhook', items);
+        }
+
         const source = await nodeSource(sourceName);
         const lookup = (name) => {
             if (!outputs.has(name)) {
@@ -74,7 +83,7 @@ export function pipeline({ env = {}, now = NOW, httpRequest } = {}) {
                 all: () => produced,
             };
         };
-        const runner = new AsyncFunction('$', '$input', '$env', 'require', 'Date', source);
+        const runner = new AsyncFunction('$', '$input', 'require', 'Date', source);
         const produced = toItems(
             await runner.call(
                 { helpers },
@@ -84,7 +93,6 @@ export function pipeline({ env = {}, now = NOW, httpRequest } = {}) {
                     last: () => items[items.length - 1] ?? { json: {} },
                     all: () => items,
                 },
-                env,
                 require,
                 FixedDate,
             ),
@@ -107,7 +115,7 @@ export function pipeline({ env = {}, now = NOW, httpRequest } = {}) {
 export const ORDER_PAID_SECRET = 'order-paid-secret-order-paid-secret-0001';
 export const FULFILLMENT_SECRET = 'fulfillment-secret-fulfillment-secret-01';
 
-export function env(overrides = {}) {
+export function config(overrides = {}) {
     return {
         N8N_ORDER_PAID_KEY: 'checkout-publisher',
         N8N_ORDER_PAID_SECRET: ORDER_PAID_SECRET,
@@ -218,7 +226,7 @@ export function webhookRequest(event, { key = 'checkout-publisher', secret = ORD
 
 /** Verify Request → Plan Shipment, with the given items. */
 export async function planned(items, options = {}) {
-    const flow = pipeline({ env: env(), ...options });
+    const flow = pipeline({ config: config(), ...options });
     await flow.run('Verify Request', 'verify-request', webhookRequest(orderPaid(items)));
     await flow.run('Plan Shipment', 'plan-shipment', flow.get('Verify Request'));
 
