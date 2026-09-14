@@ -81,10 +81,16 @@ reopened by a retry.
 
 Within one phase, the first placement wins. A second placement for the same item
 and phase with a different supplier, reference, or challenge id set is refused with
-`409 item_placement_conflict`, and the recorded placement is left untouched. A
-`(supplier, supplier_order_id)` pair belongs to exactly one placement ever, so a
-reference already recorded — for another item or the other phase — is refused
-with `409 supplier_reference_conflict`.
+`409 item_placement_conflict`, and the recorded placement is left untouched.
+
+A `(supplier, supplier_order_id)` pair is one supplier-side order. It may be
+reported for **several items of the same order in the `coins` phase** - one
+shipment funding a challenge's coins and the coins bought beside it, the way
+`Fulfillment v14` merged them and `ship-coins` still does (owner decision,
+2026-09-14); report it once per item, and each item gets its own job reading
+the same shipment. Anywhere else - an item on another order, or the
+`challenge` phase - a reference already recorded is refused with
+`409 supplier_reference_conflict`.
 
 ## Success response
 
@@ -133,7 +139,7 @@ Validation failures use Laravel's standard `422` body with `message` and
 | 422 | `challenge_ids_not_permitted` | A `coins` phase was reported carrying `challenge_ids`. | Remove `challenge_ids` from coins placements and retry. |
 | 422 | `invalid_challenge_ids` | One or more challenge ids failed UUID format validation. | Correct the invalid ids and retry; a partial list is rejected rather than partially stored because dropping invalid ids leaves missing challenges untracked and invisible. |
 | 422 | `order_item_unpaid` | Payment has not been confirmed yet. | Retry after the payment event confirms; alert if it persists. |
-| 409 | `supplier_reference_conflict` | This supplier reference is already recorded on another placement. | Do not retry; alert (placement or order mismatch). |
+| 409 | `supplier_reference_conflict` | This supplier reference is already recorded on an item of another order, or on a challenge phase. | Do not retry; alert (placement or order mismatch). |
 | 409 | `item_placement_conflict` | The item already holds a different placement for this phase. | Do not retry; alert. |
 | 409 | `placement_conflict` | A concurrent request won the unique-index race. | Retry once; the retry returns the idempotent success or the precise conflict. |
 | 429 | `fulfillment_rate_limited` | More than 10 requests per minute for the key. | Back off and retry. |
@@ -285,11 +291,15 @@ surfaces on the admin queue-health panel;
 
 ### What n8n must do
 
-- Deduplicate on `eventId`; a retry carries the same id with possibly newer
-  contents, and the newer contents are the ones to use.
-- Answer `{"data":{"acknowledged":true}}` with a 2xx. Anything else is a
-  retry in one, two, four … up to sixty minutes.
-- Place each item and report each placement through the endpoint above.
+- Place what the request carries and report each placement through the
+  endpoint above, then answer `{"data":{"acknowledged":true}}` with a 2xx.
+- Anything else - a 5xx, a timeout, `acknowledged: false` - is a retry in
+  one, two, four … up to sixty minutes, and **a retry carries only the items
+  still unplaced**: the store re-reads the order before every send and leaves
+  out any item whose placement was reported. So there is nothing to
+  deduplicate on the n8n side, and a workflow that places one shipment per run
+  may answer `acknowledged: false` while items remain; the next attempt brings
+  them. The store waits 60 seconds for the answer.
 - Save no execution data on this workflow or any sub-workflow it calls, in
   every mode (success, error, manual, progress), before a real order runs
   through it - the condition the ADR attaches to carrying the account here.

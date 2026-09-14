@@ -108,7 +108,12 @@ final class PublishOrderPaidEvent
                 ])
                 ->withBody($body, 'application/json')
                 ->connectTimeout(5)
-                ->timeout(12)
+                // ship-coins answers only once the shipment is placed and
+                // reported, and choosing a supplier is up to a dozen UTT
+                // prediction calls plus an FFT preview before the placement
+                // itself. A run that outlasts this is not harmful: the row is
+                // retried, and a retry carries only what is still unplaced.
+                ->timeout(60)
                 ->post($url);
             $acknowledged = $response->successful()
                 && $response->json('data.acknowledged') === true;

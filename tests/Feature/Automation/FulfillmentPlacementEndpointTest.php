@@ -251,7 +251,7 @@ it('treats a retry of one phase as a no-op after the other phase landed', functi
         ->and(FulfillmentJob::sole()->status)->toBe(FulfillmentStatus::Completed);
 });
 
-it('refuses a reference that is already bound to another item', function () {
+it('refuses a reference that is already bound to an item of another order', function () {
     $first = paidOrderItem();
     $second = paidOrderItem();
     $payload = placementPayload($first);
@@ -266,6 +266,35 @@ it('refuses a reference that is already bound to another item', function () {
 
     expect(FulfillmentJob::query()->where('order_item_id', $second->id)->exists())->toBeFalse()
         ->and(FulfillmentJob::sole()->order_item_id)->toBe($first->id);
+});
+
+it('records one shipment on every item of the order it funds', function () {
+    // v14 merged a challenge's coins with the coins bought beside it into one
+    // supplier order, and ship-coins keeps that. Reported once per item, the
+    // same reference gives each item its own job reading the same shipment.
+    $order = Order::factory()->create(['paid_at' => now()]);
+    $coins = OrderItem::factory()->create(['order_id' => $order->id, 'service_type' => ServiceType::Coins]);
+    $challenge = OrderItem::factory()->create(['order_id' => $order->id, 'service_type' => ServiceType::Sbc]);
+    $reference = 'FFT-SHARED-SHIPMENT-1';
+
+    signedFulfillmentPlacement(placementPayload($coins, ['supplier_order_id' => $reference]))->assertOk();
+    signedFulfillmentPlacement(placementPayload($challenge, ['supplier_order_id' => $reference]))->assertOk();
+
+    // And again for the challenge: an identical retry stays a no-op.
+    signedFulfillmentPlacement(placementPayload($challenge, ['supplier_order_id' => $reference]))->assertOk();
+
+    expect(FulfillmentPlacement::count())->toBe(2)
+        ->and(FulfillmentJob::count())->toBe(2)
+        ->and(FulfillmentJob::query()->pluck('supplier_order_id')->unique()->all())->toBe([$reference]);
+
+    // The shipment's reference still cannot name the solve.
+    signedFulfillmentPlacement(placementPayload($challenge, [
+        'supplier_order_id' => $reference,
+        'delivery_phase' => DeliveryPhase::Challenge->value,
+        'challenge_ids' => ['c6d05f3b-63a1-4328-98e3-b09e4a305fbb'],
+    ]))
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'supplier_reference_conflict');
 });
 
 it('refuses a second placement for a phase that already holds a different one', function () {
@@ -443,7 +472,7 @@ it('rejects an invalid body before any placement work', function (array $overrid
     'missing delivery phase' => [['delivery_phase' => null], 'delivery_phase'],
 ]);
 
-it('enforces one placement per phase and one item per reference in the schema', function () {
+it('enforces one placement per phase in the schema, and leaves the shared shipment to the action', function () {
     $job = FulfillmentJob::factory()->create();
 
     FulfillmentPlacement::factory()->create([
@@ -467,16 +496,19 @@ it('enforces one placement per phase and one item per reference in the schema', 
         'supplier_order_id' => 'FFT-SCHEMA-3',
     ]))->toThrow(UniqueConstraintViolationException::class);
 
+    // A second job may hold the same reference: the schema no longer says
+    // whether that is a shared shipment or a mistake, RecordSupplierPlacement
+    // does, under the order lock.
     $otherJob = FulfillmentJob::factory()->create();
 
-    expect(fn () => FulfillmentPlacement::factory()->create([
+    FulfillmentPlacement::factory()->create([
         'fulfillment_job_id' => $otherJob->id,
         'delivery_phase' => DeliveryPhase::Coins,
         'supplier' => Supplier::Fft,
         'supplier_order_id' => 'FFT-SCHEMA-2',
-    ]))->toThrow(UniqueConstraintViolationException::class);
+    ]);
 
-    expect(FulfillmentPlacement::count())->toBe(2);
+    expect(FulfillmentPlacement::count())->toBe(3);
 });
 
 it('throttles a key that hammers the endpoint', function () {

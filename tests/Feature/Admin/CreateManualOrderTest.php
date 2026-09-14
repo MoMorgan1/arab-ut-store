@@ -358,8 +358,9 @@ test('several items on one order each keep their own reference', function (): vo
         ),
     );
 
-    // One reference per item, never one per order (owner decision,
-    // 2026-09-13): each item is its own order at the supplier.
+    // The form takes one reference per item (owner decision, 2026-09-13).
+    // Two items may name the same one when one shipment funded both - see
+    // the next test - but nothing merges them for the staff member.
     $references = $order->items()->with('fulfillmentJob')->get()
         ->map(fn ($item) => $item->fulfillmentJob?->supplier_order_id)
         ->all();
@@ -483,4 +484,29 @@ test('an automated item without a pasted reference is queued for n8n, and one wi
         ->and($events->sole()->idempotency_key)->toBe('order-paid:'.$dispatched->id)
         ->and($placed->id)->not->toBe($dispatched->id)
         ->and($booster->id)->not->toBe($dispatched->id);
+});
+
+test('two items of one order may share the shipment that funded them both', function (): void {
+    $actor = createStaffTestActor(UserRole::Admin);
+
+    $order = app(CreateManualOrder::class)->execute(
+        $actor,
+        manualCustomer(),
+        'ar',
+        new ManualOrderDraft(true, null, [
+            manualItem(['placement' => new ManualOrderPlacement(Supplier::Fft, '84200', DeliveryPhase::Coins)]),
+            manualItem([
+                'service' => ServiceType::Sbc,
+                'sku' => 'MANUAL-SBC',
+                'configuration' => ['service_type' => 'sbc', 'platform' => 'playstation', 'completion_count' => 1],
+                'placement' => new ManualOrderPlacement(Supplier::Fft, '84200', DeliveryPhase::Coins),
+            ]),
+        ]),
+    );
+
+    $references = $order->items()->with('fulfillmentJob')->get()
+        ->map(fn ($item) => $item->fulfillmentJob?->supplier_order_id)
+        ->all();
+
+    expect($references)->toBe(['84200', '84200']);
 });
