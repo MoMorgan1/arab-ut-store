@@ -30,8 +30,10 @@ try {
     waitForConcurrentChatRelease($argv[3] ?? '', $argv[4] ?? '');
 
     echo $app->make(CreateOrGetActiveConversation::class)->execute($owner, $request, 'ar')->public_id;
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent chat acquisition failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent chat acquisition failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

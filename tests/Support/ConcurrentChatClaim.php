@@ -46,8 +46,10 @@ try {
     fwrite(STDERR, 'Concurrent chat claim query failed.');
 
     exit(1);
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent chat claim failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent chat claim failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

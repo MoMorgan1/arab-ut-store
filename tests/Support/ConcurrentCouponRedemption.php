@@ -20,8 +20,10 @@ $cart = Cart::query()
 try {
     $app->make(ApplyCoupon::class)->apply($cart, (string) $argv[3], $user);
     $result = $app->make(PlaceOrder::class)->execute($user, 'ar', (string) $argv[2]);
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent coupon redemption failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent coupon redemption failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

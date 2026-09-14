@@ -21,8 +21,10 @@ try {
             'backup_codes' => ['83000001', '83000002', '83000003'],
         ],
     ], (string) $argv[2], 'ar');
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent Coins addition failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent Coins addition failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

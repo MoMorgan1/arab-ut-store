@@ -12,8 +12,10 @@ $app->make(Kernel::class)->bootstrap();
 try {
     $owner = CartOwner::guest((string) $argv[1]);
     $publicId = (string) $app->make(AcquireActiveCart::class)->execute($owner)->public_id;
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent guest cart acquisition failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent guest cart acquisition failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

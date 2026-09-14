@@ -26,8 +26,10 @@ try {
             usleep(25_000);
         }
     });
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent guest claim marker lock failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent guest claim marker lock failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }
