@@ -1,0 +1,920 @@
+{
+  "name": "ship-coins v1 - place one shipment for a paid order",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "arabut-ship-coins-v1",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-ship-coins-v1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        400
+      ],
+      "webhookId": "4e2f9c1a-7b6d-4a53-9e8c-2d1f0b7a5c63",
+      "notes": "The store posts order.paid (schema 2) here. Authentication is the HMAC in Verify Request, not an n8n credential, so nothing is attached. Raw Body must stay on."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — the store's order.paid (schema 2) request, verified before\n// anything reads it. Every failure in this workflow THROWS: the Error Workflow\n// sends the Telegram alert and the store, seeing no acknowledgement, retries\n// with whatever is still unplaced. There is no in-flow failure rail.\n//\n// The signature covers the exact bytes the store sent (timestamp, event id and\n// raw body joined by newlines, HMAC-SHA256 with N8N_ORDER_PAID_SECRET), so the\n// Webhook node must run with \"Raw Body\" on. Verification reads those bytes and\n// never a re-serialised copy: PHP writes 1.0 where JavaScript writes 1, and\n// escapes Arabic where JavaScript does not.\n\nconst crypto = require('crypto');\n\nconst requiredEnv = [\n    'N8N_ORDER_PAID_KEY',\n    'N8N_ORDER_PAID_SECRET',\n    'N8N_FULFILLMENT_KEY',\n    'N8N_FULFILLMENT_SECRET',\n    'FFT_API_USER',\n    'FFT_API_KEY',\n    'UTT_API_KEY',\n];\nconst missingEnv = requiredEnv.filter((name) => !$env[name]);\nif (missingEnv.length) {\n    throw new Error(\n        `[verify] missing n8n environment variable(s): ${missingEnv.join(', ')}`,\n    );\n}\nif (String($env.N8N_ORDER_PAID_SECRET).length < 32) {\n    throw new Error('[verify] N8N_ORDER_PAID_SECRET is shorter than 32 characters');\n}\n\nconst item = $input.first();\nconst json = item.json || {};\nconst headers = json.headers || {};\n\nfunction header(name) {\n    const value = headers[name] ?? headers[name.toLowerCase()];\n    return String(Array.isArray(value) ? value[0] : value ?? '');\n}\n\nfunction equal(left, right) {\n    const a = Buffer.from(String(left), 'utf8');\n    const b = Buffer.from(String(right), 'utf8');\n    return a.length === b.length && crypto.timingSafeEqual(a, b);\n}\n\n// The raw body. In n8n's default (memory) binary mode the Webhook node hands\n// it over base64-encoded under binary.data.data; the filesystem mode hands a\n// file id instead, which the helper below resolves when it exists.\nasync function rawBody() {\n    const helpers = typeof this === 'object' && this !== null ? this.helpers : null;\n    if (helpers && typeof helpers.getBinaryDataBuffer === 'function') {\n        try {\n            const buffer = await helpers.getBinaryDataBuffer(0, 'data');\n            if (buffer && buffer.length) return buffer.toString('utf8');\n        } catch (error) {\n            // fall through to the in-memory shape\n        }\n    }\n    const binary = item.binary && item.binary.data;\n    if (binary && typeof binary.data === 'string' && binary.data !== '') {\n        return Buffer.from(binary.data, 'base64').toString('utf8');\n    }\n    if (typeof json.rawBody === 'string') return json.rawBody;\n    return null;\n}\n\nconst raw = await rawBody.call(this);\nif (raw === null) {\n    throw new Error(\n        '[verify] the raw request body is unavailable - turn on \"Raw Body\" in the Webhook node options',\n    );\n}\n\nconst key = header('x-arabut-key');\nconst timestamp = header('x-arabut-timestamp');\nconst eventId = header('x-arabut-event');\nconst signature = header('x-arabut-signature');\n\nif (!equal(key, $env.N8N_ORDER_PAID_KEY)) {\n    throw new Error('[verify] X-ArabUT-Key does not match N8N_ORDER_PAID_KEY');\n}\nif (!/^\\d{10}$/.test(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {\n    throw new Error('[verify] X-ArabUT-Timestamp is outside the five-minute window');\n}\nconst expected = crypto\n    .createHmac('sha256', $env.N8N_ORDER_PAID_SECRET)\n    .update(`${timestamp}\\n${eventId}\\n${raw}`)\n    .digest('hex');\nif (!equal(signature, expected)) {\n    throw new Error('[verify] X-ArabUT-Signature does not match the request body');\n}\n\nlet event;\ntry {\n    event = JSON.parse(raw);\n} catch (error) {\n    throw new Error('[verify] the request body is not JSON');\n}\n\nif (!event || event.eventType !== 'order.paid') {\n    throw new Error(`[verify] unexpected eventType ${event && event.eventType}`);\n}\nif (Number(event.schemaVersion) !== 2) {\n    throw new Error(`[verify] unexpected schemaVersion ${event && event.schemaVersion}; this workflow reads schema 2`);\n}\nif (event.eventId !== eventId) {\n    throw new Error('[verify] X-ArabUT-Event does not match the body eventId');\n}\nconst order = event.data;\nif (!order || typeof order.order_number !== 'string' || !Array.isArray(order.items) || order.items.length === 0) {\n    throw new Error('[verify] the request carries no items to place');\n}\n\nreturn [{ json: { eventId, order, receivedAt: new Date().toISOString() } }];\n"
+      },
+      "id": "verify-request-ship-coins-v1",
+      "name": "Verify Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        400
+      ],
+      "notes": "Source: nodes/verify-request.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — one shipment per run.\n//\n// v14 read one coins item per order and merged a challenge's coins with the\n// coins bought beside it into ONE supplier order, on purpose: two shipments to\n// one EA account at once are two bots on one account. This node keeps that\n// rule and generalises it only as far as the store's data forces: the items\n// are grouped by EA account and platform, the first group becomes the\n// shipment, and any other group is left for the store's retry - the store\n// re-reads the order before every send and omits what is already placed, so\n// answering \"not acknowledged\" with items remaining brings them next time.\n//\n// The output field names are v14's own (amountK, calculatedMaxPrice,\n// startCoins, eaBackup1..3, isSlowShipping ...), so the Supplier Decision\n// Engine and the HTTP nodes copied from v14 read them unchanged.\n\nconst order = $('Verify Request').first().json.order;\nconst orderId = order.order_number;\n\nfunction fail(message) {\n    throw new Error(`[plan] order ${orderId}: ${message}`);\n}\n\nconst groups = new Map();\n\nfor (const item of order.items) {\n    const account = item.account || {};\n    const email = String(account.ea_email || '').trim().toLowerCase();\n    const platform = String(item.supplier_platform || '');\n\n    if (!email || !account.ea_password) fail(`item ${item.order_item_public_id} carries no EA account`);\n    if (platform !== 'PS' && platform !== 'PC') fail(`item ${item.order_item_public_id} is on ${item.platform || '?'}, which no supplier serves`);\n    if (item.service !== 'coins' && item.service !== 'sbc') fail(`item ${item.order_item_public_id} is a ${item.service}, which no supplier delivers`);\n\n    const key = `${email}|${platform}`;\n    if (!groups.has(key)) groups.set(key, { email, platform, account, items: [] });\n    groups.get(key).items.push(item);\n}\n\nconst [shipment, ...rest] = [...groups.values()];\nconst codes = Array.isArray(shipment.account.backup_codes)\n    ? shipment.account.backup_codes.filter((code) => typeof code === 'string' && code !== '')\n    : [];\n\nconst coinsItems = [];\nconst sbcItems = [];\nlet calculatedMaxPrice = 0;\n\nfor (const item of shipment.items) {\n    const budget = Number(item.budget && item.budget.max_eur_per_100k) || 0;\n    if (budget <= 0) fail(`item ${item.order_item_public_id} carries no budget`);\n    // v14 priced a merged shipment by its total tier; the store prices each\n    // item, and the larger ceiling is the one the merged shipment may spend.\n    calculatedMaxPrice = Math.max(calculatedMaxPrice, budget);\n\n    if (item.service === 'coins') {\n        const quantity = Number(item.coins && item.coins.quantity) || 0;\n        if (quantity <= 0) fail(`item ${item.order_item_public_id} has no coins quantity`);\n        coinsItems.push({\n            orderItemPublicId: item.order_item_public_id,\n            amountK: Math.round(quantity / 1000),\n            delivery: (item.coins && item.coins.delivery) || null,\n        });\n    } else {\n        const setID = Number(item.sbc && item.sbc.set_id) || 0;\n        if (setID <= 0) fail(`item ${item.order_item_public_id} names no challenge`);\n        sbcItems.push({\n            orderItemPublicId: item.order_item_public_id,\n            sbcSetID: setID,\n            sbcTimesToSolve: Math.max(1, Number(item.sbc && item.sbc.times_to_solve) || 1),\n        });\n    }\n}\n\nconst extraCoinsK = coinsItems.reduce((sum, entry) => sum + entry.amountK, 0);\nconst balance = Number(shipment.account.current_balance);\n\nreturn [{\n    json: {\n        orderId,\n        orderPublicId: order.order_public_id,\n        customerName: String(order.customer_name || '').trim() || 'ArabUT',\n        platform: shipment.platform,\n        eaEmail: shipment.email,\n        eaPass: String(shipment.account.ea_password),\n        eaBackup1: codes[0] || '',\n        eaBackup2: codes[1] || '',\n        eaBackup3: codes[2] || '',\n        // v14: an unknown balance was taken as 200,000.\n        startCoins: Number.isFinite(balance) && balance > 0 ? Math.round(balance) : 200000,\n        calculatedMaxPrice,\n        coinsItems,\n        sbcItems,\n        extraCoinsK,\n        // The coins-only amount; a challenge shipment's amount is settled once\n        // FFT has priced the challenge (SBC: Match & Validate).\n        amountK: extraCoinsK,\n        needsChallengePricing: sbcItems.length > 0,\n        // v14: slow shipping only ever applied to a plain coins order.\n        isSlowShipping: sbcItems.length === 0 && coinsItems.every((entry) => entry.delivery === 'normal'),\n        transferMethod: 'targetedSnipe',\n        itemIds: shipment.items.map((item) => item.order_item_public_id),\n        remainingGroups: rest.length,\n    },\n}];\n"
+      },
+      "id": "plan-shipment-ship-coins-v1",
+      "name": "Plan Shipment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        400
+      ],
+      "notes": "Source: nodes/plan-shipment.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "needs-challenge-price-ship-coins-v1-condition",
+              "leftValue": "={{ $json.needsChallengePricing }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "needs-challenge-price-ship-coins-v1",
+      "name": "Needs Challenge Price?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        400
+      ],
+      "notes": "True = the shipment funds a challenge, and FFT has to price it first. False = plain coins."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://futtransfer.top/availableSBCsAPI",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "apiUser",
+              "value": "={{ $env.FFT_API_USER }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $env.FFT_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "available-sbcs-ship-coins-v1",
+      "name": "SBC: Get Available SBCs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1140,
+        240
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — v14's \"SBC: Match & Validate\", with the challenge list read\n// from the shipment instead of Router Logic1 and the budget taken from the\n// store instead of the price sheet. The matching, the unpriced-challenge\n// refusal and the coin arithmetic are v14's.\n//\n// FFT prices a challenge live (consolePrice / pcPrice, in coins), so the\n// coins a challenge shipment must carry are only known here.\n\n// ── 1. إعادة بناء مصفوفة التحديات من كل عناصر الـ input ──\nconst allInputItems = $input.all();\nlet availableSBCs = null;\n\nif (allInputItems.length > 1) {\n  availableSBCs = allInputItems.map(item => item.json);\n}\nif (!availableSBCs && allInputItems.length === 1) {\n  const firstJson = allInputItems[0].json;\n  if (Array.isArray(firstJson)) availableSBCs = firstJson;\n  else if (firstJson.data && Array.isArray(firstJson.data)) availableSBCs = firstJson.data;\n  else if (firstJson.sbcs && Array.isArray(firstJson.sbcs)) availableSBCs = firstJson.sbcs;\n}\nif (!availableSBCs && allInputItems.length === 1) {\n  const firstJson = allInputItems[0].json;\n  if (firstJson.setID !== undefined) availableSBCs = [firstJson];\n}\n\nconst shipment = $('Plan Shipment').first().json;\nconst orderId = shipment.orderId;\n\nif (!availableSBCs || !Array.isArray(availableSBCs) || availableSBCs.length === 0) {\n  throw new Error(`[sbc] order ${orderId}: فشل قراءة قائمة التحديات. عدد العناصر المستقبلة: ${allInputItems.length}`);\n}\n\nconst sbcRouterItems = shipment.sbcItems || [];\nif (sbcRouterItems.length === 0) {\n  throw new Error(`[sbc] order ${orderId}: لم يتم العثور على أي SBC في بيانات الطلب`);\n}\n\nconst platform = shipment.platform || 'PS';\n\n// ── 3. التحقق من كل SBC مطلوب ──\nconst sbcSetIDs = [];\nlet totalCoinsK = 0;\nlet totalChallengeAmount = 0;\nconst sbcNames = [];\n\nfor (const routerItem of sbcRouterItems) {\n  const setID = routerItem.sbcSetID;\n  const sbcMatch = availableSBCs.find(sbc => Number(sbc.setID) === Number(setID));\n  if (!sbcMatch) throw new Error(`[sbc] order ${orderId}: التحدي غير موجود: setID ${setID}`);\n\n  const coinPrice = platform === 'PC'\n    ? parseFloat(sbcMatch.pcPrice)\n    : parseFloat(sbcMatch.consolePrice);\n\n  if (!coinPrice || coinPrice <= 0) {\n    const rawPrice = platform === 'PC' ? sbcMatch.pcPrice : sbcMatch.consolePrice;\n    throw new Error(`[sbc] order ${orderId}: FFT ما مسعّر هذا التحدي حالياً (السعر المستلم: ${rawPrice}) — غالباً غير قابل للحل الآلي: \"${sbcMatch.sbcName}\" [منصة ${platform}]. الطلب يحتاج حل يدوي.`);\n  }\n\n  const coinsPerSolveK = Math.ceil(coinPrice / 1000);\n  const timesToSolve = routerItem.sbcTimesToSolve || 1;\n\n  totalCoinsK += coinsPerSolveK * timesToSolve;\n  totalChallengeAmount += (sbcMatch.challengeAmount || 0) * timesToSolve;\n  sbcNames.push(sbcMatch.sbcName);\n\n  sbcSetIDs.push({\n    setID: sbcMatch.setID,\n    sbcName: sbcMatch.sbcName,\n    challengeAmount: sbcMatch.challengeAmount,\n    expiry: sbcMatch.expiry,\n    coinsPerSolveK,\n    timesToSolve,\n    orderItemPublicId: routerItem.orderItemPublicId,\n  });\n}\n\n// ── 4. إضافة الكوينز الإضافية (لو فيه طلب كوينز مدمج) ──\nconst extraCoinsK = shipment.extraCoinsK || 0;\nconst totalAmountK = totalCoinsK + extraCoinsK;\n\n// ── 6. إرجاع عنصر واحد مدمج ──\nreturn [{\n  json: {\n    ...shipment,\n    sbcSetIDs,\n    sbcName: sbcNames.join(' + '),\n    challengeAmount: totalChallengeAmount,\n    amountK: totalAmountK,\n    extraCoinsK,\n    totalSBCsFound: availableSBCs.length,\n  }\n}];\n"
+      },
+      "id": "match-challenges-ship-coins-v1",
+      "name": "SBC: Match & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        240
+      ],
+      "notes": "Source: nodes/match-challenges.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — the one shipment this run places, whichever branch built it.\n//\n// v14's HTTP nodes read `$('Coins Item')` or `$('SBC: Match & Validate')`\n// depending on the path; here both paths end in this node so every later\n// expression reads `$('Shipment')`. Nothing is computed: this is the named\n// hand-off point, and the last place a bad shipment can be refused before a\n// supplier is asked anything.\n\nconst shipment = $input.first().json;\nconst orderId = shipment.orderId;\n\nif (!(Number(shipment.amountK) > 0)) {\n    throw new Error(`[shipment] order ${orderId}: the shipment carries no coins`);\n}\nif (!(Number(shipment.calculatedMaxPrice) > 0)) {\n    throw new Error(`[shipment] order ${orderId}: the shipment carries no budget`);\n}\nif (!Array.isArray(shipment.itemIds) || shipment.itemIds.length === 0) {\n    throw new Error(`[shipment] order ${orderId}: the shipment names no order items`);\n}\n\nreturn [{ json: shipment }];\n"
+      },
+      "id": "shipment-ship-coins-v1",
+      "name": "Shipment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        400
+      ],
+      "notes": "Source: nodes/shipment.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "slow-shipping-ship-coins-v1-condition",
+              "leftValue": "={{ $json.isSlowShipping }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "slow-shipping-ship-coins-v1",
+      "name": "Slow Shipping?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1860,
+        400
+      ],
+      "notes": "v14. True = slow console delivery, which always goes to FFT (cycle when UTT cards are out). False = choose a supplier."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://utautotransfer.com/api/getMaxOrderPrediction",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "apiKey",
+              "value": "={{ $env.UTT_API_KEY }}"
+            },
+            {
+              "name": "platform",
+              "value": "={{ $('Shipment').first().json.platform.toLowerCase() }}"
+            },
+            {
+              "name": "orderMethod",
+              "value": "public"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Shipment').first().json.eaEmail }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "utt-slow-cooldown-ship-coins-v1",
+      "name": "UTT: Check Slow Cooldown",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://utautotransfer.com/api/getPublicSaleStocks",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "apiKey",
+              "value": "={{ $env.UTT_API_KEY }}"
+            },
+            {
+              "name": "platform",
+              "value": "={{ $('Shipment').first().json.platform.toLowerCase() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "utt-stocks-ship-coins-v1",
+      "name": "UTT: Get Stocks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2100,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ══════════════════════════════════════════════════════════════════════\n// SUPPLIER DECISION ENGINE — UTT vs FFT for a coins order.\n//\n// v14's node, verbatim, with two renames: the shipment is `$('Shipment')`\n// (v14 read `$('Coins Item')` on the coins path and\n// `$('SBC: Match & Validate')` on the challenge path; both end in Shipment\n// here) and the budget it reads was computed by the store rather than read\n// from the price sheet. Everything below the input block is v14.11.\n//\n// PRICE UNITS: calculatedMaxPrice and UTT stock.price are BOTH EUR per 100K.\n// COMBINED STOCKS (v14.6, validated live): UTT pools capacity across the stocks\n// listed in publicSale, so we greedily build the CHEAPEST combination whose combined\n// getMaxOrderPrediction covers the order. MAX_COMBO 10 = the EA card budget per\n// order/36h (raised from 4 on 2026-07-04); the publicSale stock list itself is\n// unlimited, so failover pads are free until a card is actually used, and compare\n// FFT against the BLENDED price of that combination (marginal-gain weighted).\n// COOLDOWN: orderCardsRemaining < 3 → force UTT (cross-system ban protection).\n// PARTIAL (v14.11): neither covers fully → whoever delivers MORE right now\n// (FFT keeps ties — it tops up; UTT must beat FFT by 20%+). Full-coverage FFT\n// price-win additionally needs 10% preview headroom (owner decision 2026-07-04).\n// ══════════════════════════════════════════════════════════════════════\nconst src = $('Shipment').first().json;\nlet uttStocksData = {};\ntry { uttStocksData = $('UTT: Get Stocks').first().json || {}; } catch (e) {}\n\nconst amountK = src.amountK;\nconst orderAmountCoins = amountK * 1000;\nconst platform = src.platform;\nconst startCoins = src.startCoins || 200000;\nconst maxPrice = Number(src.calculatedMaxPrice) || 0;\nconst stocks = uttStocksData.stocks || [];\nconst ratioEuroUsd = parseFloat(uttStocksData.ratioEuroUsd) || 1.15;\n\n// FFT preview balance ladder (kept as-is per business decision 2026-07)\nconst topUpTarget = platform === 'PC' ? 0 : (\n    amountK <= 300 ? 20000 : amountK <= 500 ? 50000 : amountK <= 1000 ? 200000\n  : amountK <= 1500 ? 300000 : amountK <= 2000 ? 300000 : 400000);\nconst fftCustomerBalance = Math.max(startCoins, topUpTarget);\n\n// keep stocks big enough to matter in a combination (not: cover alone)\nconst minUseful = Math.max(100000, orderAmountCoins * 0.15);\nconst validStocks = stocks\n  .filter(s => (parseFloat(s.averageCoinsAvailable) * 5) >= minUseful)\n  .filter(s => parseFloat(s.price) <= maxPrice)\n  .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))\n  .slice(0, 20);\n\nconst UTT_API_KEY = $env.UTT_API_KEY;\nconst uttPlatform = platform.toLowerCase();\nconst MAX_COMBO = 10;      // = card budget per order/36h (was 4); stock list is unlimited\nconst MAX_PREDICTION_CALLS = 12;\n\nlet forcedUTT = false;\nlet cardsRemaining = null;\nlet combo = [];            // {numberStock, price(str), marginal}\nlet comboPred = 0;\nlet calls = 0;\n\nasync function predict(sectionString) {\n  calls++;\n  const result = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://utautotransfer.com/api/getMaxOrderPrediction',\n    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n    body: `apiKey=${UTT_API_KEY}&platform=${uttPlatform}&orderMethod=public&stockSection=${encodeURIComponent(sectionString)}&startCoins=${startCoins}&email=${encodeURIComponent(src.eaEmail)}`,\n  });\n  return result;\n}\n\nfor (const stock of validStocks) {\n  if (calls >= MAX_PREDICTION_CALLS || combo.length >= MAX_COMBO) break;\n  if (comboPred >= orderAmountCoins) break;\n  const tentative = [...combo, { numberStock: stock.numberStock, price: stock.price }];\n  const section = tentative.map(s => `${s.numberStock},${s.price}`).join(',');\n  try {\n    const r = await predict.call(this, section);\n    const pred = r.maxTransferable || 0;\n    if (cardsRemaining === null) cardsRemaining = r.orderCardsRemaining ?? 10;\n    if ((r.orderCardsRemaining ?? 10) < 3) forcedUTT = true;\n    const marginal = pred - comboPred;\n    if (marginal > 50000) {           // stock adds real capacity → keep it\n      combo = tentative;\n      combo[combo.length - 1].marginal = marginal;\n      comboPred = pred;\n    }\n  } catch (e) { continue; }\n}\n\n// blended price = marginal-gain-weighted average over what the order actually uses\nlet blendedPrice = null;\nif (combo.length) {\n  let remaining = orderAmountCoins, costSum = 0, used = 0;\n  for (const c of combo) {\n    const take = Math.min(c.marginal, remaining);\n    costSum += take * parseFloat(c.price);\n    used += take; remaining -= take;\n    if (remaining <= 0) break;\n  }\n  blendedPrice = used > 0 ? Math.round((costSum / used) * 1000) / 1000 : parseFloat(combo[0].price);\n}\n\nconst fullCoverage = comboPred >= orderAmountCoins && combo.length > 0;\n\n// pad pure-failover backups (unused cheapest stocks) up to 8 entries total —\n// list is unlimited and a pad only consumes a card if UTT actually switches to it\n// (built whenever a combo exists — UTT can now also win partial-coverage orders)\nlet publicSaleString = null;\nif (combo.length) {\n  const usedStocks = new Set(combo.map(c => `${c.numberStock},${c.price}`));\n  const pads = validStocks\n    .map(s => `${s.numberStock},${s.price}`)\n    .filter(k => !usedStocks.has(k));\n  const parts = combo.map(c => `${c.numberStock},${c.price}`);\n  while (parts.length < 8 && pads.length) parts.push(pads.shift());\n  publicSaleString = parts.join(',');\n}\n\n// ── SUPPLIER DECISION ──\nlet supplier = '';\nlet fftMaxPossibleK = 0;\nlet fftTestPrice = null;\n\nconst askFFT = async (testPrice) => {\n  const fftResult = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://futtransfer.top/maxOrderPreviewAPI',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ apiUser: $env.FFT_API_USER, apiKey: $env.FFT_API_KEY,\n      platform, customerBalance: fftCustomerBalance, ownSenders: 0, maxPrice: testPrice, riskLevel: 10 }),\n  });\n  return typeof fftResult === 'string' ? JSON.parse(fftResult) : fftResult;\n};\n\nif (forcedUTT) {\n  supplier = combo.length > 0 ? 'UTT' : 'FFT';\n} else if (!fullCoverage) {\n  // neither side guaranteed → send to whoever moves more coins RIGHT NOW\n  const uttK = Math.round(comboPred / 1000);\n  try {\n    const parsed = await askFFT(maxPrice);\n    fftMaxPossibleK = (parsed.success && parsed.maxPossibleK) || 0;\n    if (fftMaxPossibleK >= amountK) supplier = 'FFT';                            // FFT covers fully after all\n    else if (combo.length > 0 && uttK > fftMaxPossibleK * 1.2) supplier = 'UTT'; // UTT clearly ahead\n    else supplier = 'FFT';                                                        // tie or FFT ahead → FFT tops up\n  } catch (e) { supplier = 'FFT'; }\n} else {\n  fftTestPrice = Math.round((blendedPrice - 0.09) * 100) / 100;\n  if (fftTestPrice <= 0) {\n    supplier = 'UTT';\n  } else {\n    try {\n      const parsed = await askFFT(fftTestPrice);\n      fftMaxPossibleK = parsed.maxPossibleK || 0;\n      supplier = (parsed.success && fftMaxPossibleK >= amountK * 1.10) ? 'FFT' : 'UTT';\n    } catch (e) { supplier = 'UTT'; }\n  }\n}\n\nreturn [{ json: {\n  supplier,\n  forcedUTT,\n  isPartialFulfillment: !!(supplier === 'UTT' && comboPred < orderAmountCoins),\n  uttPublicSaleString: publicSaleString,\n  uttPrice: blendedPrice,\n  uttComboStocks: combo.map(c => `${c.numberStock}@${c.price}(+${Math.round(c.marginal / 1000)}K)`).join(' '),\n  uttMaxK: comboPred ? Math.round(comboPred / 1000) : null,\n  uttCardsRemaining: cardsRemaining,\n  fftTestPrice, fftMaxK: fftMaxPossibleK || null, fftCustomerBalance,\n  amountK, platform, startCoins,\n  calculatedMaxPrice: src.calculatedMaxPrice,\n  ratioEuroUsd,\n  stocksTested: calls,\n  totalStocksAvailable: stocks.length,\n  orderId: src.orderId,\n}}];\n"
+      },
+      "id": "supplier-decision-ship-coins-v1",
+      "name": "Supplier Decision Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        560
+      ],
+      "notes": "Source: nodes/supplier-decision.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "supplier-switch-ship-coins-v1-condition",
+              "leftValue": "={{ $json.supplier === 'UTT' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "supplier-switch-ship-coins-v1",
+      "name": "Supplier Switch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2580,
+        560
+      ],
+      "notes": "v14. True = UTT was chosen: check the FFT cooldown status first. False = FFT."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://futtransfer.top/getCooldownStatus",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "account",
+              "value": "={{ $('Shipment').first().json.eaEmail }}"
+            },
+            {
+              "name": "apiUser",
+              "value": "={{ $env.FFT_API_USER }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $env.FFT_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "fft-cooldown-ship-coins-v1",
+      "name": "FFT: Check Cooldown",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2820,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cooldown-ok-ship-coins-v1-condition",
+              "leftValue": "={{ (() => { try { const d = $json.data; const p = typeof d === 'string' ? JSON.parse(d) : (d || $json); return p.isReady === true; } catch(e) { return false; } })() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cooldown-ok-ship-coins-v1",
+      "name": "Cooldown OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3060,
+        480
+      ],
+      "notes": "v14, ported as it was: isReady true sends the UTT order, false falls back to FFT."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://utautotransfer.com/api/addOrderPublic",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "apiKey",
+              "value": "={{ $env.UTT_API_KEY }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Shipment').first().json.eaEmail }}"
+            },
+            {
+              "name": "password",
+              "value": "={{ $('Shipment').first().json.eaPass }}"
+            },
+            {
+              "name": "amountOrder",
+              "value": "={{ $('Shipment').first().json.amountK * 1000 }}"
+            },
+            {
+              "name": "platform",
+              "value": "={{ $('Shipment').first().json.platform.toLowerCase() }}"
+            },
+            {
+              "name": "publicSale",
+              "value": "={{ $('Supplier Decision Engine').first().json.uttPublicSaleString }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $('Shipment').first().json.customerName }}"
+            },
+            {
+              "name": "backupCodes",
+              "value": "={{ [$('Shipment').first().json.eaBackup1, $('Shipment').first().json.eaBackup2, $('Shipment').first().json.eaBackup3].filter(c => c).join(',') }}"
+            },
+            {
+              "name": "checkDetails",
+              "value": "0"
+            },
+            {
+              "name": "accountLock",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "utt-place-ship-coins-v1",
+      "name": "UTT: Add Order Public",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3300,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://futtransfer.top/buyCoinsAPI",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "apiUser",
+              "value": "={{ $env.FFT_API_USER }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $env.FFT_API_KEY }}"
+            },
+            {
+              "name": "platform",
+              "value": "={{ $('Shipment').first().json.platform }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $('Shipment').first().json.amountK }}"
+            },
+            {
+              "name": "updateCustomer",
+              "value": "1"
+            },
+            {
+              "name": "ba",
+              "value": "={{ $('Shipment').first().json.eaBackup1 }}"
+            },
+            {
+              "name": "ba2",
+              "value": "={{ $('Shipment').first().json.eaBackup2 }}"
+            },
+            {
+              "name": "ba3",
+              "value": "={{ $('Shipment').first().json.eaBackup3 }}"
+            },
+            {
+              "name": "customerName",
+              "value": "={{ $('Shipment').first().json.customerName }}"
+            },
+            {
+              "name": "externalOrderID",
+              "value": "={{ $('Shipment').first().json.orderId }}"
+            },
+            {
+              "name": "user",
+              "value": "={{ $('Shipment').first().json.eaEmail }}"
+            },
+            {
+              "name": "pass",
+              "value": "={{ $('Shipment').first().json.eaPass }}"
+            },
+            {
+              "name": "transferMethod",
+              "value": "={{ (() => {\n  try {\n    const cards = $('UTT: Check Slow Cooldown').first().json.orderCardsRemaining;\n    if (cards === 0) return 'cycle';\n  } catch(e) {}\n  return $('Shipment').first().json.transferMethod;\n})() }}"
+            },
+            {
+              "name": "buyNowThreshold",
+              "value": "={{ $('Shipment').first().json.calculatedMaxPrice }}"
+            },
+            {
+              "name": "topUpEnabled",
+              "value": "={{ $('Shipment').first().json.platform === 'PC' ? 50 : ($('Shipment').first().json.amountK <= 300 ? 20 : $('Shipment').first().json.amountK <= 500 ? 20 : $('Shipment').first().json.amountK <= 1000 ? 50 : $('Shipment').first().json.amountK <= 1500 ? 100 : 150) }}"
+            },
+            {
+              "name": "autoFinishCycle",
+              "value": "1"
+            },
+            {
+              "name": "riskLevel",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fft-place-ship-coins-v1",
+      "name": "External: Buy Coins",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3300,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — the supplier's reference for the shipment just placed.\n//\n// The first half of v14's \"Coins: Prepare Poll\" (the second half froze the\n// poll context, and the poll now lives in the store). UTT answers\n// `order.idOrder`; FFT answers `data.orderID`, sometimes as a JSON string.\n// No id from either is an in-band rejection - HTTP 200 with an error body -\n// and v14 flagged it `chargeFailed`; here it throws, so the ops alert names\n// the order and the store retries the shipment later.\n//\n// One output item per order item the shipment funds: the placement report\n// is filed once per item with the same reference (the store's shared-\n// shipment rule).\n\nconst shipment = $('Shipment').first().json;\nconst orderId = shipment.orderId;\n\nlet supplier = null, reference = null, rawError = null;\ntry {\n  const u = $('UTT: Add Order Public').first().json;\n  if (u && u.order && u.order.idOrder) { supplier = 'utt'; reference = String(u.order.idOrder); }\n  else if (u) rawError = u.error || u.message || JSON.stringify(u).slice(0, 300);\n} catch (e) {}\nif (!supplier) {\n  try {\n    const f = $('External: Buy Coins').first().json;\n    const p = typeof f.data === 'string' ? JSON.parse(f.data) : (f.data || f);\n    if (p && p.orderID) { supplier = 'fft'; reference = String(p.orderID); }\n    else if (p) rawError = (p.error && p.error.message) || p.error || p.message || JSON.stringify(p).slice(0, 300);\n  } catch (e) {}\n}\n\nif (!supplier) {\n  const detail = rawError ? String(rawError) : 'لم يصدر رقم طلب';\n  const hint = /429|[Tt]oo [Mm]any/.test(detail) ? ' — غالباً ضغط طلبات (rate limit)' : '';\n  throw new Error(`[place] order ${orderId}: المورد رفض طلب الشحن: ${detail}${hint}`);\n}\n\nreturn shipment.itemIds.map((orderItemPublicId) => ({\n  json: {\n    orderId,\n    order_item_public_id: orderItemPublicId,\n    supplier,\n    supplier_order_id: reference,\n    delivery_phase: 'coins',\n  },\n}));\n"
+      },
+      "id": "extract-reference-ship-coins-v1",
+      "name": "Extract Reference",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3540,
+        520
+      ],
+      "notes": "Source: nodes/extract-reference.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — one signed placement report per funded item.\n//\n// The store verifies HMAC-SHA256 over `timestamp\\neventId\\nrawBody` with\n// N8N_FULFILLMENT_SECRET (VerifyN8nFulfillmentSignature). rawBody is the\n// exact byte sequence that is signed AND the exact byte sequence the HTTP\n// node sends raw, so the signature cannot drift from the payload.\n\nconst crypto = require('crypto');\nconst secret = $env.N8N_FULFILLMENT_SECRET;\nif (!secret || String(secret).length < 32) {\n    throw new Error('[report] N8N_FULFILLMENT_SECRET is missing or shorter than 32 characters');\n}\n\nconst ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = ALPHABET[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];\n    }\n    return timestamp + random;\n}\n\nreturn $input.all().map(({ json }) => {\n    const report = {\n        order_item_public_id: json.order_item_public_id,\n        supplier: json.supplier,\n        supplier_order_id: json.supplier_order_id,\n        delivery_phase: json.delivery_phase,\n    };\n    const rawBody = JSON.stringify(report);\n    const timestamp = String(Math.floor(Date.now() / 1000));\n    const event = ulid();\n    const signature = crypto\n        .createHmac('sha256', secret)\n        .update(`${timestamp}\\n${event}\\n${rawBody}`)\n        .digest('hex');\n\n    return { json: { ...json, rawBody, timestamp, event, signature } };\n});\n"
+      },
+      "id": "sign-reports-ship-coins-v1",
+      "name": "Sign Placement Reports",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3780,
+        520
+      ],
+      "notes": "Source: nodes/sign-reports.js"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "X-ArabUT-Key",
+              "value": "={{ $env.N8N_FULFILLMENT_KEY }}"
+            },
+            {
+              "name": "X-ArabUT-Timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "X-ArabUT-Event",
+              "value": "={{ $json.event }}"
+            },
+            {
+              "name": "X-ArabUT-Signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "report-placement-ship-coins-v1",
+      "name": "Report Placement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        4020,
+        520
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "notes": "Runs once per funded item. Signed with N8N_FULFILLMENT_KEY / N8N_FULFILLMENT_SECRET, the store-side credential of the placement endpoint (docs/api/n8n-fulfillment-v1.md)."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — every placement report must have landed, then the answer\n// for the store.\n//\n// The report HTTP node runs with neverError + fullResponse, so a refused\n// report reaches this node as data rather than as an unhandled node error.\n// Anything but 200 with acknowledged:true throws: the placement happened at\n// the supplier and the store does not know - the exact case the ops alert is\n// for, and the case the store's retry then repairs, since the report endpoint\n// is idempotent and a second run reports the same reference again.\n\nconst shipment = $('Shipment').first().json;\nconst orderId = shipment.orderId;\nconst responses = $input.all();\n\nif (responses.length !== shipment.itemIds.length) {\n    throw new Error(`[report] order ${orderId}: ${responses.length} report(s) answered for ${shipment.itemIds.length} item(s)`);\n}\n\nfunction decode(body) {\n    if (body == null) return {};\n    if (typeof body === 'string') { try { return JSON.parse(body); } catch (e) { return { raw: body }; } }\n    return body;\n}\n\nconst placed = [];\nfor (const { json } of responses) {\n    const status = Number(json.statusCode || 0);\n    const body = decode(json.body);\n    const data = body && body.data;\n    if (status === 200 && data && data.acknowledged === true) {\n        placed.push({\n            order_item_public_id: data.order_item_public_id,\n            supplier: data.supplier,\n            supplier_order_id: data.supplier_order_id,\n            job_public_id: data.job_public_id,\n        });\n        continue;\n    }\n    const error = (body && body.error) || {};\n    throw new Error(`[report] order ${orderId}: the store refused the placement report (HTTP ${status} ${error.code || ''} ${error.message || body.message || ''})`.trim());\n}\n\nreturn [{\n    json: {\n        // Not acknowledged while other shipments remain: the store retries with\n        // what is still unplaced, and the next run places the next group.\n        acknowledged: Number(shipment.remainingGroups || 0) === 0,\n        placed,\n        remaining: Number(shipment.remainingGroups || 0),\n        orderId,\n    },\n}];\n"
+      },
+      "id": "confirm-reports-ship-coins-v1",
+      "name": "Confirm Reports",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4260,
+        520
+      ],
+      "notes": "Source: nodes/confirm-reports.js"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { acknowledged: $json.acknowledged, placed: $json.placed, remaining: $json.remaining } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ship-coins-v1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4500,
+        520
+      ],
+      "notes": "acknowledged:false while other shipments remain - the store retries with what is still unplaced. A throw anywhere before this node answers 500, which the store also treats as \"retry later\"."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Request": {
+      "main": [
+        [
+          {
+            "node": "Plan Shipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Shipment": {
+      "main": [
+        [
+          {
+            "node": "Needs Challenge Price?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Challenge Price?": {
+      "main": [
+        [
+          {
+            "node": "SBC: Get Available SBCs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Shipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBC: Get Available SBCs": {
+      "main": [
+        [
+          {
+            "node": "SBC: Match & Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBC: Match & Validate": {
+      "main": [
+        [
+          {
+            "node": "Shipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shipment": {
+      "main": [
+        [
+          {
+            "node": "Slow Shipping?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slow Shipping?": {
+      "main": [
+        [
+          {
+            "node": "UTT: Check Slow Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "UTT: Get Stocks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UTT: Check Slow Cooldown": {
+      "main": [
+        [
+          {
+            "node": "External: Buy Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UTT: Get Stocks": {
+      "main": [
+        [
+          {
+            "node": "Supplier Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supplier Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "Supplier Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supplier Switch": {
+      "main": [
+        [
+          {
+            "node": "FFT: Check Cooldown",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "External: Buy Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FFT: Check Cooldown": {
+      "main": [
+        [
+          {
+            "node": "Cooldown OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cooldown OK?": {
+      "main": [
+        [
+          {
+            "node": "UTT: Add Order Public",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "External: Buy Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UTT: Add Order Public": {
+      "main": [
+        [
+          {
+            "node": "Extract Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "External: Buy Coins": {
+      "main": [
+        [
+          {
+            "node": "Extract Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Reference": {
+      "main": [
+        [
+          {
+            "node": "Sign Placement Reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Placement Reports": {
+      "main": [
+        [
+          {
+            "node": "Report Placement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Placement": {
+      "main": [
+        [
+          {
+            "node": "Confirm Reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Reports": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "executionTimeout": 110,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "versionId": "SHIP_COINS_V1_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

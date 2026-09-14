@@ -1,0 +1,89 @@
+{
+  "name": "ship-coins - Failure Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger-ship-coins-v1",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        280
+      ],
+      "notes": "Set Workflow Settings -> Error Workflow of ship-coins to point here."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Runs inside the Error Workflow, not in ship-coins. It is reached by every\n// failure a run can produce - a rejected signature, an unpriced challenge, a\n// supplier that returned no reference, a report the store refused, a timeout -\n// because ship-coins fails by throwing rather than routing failures through\n// IF gates. The message thrown carries the order number, which is why every\n// throw in nodes/*.js starts with \"[stage] order AUT-…\".\n//\n// Execution data is not saved on ship-coins (the EA account travels in the\n// request), so this is the only record of the failure. It goes to Telegram,\n// not WhatsApp (owner decision, 2026-09-14).\nconst event = $input.first().json;\nconst execution = event.execution ?? {};\nconst workflow = event.workflow ?? {};\nconst error = execution.error ?? {};\nconst message = error.message || 'خطأ غير معروف';\n\nconst lines = [\n    'ship-coins وقف - الشحنة ما اتنفذتش.',\n    'المتجر هيعيد المحاولة تلقائياً بالبنود اللي لسه ما اتنفذتش.',\n    '',\n    `السبب: ${message}`,\n];\n\nif (/429|[Tt]oo [Mm]any/.test(message)) {\n    lines.push('غالباً ضغط طلبات (rate limit) - المحاولة الجاية بعد دقيقة.');\n}\nif (execution.lastNodeExecuted) {\n    lines.push(`عند النود: ${execution.lastNodeExecuted}`);\n}\nif (workflow.name) {\n    lines.push(`الوركفلو: ${workflow.name}`);\n}\n\n// Deliberately no throw here. This code runs inside the error execution, so a\n// throw would only bury the original failure. An empty chat id makes the\n// Telegram node itself go red, which stays visible in the executions list.\nreturn [\n    {\n        json: {\n            to: $env.OPS_TELEGRAM_CHAT_ID || '',\n            body: lines.join('\\n'),\n            failureReason: error.message || null,\n        },\n    },\n];\n"
+      },
+      "id": "build-failure-alert-ship-coins-v1",
+      "name": "Build Failure Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        280
+      ],
+      "notes": "Source: nodes/failure-alert.js"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.to }}",
+        "text": "={{ $json.body }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-failure-alert-ship-coins-v1",
+      "name": "Telegram Failure Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        280
+      ],
+      "webhookId": "9c4d7e21-3f8a-4b6e-8d15-6a2c0f9b7e41",
+      "credentials": {
+        "telegramApi": {
+          "id": "CONFIGURE_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "No onError override: an undelivered alert stays red."
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Telegram Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "SHIP_COINS_FAILURE_ALERT_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
