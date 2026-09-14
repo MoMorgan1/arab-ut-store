@@ -131,8 +131,44 @@ final class ApplyCoinsPricingRun
                 $payload['observations'],
                 array_flip(['source', 'ratioEuroUsd', 'cyclePSUsdPerM', 'cyclePCUsdPerM']),
             );
+
+            // The raw supplier cost per tier is what a placement may spend
+            // (SupplierCostTable). Only the three figures the budget reads are
+            // kept: the workflow's candidate lists carry per-provider detail
+            // that nothing here needs to hold.
+            if (is_array($payload['observations']['tierCosts'] ?? null)) {
+                $safe['observations']['tierCosts'] = self::costTiers($payload['observations']['tierCosts']);
+            }
         }
 
         return $safe;
+    }
+
+    /**
+     * @param  array<string, mixed>  $tiers
+     * @return array<string, list<array{targetK: int, rawUsdPerM: float, source: string}>>
+     */
+    private static function costTiers(array $tiers): array
+    {
+        $kept = [];
+
+        foreach (['console_fast', 'pc'] as $group) {
+            $rows = $tiers[$group] ?? null;
+
+            if (! is_array($rows)) {
+                continue;
+            }
+
+            $kept[$group] = array_values(array_map(
+                static fn (array $row): array => [
+                    'targetK' => (int) $row['targetK'],
+                    'rawUsdPerM' => (float) $row['rawUsdPerM'],
+                    'source' => is_string($row['selectedSource'] ?? null) ? $row['selectedSource'] : 'unknown',
+                ],
+                array_filter($rows, 'is_array'),
+            ));
+        }
+
+        return $kept;
     }
 }

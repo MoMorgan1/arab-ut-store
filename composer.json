@@ -45,7 +45,8 @@
         "files": [
             "tests/Feature/Admin/StaffFixtures.php",
             "tests/Feature/Checkout/CouponFixtures.php",
-            "tests/Support/CoinsPricingPayloads.php"
+            "tests/Support/CoinsPricingPayloads.php",
+            "tests/Support/PlacementFixtures.php"
         ]
     },
     "scripts": {

@@ -2,12 +2,12 @@
 
 namespace App\Actions\Checkout;
 
+use App\Actions\Fulfillment\EnqueueOrderPlacement;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\Checkout\CheckoutUnavailable;
-use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
@@ -16,12 +16,12 @@ use App\Services\Payments\PaymentManager;
 use App\Support\OrderClosingNote;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final readonly class ReconcilePaylinkPayment
 {
     public function __construct(
         private PaymentManager $payments,
+        private EnqueueOrderPlacement $enqueueOrderPlacement,
         private ReleaseOrderWalletFunds $releaseOrderWalletFunds,
     ) {}
 
@@ -74,25 +74,7 @@ final readonly class ReconcilePaylinkPayment
                         'status' => OrderStatusHistoryStatus::Received,
                         'metadata' => ['source' => 'paylink'],
                     ]);
-                    IntegrationEvent::create([
-                        'event_id' => (string) Str::ulid(),
-                        'event_type' => 'order.paid',
-                        'aggregate_type' => 'order',
-                        'aggregate_id' => $order->public_id,
-                        'schema_version' => 1,
-                        'payload' => [
-                            'order_public_id' => $order->public_id,
-                            'order_number' => $order->order_number,
-                            'locale' => $order->locale,
-                            'currency' => $order->currency,
-                            'total_halalah' => $order->total_halalah,
-                            'item_count' => $order->items()->count(),
-                        ],
-                        'status' => 'pending',
-                        'idempotency_key' => 'order-paid:'.$order->id,
-                        'attempts' => 0,
-                        'available_at' => now(),
-                    ]);
+                    $this->enqueueOrderPlacement->execute($order);
 
                     // Guarded by the PendingPayment check above, so a repeated
                     // reconciliation cannot send the receipt twice.

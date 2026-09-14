@@ -3,6 +3,7 @@
 namespace App\Actions\Checkout;
 
 use App\Actions\Cart\RepriceCart;
+use App\Actions\Fulfillment\EnqueueOrderPlacement;
 use App\Checkout\AppliedCoupon;
 use App\Checkout\CheckoutResult;
 use App\Checkout\DiscountEngine;
@@ -32,7 +33,6 @@ use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\FulfillmentAttachment;
 use App\Models\IdempotencyKey;
-use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\OrderItemSecret;
 use App\Models\Payment;
@@ -65,6 +65,7 @@ final readonly class PlaceOrder
         private PromotionPricing $promotionPricing,
         private DiscountEngine $discountEngine,
         private WalletLedgerWriter $walletLedgerWriter,
+        private EnqueueOrderPlacement $enqueueOrderPlacement,
     ) {}
 
     /**
@@ -329,25 +330,7 @@ final readonly class PlaceOrder
                 'status' => OrderStatusHistoryStatus::Received,
                 'metadata' => ['source' => 'wallet'],
             ]);
-            IntegrationEvent::create([
-                'event_id' => (string) Str::ulid(),
-                'event_type' => 'order.paid',
-                'aggregate_type' => 'order',
-                'aggregate_id' => $order->public_id,
-                'schema_version' => 1,
-                'payload' => [
-                    'order_public_id' => $order->public_id,
-                    'order_number' => $order->order_number,
-                    'locale' => $order->locale,
-                    'currency' => $order->currency,
-                    'total_halalah' => $order->total_halalah,
-                    'item_count' => $order->items()->count(),
-                ],
-                'status' => 'pending',
-                'idempotency_key' => 'order-paid:'.$order->id,
-                'attempts' => 0,
-                'available_at' => now(),
-            ]);
+            $this->enqueueOrderPlacement->execute($order);
 
             // A wallet-covered order is paid the moment it is placed, so the
             // receipt belongs here. Queued after commit: the mail server must

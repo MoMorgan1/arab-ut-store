@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property array<string, mixed> $payload
+ */
 class IntegrationEvent extends DomainModel
 {
     /** @return array<string, string> */

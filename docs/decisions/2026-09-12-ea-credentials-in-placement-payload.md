@@ -86,3 +86,11 @@ enforces.
 
 The unbuilt credential boundary stays unbuilt; `docs/api/paylink-checkout-v1.md` should no longer
 be read as describing a planned endpoint.
+
+---
+
+Implemented 2026-09-14 (B4): `ComposePlacementRequest` reads and decrypts the account at send
+time, writes one `secret_access_logs` row per read with purpose `fulfillment_placement`, and the
+outbox row (`integration_events.payload`) carries identifiers only. A retried send re-reads the
+current version. The n8n retention condition above is still unverified on the deployed instance;
+`N8N_ORDER_PAID_*` stay unset in production until it is.
