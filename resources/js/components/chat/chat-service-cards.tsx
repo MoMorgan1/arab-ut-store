@@ -104,7 +104,7 @@ export function ChatServiceCards({
                             </span>
                         </span>
 
-                        <span className="flex items-center justify-center gap-1 rounded-xl bg-[var(--chat-tint)] px-3 py-2 text-[13px] font-semibold text-[var(--chat-accent-ink)]">
+                        <span className="chat-btn chat-btn--quiet flex items-center justify-center gap-1 px-3 py-2 text-[13px] font-semibold">
                             {card.cta}
                             <Arrow
                                 aria-hidden="true"
