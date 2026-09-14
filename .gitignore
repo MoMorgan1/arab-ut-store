@@ -44,3 +44,7 @@ yarn-error.log
 /tools/canvas-verify.mjs
 /tools/canvas-details.mjs
 /tools/probe-*.mjs
+
+# The seeded design-canvas payload: ~2 MiB of editor code regenerated from the
+# .dc.html artboards beside it, and republished rather than read from the repo.
+docs/design/**/manual-order.html

@@ -1,0 +1,90 @@
+{
+  "artboards": [
+    {
+      "file": "OrdersPhone.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Orders list (390)"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 510,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "New order drawer (390)"
+    },
+    {
+      "file": "OrdersDesktop.dc.html",
+      "x": 1020,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Orders + drawer (1440)"
+    },
+    {
+      "file": "DrawerWide.dc.html",
+      "x": 2580,
+      "y": 0,
+      "w": 672,
+      "h": 900,
+      "title": "Drawer widened to 672"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "why-a-drawer",
+      "x": 0,
+      "y": -230,
+      "w": 390,
+      "text": "Owner decision, 2026-09-13: the manual order lives inside /admin/orders, not on a screen of its own.\n\nThe store already had the pattern: the coupons screen creates and edits a 20-field record through a Sheet drawer opened from its own toolbar. This extends that vocabulary instead of adding a second way to do the same thing."
+    },
+    {
+      "id": "interactive",
+      "x": 510,
+      "y": -230,
+      "w": 390,
+      "text": "This artboard has working controls - press Bank transfer / Gift and the two delivery choices.\n\nThe branching IS the design: a gift has no amount and no reference, so that group is absent rather than greyed out; \"placed by hand\" asks for a supplier reference per item and makes the EA password optional, because you already signed in yourself.\n\nPlaced by hand is the default - it is what actually happens most of the time.\n\nValues are sample data."
+    },
+    {
+      "id": "matched",
+      "x": 1020,
+      "y": -230,
+      "w": 620,
+      "text": "Matched to the shipped dashboard, values lifted from source, not eyeballed: background #080705, card #14110e, gold #d4a843, muted #a89880, borders rgb(212 168 67 / 16%), inputs rgb(212 168 67 / 20%), 6px radii, 36px controls, Instrument Sans (resources/css/app.css: html.admin-document). Admin is English-only - owner decision, 2026-08-21.\n\nPhone controls are raised to 44px, which the project requires of anything a finger presses; desktop keeps the dashboard's 36px.\n\nThe vocabulary this settled is written down in CONTEXT.md."
+    },
+    {
+      "id": "width-question",
+      "x": 2580,
+      "y": -230,
+      "w": 672,
+      "text": "384 is settled (owner, 2026-09-13): keep the coupon drawer's width, no exception.\n\nOne consequence worth seeing: that choice was made assuming one item, and a manual order takes several. Two items in a 384 column is the long scroll on the left. This 672 version stays here as the fallback if the narrow one turns out to be tiring in use - it is a one-line change either way."
+    },
+    {
+      "id": "behind-the-screen",
+      "x": 0,
+      "y": 950,
+      "w": 900,
+      "text": "WHAT IT COSTS BEHIND THE SCREEN - corrected 2026-09-13 after reading the code rather than the plan.\n\nIT CANNOT REUSE PlaceOrder. The plan said it would, and that was wrong. PlaceOrder requires an active cart (:149), a verified phone (:90), a live reprice (:175), a 5 SAR Paylink minimum (:250), and it always creates a payment (:313). A manual order has no cart, may be for an imported customer whose phone was never verified, carries an overridable price, and as a gift has a zero total and no payment. Five of those six are refusals, not preferences. So G1 writes its own action and reuses the pieces: OrderNumber::generate(), the createOrderItem() field shape, the idempotency-claim pattern, and effectivePriceHalalah() for the suggested price. ADR: docs/decisions/2026-09-13-manual-order-does-not-reuse-place-order.md\n\nCASHBACK NEEDS NO CODE. A gift has a zero total and no payment, so AccrueOrderCashback computes basis = max(0, total - wallet) = 0 and awards nothing (AccrueOrderCashback.php:74). A transfer accrues normally. The owner's rule is satisfied by arithmetic - no gift gate, no new channel value.\n\nONE FEATURE, NOT TWO. A manual order and a bare supplier link are the same screen: fulfillment_jobs.order_item_id is NOT NULL and unique, so a link with no store order has nowhere to live, and there is at most one job per item. The unique(supplier, supplier_order_id) index also means the same reference cannot be pasted onto two orders - the database refuses it.\n\nWHAT IT NEEDS: orders.channel gains 'manual' (a plain indexed string today, no enum, values 'store' and 'salla_import'); a payment provider for a bank transfer (provider is a free string, 'wallet' and 'paylink' exist); an orders.create permission, which AdminServiceProvider registers automatically and AdminAccess::STAFF must list for support; and fulfillment_jobs.delivery_phase, which does NOT exist on main - the tracking branch's migration adds it, so G1 waits on that branch either way."
+    },
+    {
+      "id": "still-open",
+      "x": 1020,
+      "y": 950,
+      "w": 620,
+      "text": "SETTLED IN THE GRILLING, 2026-09-13\n\nSeveral items per order - yes, so the item card repeats.\nOne supplier reference PER ITEM, not per order.\nThe customer must already exist; a new one is created on the customers page.\nEA email required, password and backup codes optional.\nPrice suggested from the catalogue, overridable, difference recorded.\nNo wallet payment in version one.\nSupport staff may create orders, gifts included; every creation is audited with who did it.\nA customer with an unverified phone can still be given a manual order.\nNo automatic WhatsApp: the order appears in the account, and you copy the tracking link and send it yourself.\nA gift is 'manual + zero total'. No new column, no new channel value."
+    },
+    {
+      "id": "not-done",
+      "x": 1700,
+      "y": 950,
+      "w": 620,
+      "text": "WHAT I DID NOT DO, AND WHY\n\nA channel column in the orders table. I drew one; the shipped table has none (ListAdminOrders selects no such column) and the owner is right that it earns nothing - every old order is an import and a manual order is rare. Removed.\n\nA separate /admin/orders/new page. The store already creates a 20-field coupon in a drawer from its list screen, so a page would be a second way to do the same thing.\n\nA multi-step wizard. Steps are for a sequence you cannot see the end of. This is groups you can scroll, and a wizard would hide the total behind a Next button.\n\nAdd a customer inside the drawer. The customer almost always exists, so the drawer searches and nothing more.\n\nA new navigation item. A manual order is an order; it belongs in the orders list."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

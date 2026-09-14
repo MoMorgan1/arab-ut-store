@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+    body {
+      margin: 0;
+      background: #080705;
+      color: #ede4d0;
+      font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: #d4a843; text-decoration: none; }
+    a:hover { color: #e4b756; }
+
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+    .num { font-variant-numeric: tabular-nums; }
+
+    .pill { border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 500; }
+
+    th {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgb(212 168 67 / 16%);
+      font-size: 12px;
+      font-weight: 500;
+      color: #a89880;
+      text-align: start;
+    }
+
+    td { padding: 12px 16px; font-size: 14px; }
+  </style>
+</helmet>
+
+<div style="display: flex; min-height: 900px; background: #080705">
+
+  <!-- Sidebar, as the dashboard ships it -->
+  <div style="flex: 0 0 auto; width: 216px; padding: 20px 12px; border-inline-end: 1px solid rgb(212 168 67 / 16%); background: #0d0b08">
+    <div style="padding: 0 8px; margin-bottom: 20px; font-size: 14px; font-weight: 700; letter-spacing: 0.02em; color: #e4b756">Arab UT</div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="5">
+        <div style="padding: 9px 8px; border-radius: 6px; font-size: 14px; background: {{ item.wash }}; color: {{ item.tone }}">{{ item.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- Page -->
+  <div style="flex-grow: 1; padding: 24px; min-width: 0">
+    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px">
+      <div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #ede4d0">Orders</h1>
+        <p style="margin: 4px 0 0; font-size: 14px; color: #a89880">View and filter all customer orders across services and platforms.</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <button style="display: flex; align-items: center; height: 36px; padding: 0 16px; border: 1px solid rgb(212 168 67 / 20%); border-radius: 6px; font-size: 14px; font-weight: 500; color: #ede4d0">Export CSV</button>
+        <button style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 6px; background: #d4a843; color: #080705; font-size: 14px; font-weight: 600">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          New order
+        </button>
+      </div>
+    </div>
+
+    <div style="overflow: hidden; border: 1px solid rgb(212 168 67 / 16%); border-radius: 6px; background: #14110e">
+      <table style="width: 100%; border-collapse: collapse">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th style="text-align: end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
+            <tr>
+              <td style="font-family: ui-monospace, SFMono-Regular, monospace; color: #ede4d0; border-bottom: 1px solid rgb(212 168 67 / 8%)">{{ row.number }}</td>
+              <td style="color: #a89880; border-bottom: 1px solid rgb(212 168 67 / 8%)">{{ row.customer }}</td>
+              <td style="border-bottom: 1px solid rgb(212 168 67 / 8%)">
+                <span class="pill" style="color: {{ row.tone }}; background: {{ row.wash }}">{{ row.status }}</span>
+              </td>
+              <td class="num" style="text-align: end; font-weight: 500; color: #ede4d0; border-bottom: 1px solid rgb(212 168 67 / 8%)">{{ row.total }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- The drawer, at the width the Sheet primitive ships: sm:max-w-sm = 384px -->
+  <div style="flex: 0 0 auto; width: 384px; padding: 16px; border-inline-start: 1px solid rgb(212 168 67 / 16%); background: #14110e">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+      <div>
+        <h2 style="margin: 0; font-size: 16px; font-weight: 600; color: #ede4d0">New order</h2>
+        <p style="margin: 3px 0 0; font-size: 12px; line-height: 1.5; color: #a89880">A real order on the customer's account.</p>
+      </div>
+      <button style="display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 6px; color: #a89880" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 16px">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid rgb(212 168 67 / 20%); border-radius: 6px">
+        <div style="height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: #d4a843; color: #080705; font-size: 14px; font-weight: 600">Bank transfer</div>
+        <div style="height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 14px; color: #a89880">Gift</div>
+      </div>
+      <div style="height: 36px; border: 1px solid rgb(212 168 67 / 20%); border-radius: 6px"></div>
+      <div style="height: 132px; border: 1px solid rgb(212 168 67 / 16%); border-radius: 6px; background: #080705"></div>
+      <div style="height: 108px; border: 1px solid rgb(212 168 67 / 16%); border-radius: 6px; background: #080705"></div>
+      <p style="margin: 0; font-size: 11px; color: #a89880">&hellip; two more groups below the fold</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const on = { wash: 'rgb(212 168 67 / 12%)', tone: '#e4b756' };
+    const off = { wash: 'transparent', tone: '#a89880' };
+    const success = { tone: '#67e89a', wash: 'rgb(103 232 154 / 12%)' };
+    const warning = { tone: '#e4b756', wash: 'rgb(228 183 86 / 12%)' };
+
+    return {
+      nav: [
+        { label: 'Overview', ...off },
+        { label: 'Orders', ...on },
+        { label: 'Customers', ...off },
+        { label: 'Products', ...off },
+        { label: 'Marketing', ...off },
+        { label: 'Conversations', ...off },
+      ],
+      rows: [
+        { number: '277538068', customer: 'Salla import', status: 'Completed', total: '450.00', ...success },
+        { number: 'AUT-1043', customer: 'Faisal A.', status: 'In progress', total: '300.00', ...warning },
+        { number: '277486750', customer: 'Salla import', status: 'Completed', total: '120.00', ...success },
+        { number: 'AUT-1042', customer: 'Noura S.', status: 'In progress', total: '0.00', ...warning },
+        { number: '277471253', customer: 'Salla import', status: 'Completed', total: '260.00', ...success },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

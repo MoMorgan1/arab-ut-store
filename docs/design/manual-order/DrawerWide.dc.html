@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+    body {
+      margin: 0;
+      background: #14110e;
+      color: #ede4d0;
+      font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: #d4a843; text-decoration: none; }
+    a:hover { color: #e4b756; }
+
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+    .grp { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a89880; }
+    .lbl { display: block; margin-bottom: 5px; font-size: 12px; color: #a89880; }
+    .hint { margin: 0; font-size: 11px; line-height: 1.55; color: #a89880; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    .field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid rgb(212 168 67 / 20%);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .card {
+      border: 1px solid rgb(212 168 67 / 16%);
+      border-radius: 6px;
+      background: #080705;
+      padding: 12px;
+    }
+
+    .seg {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid rgb(212 168 67 / 20%);
+      border-radius: 6px;
+    }
+
+    .seg div {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #a89880;
+    }
+
+    .seg div[data-on='true'] { background: #d4a843; color: #080705; font-weight: 600; }
+  </style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; min-height: 900px; padding: 20px; background: #14110e">
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid rgb(212 168 67 / 16%)">
+    <div>
+      <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #ede4d0">New order</h2>
+      <p style="margin: 4px 0 0; font-size: 13px; color: #a89880">Bank transfer &middot; Faisal Alharbi</p>
+    </div>
+    <button style="display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 6px; color: #a89880" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+    </button>
+  </div>
+
+  <!-- 672px is where two columns fit, so the whole form is visible at once -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; flex-grow: 1; padding-top: 20px">
+
+    <div style="display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="grp">Type</span>
+        <div class="seg">
+          <div data-on="true">Bank transfer</div>
+          <div data-on="false">Gift</div>
+        </div>
+        <p class="hint" style="color: #67e89a">Earns cashback and loyalty. A gift does not.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="grp">Customer</span>
+        <div class="card" style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <span>
+            <span style="display: block; font-size: 14px; color: #ede4d0">Faisal Alharbi</span>
+            <span style="display: block; margin-top: 2px; font-size: 12px; color: #a89880">+966 55 512 4408 &middot; 6 orders</span>
+          </span>
+          <button style="font-size: 12px; color: #d4a843">Change</button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="grp">Payment received</span>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <div>
+              <label class="lbl">Amount</label>
+              <div class="field"><span class="num">300.00</span><span style="font-size: 12px; color: #a89880">SAR</span></div>
+            </div>
+            <div>
+              <label class="lbl">Received on</label>
+              <div class="field"><span>13/09/2026</span></div>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">Transfer reference</label>
+            <div class="field" style="justify-content: flex-start"><span style="font-family: ui-monospace, SFMono-Regular, monospace">FT2609134471</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="grp">EA account</span>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+          <div>
+            <label class="lbl">Email</label>
+            <div class="field" style="justify-content: flex-start"><span>faisal@example.com</span></div>
+          </div>
+          <div>
+            <label class="lbl">Password</label>
+            <div class="field"><span style="letter-spacing: 0.18em">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span><span style="font-size: 12px; color: #a89880">Show</span></div>
+          </div>
+          <p class="hint">Stored encrypted on the item. Never in the payload, the audit record or a log line.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span class="grp">Item 1</span>
+          <button style="font-size: 11px; color: #ffb4a9">Remove</button>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+          <div>
+            <label class="lbl">Service</label>
+            <div class="field"><span>Coins</span><svg style="color: #a89880" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg></div>
+          </div>
+          <div>
+            <label class="lbl">Platform</label>
+            <div class="seg"><div data-on="true">PS / Xbox</div><div data-on="false">PC</div></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <div>
+              <label class="lbl">Quantity (K)</label>
+              <div class="field"><span class="num">1250</span></div>
+            </div>
+            <div>
+              <label class="lbl">Unit price</label>
+              <div class="field"><span class="num">300.00</span><span style="font-size: 12px; color: #a89880">SAR</span></div>
+            </div>
+          </div>
+        </div>
+        <button style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 36px; border: 1px solid rgb(212 168 67 / 20%); border-radius: 6px; font-size: 14px; font-weight: 500; color: #ede4d0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          Add another item
+        </button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="grp">Delivery</span>
+        <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid #d4a843; border-radius: 6px; background: rgb(212 168 67 / 7%)">
+          <span style="display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 16px; height: 16px; margin-top: 2px; border: 1px solid #d4a843; border-radius: 999px">
+            <span style="width: 8px; height: 8px; border-radius: 999px; background: #d4a843"></span>
+          </span>
+          <span>
+            <span style="display: block; font-size: 14px; font-weight: 500; color: #ede4d0">Send it to the supplier</span>
+            <span style="display: block; margin-top: 3px; font-size: 12px; line-height: 1.5; color: #a89880">Runs the same fulfillment path as a paid order.</span>
+          </span>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid rgb(212 168 67 / 20%); border-radius: 6px">
+          <span style="flex: 0 0 auto; width: 16px; height: 16px; margin-top: 2px; border: 1px solid rgb(212 168 67 / 40%); border-radius: 999px"></span>
+          <span style="display: block; font-size: 14px; font-weight: 500; color: #ede4d0">I already placed it by hand</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 16px; margin-top: 4px; border-top: 1px solid rgb(212 168 67 / 16%)">
+    <p class="hint" style="max-width: 46ch">Creating this records who created it, when, and every field above except the EA credentials.</p>
+    <div style="display: flex; align-items: center; gap: 16px">
+      <span class="num" style="font-size: 16px; font-weight: 600; color: #ede4d0">300.00 SAR</span>
+      <button style="height: 36px; padding: 0 20px; border-radius: 6px; background: #d4a843; color: #080705; font-size: 14px; font-weight: 600">Create order</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":672,"height":900}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>
