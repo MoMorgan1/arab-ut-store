@@ -26,8 +26,10 @@ try {
         'shouldStart' => $claim->shouldStart,
         'hasPendingMessages' => $claim->hasPendingMessages,
     ], JSON_THROW_ON_ERROR);
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent agent turn claim failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent agent turn claim failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

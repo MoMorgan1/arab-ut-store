@@ -45,8 +45,10 @@ try {
 
     Artisan::call('agent:recover-stale-turns');
     echo Artisan::output();
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent stale agent turn recovery failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent stale agent turn recovery failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

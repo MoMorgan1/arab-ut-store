@@ -38,8 +38,10 @@ try {
 
     Artisan::call('chat:maintain-conversations');
     echo Artisan::output();
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent chat maintenance failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent chat maintenance failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }

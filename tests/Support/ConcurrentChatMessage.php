@@ -52,8 +52,10 @@ try {
     echo json_encode(['status' => 'conversation_closed'], JSON_THROW_ON_ERROR);
 } catch (ModelNotFoundException) {
     echo json_encode(['status' => 'conversation_not_found'], JSON_THROW_ON_ERROR);
-} catch (Throwable) {
-    fwrite(STDERR, 'Concurrent chat message failed.');
+} catch (Throwable $failure) {
+    fwrite(STDERR, 'Concurrent chat message failed.'.PHP_EOL);
+    fwrite(STDERR, $failure::class.': '.$failure->getMessage().PHP_EOL);
+    fwrite(STDERR, $failure->getTraceAsString().PHP_EOL);
 
     exit(1);
 }
