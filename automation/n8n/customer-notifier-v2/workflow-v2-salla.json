@@ -1,0 +1,239 @@
+{
+  "name": "Customer Notifier",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "70a10cfe-3f7d-4bfa-8fb7-786d8067adc6",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        -512
+      ],
+      "id": "25a2e079-0469-4e30-974f-76845e3e7443",
+      "name": "status-update",
+      "webhookId": "70a10cfe-3f7d-4bfa-8fb7-786d8067adc6"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════════\n// CUSTOMER NOTIFIER v2 — Salla order.status.updated → WhatsApp للعميل\n// v2 (2026-07-04): تجاهل بدون أخطاء، منع التكرار عبر ذاكرة الوركفلو،\n// الكمية تُحسب مع quantity، رسائل معاد صياغتها (ودّية + احترافية).\n// ملاحظة: منع التكرار يعمل في التشغيل الحقيقي فقط (وليس في Test workflow).\n// ═══════════════════════════════════════════════════════════════════\nconst inputJson = $input.all()[0]?.json || {};\nconst body = inputJson.body || inputJson;\n\nconst skip = (reason) => [{ json: { shouldSend: false, skipReason: reason } }];\n\nif (body.event !== 'order.status.updated') return skip('event: ' + (body.event || 'unknown'));\n\nconst statusData = body.data || {};\nconst orderData = statusData.order;\nif (!orderData) return skip('no order data');\n\nconst orderRefId = orderData.reference_id || orderData.id;\nconst statusName = (statusData.customized?.name || statusData.status || orderData.status?.customized?.name || orderData.status?.name || '').trim();\nif (!statusName) return skip('no status name');\n\n// ── رقم الجوال ──\nlet finalMobile = '';\nconst customerMobile = (orderData.customer?.mobile || '').toString().trim();\nif (customerMobile.startsWith('+') || customerMobile.startsWith('00')) {\n  finalMobile = customerMobile.replace('+', '').replace(/^00/, '');\n} else {\n  let mobileCode = (orderData.customer?.mobile_code || '').replace('+', '');\n  let mobileNum = customerMobile;\n  if (mobileNum.startsWith('0')) mobileNum = mobileNum.substring(1);\n  finalMobile = mobileCode + mobileNum;\n}\nfinalMobile = finalMobile.replace(/\\D/g, '');\nif (finalMobile.length < 9) return skip('no valid mobile');\n\n// ── تحليل المنتجات والكمية (v2: الكمية × quantity) ──\nconst allItems = orderData.items || [];\nlet amountK = 0;\nlet productNames = [];\nlet properLink = '';\nfor (const itm of allItems) {\n  const s = (itm.sku || '').toUpperCase();\n  const n = (itm.name || '').toLowerCase();\n  const qty = Number(itm.quantity) || 1;\n  for (const opt of (itm.options || [])) {\n    if ((opt.name || '').includes('الكمية') || (opt.name || '').includes('Amount')) {\n      const valStr = (typeof opt.value === 'object' && opt.value !== null) ? String(opt.value.name || '') : String(opt.value || '');\n      const match = valStr.replace(/,/g, '').match(/(\\d+(\\.\\d+)?)/);\n      if (match) {\n        let num = parseFloat(match[0]);\n        if (valStr.includes('مليون')) num *= 1000;\n        amountK += num * qty;\n      }\n    }\n  }\n  if (s.includes('COIN') || n.includes('كوينز')) { productNames.push(itm.name); properLink = `https://track.arab-ut.com/?id=${orderRefId}`; }\n  else if (s.includes('FUT')) { productNames.push(itm.name); }\n  else if (s.includes('RIVALS')) { productNames.push(itm.name); }\n  else if (s.includes('SBC')) { productNames.push(itm.name); properLink = `https://track.arab-ut.com/?id=${orderRefId}`; }\n}\nconst productName = productNames.length ? productNames.join(' و ') : 'طلبك';\n\nlet amountText = '';\nif (amountK >= 1000) amountText = `${Math.round((amountK / 1000) * 100) / 100} مليون`;\nelse if (amountK > 0) amountText = `${amountK} ألف`;\n\n// ── العناصر المشتركة ──\nconst customerName = orderData.customer?.full_name || orderData.customer?.name || orderData.customer?.first_name || '';\nconst firstName = customerName ? customerName.trim().split(/\\s+/)[0] : '';\nconst msgHeader = firstName ? `أهلاً ${firstName} 👋` : 'أهلاً بك 👋';\n\nconst trackSection = properLink ? `\\n\\n📝 تابع تفاصيل طلبك من هنا:\\n${properLink}` : '';\n// رابط الطلب — العميل يصلّح المشكلة ثم يضغط «تشغيل الطلب» بنفسه (بدل ما يرد \"تم\")\nconst resumeLink = `https://track.arab-ut.com/?id=${orderRefId}`;\nconst editSteps = `2️⃣ افتح رابط طلبك، عدّل البيانات، ثم اضغط زر «تشغيل الطلب» وبيكمل تلقائياً:\\n${resumeLink}`;\n\nconst postCoinsRules = `⚠️ تعليمات مهمة بعد الشحن:\\n1️⃣ لا تشحن كوينز من أي مصدر آخر ولا تنقل كوينز خارج حسابك.\\n2️⃣ ننصح بتغيير كلمة مرور حساب EA الآن.\\n\\n🔴 المتجر غير مسؤول في حال عدم الالتزام بالتعليمات.`;\nconst successFooter = `شكراً لثقتك ❤️ تقييمك يفرّق معنا ⭐\\nhttps://arab-ut.com/orders\\n\\nعشان ما تفوتك العروض وتوزيعات الكوينز المجانية، انضم لقناتنا 👇\\nhttps://whatsapp.com/channel/0029Vb78lrKC6ZvnWN1z7t2h`;\n\n// ── منطق الرسائل ──\nlet msgBody = '';\nlet sendWhatsApp = true;\n\nif (statusName.includes('تم الانتهاء') || statusName.includes('بالرانك المطلوب') || statusName.includes('تم شحن') || statusName.includes('تم الشحن')) {\n  const hasCoins = productName.includes('كوينز');\n  const hasService = productName.includes('تحدي') || productName.includes('فوت') || productName.includes('رايفلز') || productName.toUpperCase().includes('SBC');\n  const serviceLabel = productNames.filter(p => !(p || '').includes('كوينز')).join(' و ') || productName;\n  const coinsPart = hasCoins ? `🎉 تم شحن ${amountText ? amountText + ' ' : ''}كوينز بنجاح — طلب #${orderRefId}\\n\\n${postCoinsRules}` : '';\n  const svcPart = hasService ? `✅ تم تنفيذ طلبك (${serviceLabel}) بنجاح — طلب #${orderRefId}\\n\\nنتمنى لك حظاً موفقاً في الجوائز 🎁\\n🔒 لأمان حسابك: غيّر كلمة مرور حساب EA الآن.` : '';\n  if (coinsPart && svcPart) msgBody = `${coinsPart}\\n\\n${svcPart}\\n\\n${successFooter}`;\n  else if (coinsPart) msgBody = `${coinsPart}\\n\\n${successFooter}`;\n  else if (svcPart) msgBody = `${svcPart}\\n\\n${successFooter}`;\n  else msgBody = `✅ تم تنفيذ طلبك (${productName}) بنجاح — طلب #${orderRefId}\\n\\n🔒 لأمان حسابك: غيّر كلمة مرور حساب EA الآن.\\n\\n${successFooter}`;\n}\nelse if (statusName.includes('جاري شحن الكوينز')) {\n  msgBody = `🚀 بدأنا شحن الكوينز — طلب #${orderRefId}\\n\\n⚠️ مهم جداً: لا تدخل على حسابك نهائياً حتى تصلك رسالة الانتهاء — الدخول أثناء الشحن يوقف العملية.${trackSection}`;\n}\nelse if (statusName.includes('ارسال بيانات الحساب للمحترف') || statusName.includes('جاري الانتهاء من التحدي')) {\n  msgBody = `👨‍💻 المختص استلم طلبك (${productName}) — طلب #${orderRefId}\\n\\nجاري العمل عليه الآن، وبنرسل لك فور الانتهاء.${trackSection}`;\n}\nelse if (statusName.includes('ايميل') || statusName.includes('باسورد')) {\n  msgBody = `❌ ما قدرنا ندخل على حساب EA — طلب #${orderRefId}\\n\\nبيانات الدخول (الإيميل أو كلمة المرور) غير صحيحة.\\n\\nالمطلوب:\\n1️⃣ تأكد من الإيميل وكلمة المرور (جرّب تدخل بنفسك مرة للتأكد).\\n${editSteps}`;\n}\nelse if (statusName.includes('كمية') && statusName.includes('قليلة')) {\n  msgBody = `⚠️ رصيد الكوينز في حسابك غير كافي — طلب #${orderRefId}\\n\\nلبدء النقل الآمن لازم يتوفر في حسابك 6000 كوينز على الأقل.\\n\\nالمطلوب:\\n1️⃣ وفّر المبلغ (العب مباراة أو بِع لاعب من النادي).\\n2️⃣ بعدها افتح رابط طلبك واضغط زر «تشغيل الطلب» وبيكمل تلقائياً:\\n${resumeLink}`;\n}\nelse if (statusName.includes('مسجل الدخول')) {\n  msgBody = `⚠️ الحساب مسجّل دخول — طلب #${orderRefId}\\n\\nما نقدر نبدأ شغل وأنت متصل بالحساب.\\n\\nالحل السريع:\\n1️⃣ ادخل اللعبة من جهازك.\\n2️⃣ ادخل الألتميت تيم (Ultimate Team).\\n3️⃣ اطلع للقائمة الرئيسية بشكل نظامي.\\n4️⃣ تأكد إنك مقفّل تطبيق الجوال (Companion App) تماماً.\\n\\nوبعدها افتح رابط طلبك واضغط زر «تشغيل الطلب» وفالك التوفيق:\\n${resumeLink}`;\n}\nelse if (statusName.includes('منصة')) {\n  msgBody = `🛑 المنصة المختارة غير مطابقة — طلب #${orderRefId}\\n\\nيبدو أنك اخترت منصة (سوني / إكس بوكس / PC) مختلفة عن منصة حسابك الفعلية.\\n\\nالمطلوب:\\n1️⃣ تأكد من منصة حسابك.\\n${editSteps}`;\n}\nelse if (statusName.includes('مقفول') || statusName.includes('سوق')) {\n  msgBody = `⛔ سوق الانتقالات غير متاح في حسابك — طلب #${orderRefId}\\n\\nحسابك ما زال بدون صلاحية السوق في تطبيق/ويب الألتيميت تيم (تفتحها EA عادة بعد ساعات لعب كافية داخل اللعبة).\\n\\nالمطلوب:\\n1️⃣ افتح السوق من داخل اللعبة أولاً.\\n2️⃣ بعدها افتح رابط طلبك واضغط زر «تشغيل الطلب» وبيكمل تلقائياً:\\n${resumeLink}`;\n}\nelse if (statusName.includes('أكواد')) {\n  msgBody = `❌ الأكواد الاحتياطية غير صحيحة — طلب #${orderRefId}\\n\\nالمطلوب:\\n1️⃣ استخرج أكواد جديدة وتأكد أنها باللون الأسود (غير مستخدمة).\\n2️⃣ افتح رابط طلبك، حدّث الأكواد، ثم اضغط زر «تشغيل الطلب»:\\n${resumeLink}\\n\\n🎥 طريقة الاستخراج:\\nhttps://arab-ut.com/ea-backup-codes-guide/page-699997932`;\n}\nelse if (statusName.includes('ملغي') || statusName.includes('ملغى') || statusName.includes('إلغاء') || statusName.includes('مسترجع') || statusName.includes('استرجاع') || statusName.includes('الإسترجاع')) {\n  msgBody = `🛑 تحديث بخصوص طلبك #${orderRefId}\\n\\nتم إلغاء الطلب أو استرجاعه.\\nتقدر تشوف تفاصيل الطلب والمبلغ من صفحة طلبك:\\n${resumeLink}`;\n}\nelse {\n  // قيد التنفيذ / تم التنفيذ / جاري التوصيل / أي حالة غير معروفة → لا رسالة\n  sendWhatsApp = false;\n}\n\nif (!sendWhatsApp) return skip('status not notifiable: ' + statusName);\n\n// ── منع التكرار: نفس الطلب + نفس الحالة خلال 6 ساعات → رسالة واحدة فقط ──\ntry {\n  const sd = $getWorkflowStaticData('global');\n  sd.sentLog = sd.sentLog || {};\n  const now = Date.now();\n  for (const k of Object.keys(sd.sentLog)) {\n    if (now - sd.sentLog[k] > 48 * 3600 * 1000) delete sd.sentLog[k];\n  }\n  const dedupKey = `${orderData.id || orderRefId}|${statusName}`;\n  if (sd.sentLog[dedupKey] && now - sd.sentLog[dedupKey] < 6 * 3600 * 1000) {\n    return skip('duplicate: ' + dedupKey);\n  }\n  sd.sentLog[dedupKey] = now;\n} catch (e) {}\n\nconst finalMessage = `${msgHeader}\\n\\n${msgBody}`;\n\nreturn [{ json: {\n  mobile: finalMobile,\n  message: finalMessage,\n  shouldSend: true,\n  orderId: orderRefId,\n  statusName,\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -512
+      ],
+      "id": "f96ea3e7-2750-4d56-b089-26518104dc9d",
+      "name": "Build Customer Message"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2c56da52-e760-46d2-8d5b-47a40c66f835",
+              "leftValue": "={{ $json.shouldSend }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        -512
+      ],
+      "id": "a09052e4-d6ec-4951-9e17-d8af153e4a7b",
+      "name": "Should Send?"
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 5) + 1 }}"
+      },
+      "id": "b155570e-314d-440c-b533-8a9c0cf26f3b",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        -512
+      ],
+      "webhookId": "8617ecb2-033b-4ec7-8adf-006d7dce969e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gate.whapi.cloud/messages/text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.mobile }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1824,
+        -512
+      ],
+      "id": "305f54d6-6f2e-4766-885a-3611f8d41968",
+      "name": "Send WA (Customer Notify)",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "cevHm5FqHO4eCdE0",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "sender_id",
+              "fieldValue": "={{ $('Build Customer Message').item.json.mobile }}"
+            },
+            {
+              "fieldId": "sender_type",
+              "fieldValue": "automation"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "DONE"
+            },
+            {
+              "fieldId": "response_sent_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            },
+            {
+              "fieldId": "message_text",
+              "fieldValue": "={{ $('Build Customer Message').item.json.message }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        -512
+      ],
+      "id": "22bc06d8-26ed-4c6c-a9c0-78091729b19a",
+      "name": "Log Message",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "80YiOGIOB3h8t8x3",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "status-update": {
+      "main": [
+        [
+          {
+            "node": "Build Customer Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Customer Message": {
+      "main": [
+        [
+          {
+            "node": "Should Send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Send?": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Send WA (Customer Notify)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WA (Customer Notify)": {
+      "main": [
+        [
+          {
+            "node": "Log Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "cf22be30-ebc4-424e-9294-b017cafe8b9f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3cececcd6153efcbc2981ed6742f9244b2549468da7874f536a04d19205d1844"
+  },
+  "id": "RdIcKsn2po89WOYrii704",
+  "tags": []
+}
