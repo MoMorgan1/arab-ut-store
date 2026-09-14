@@ -23,15 +23,84 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "config-n8n-order-paid-key",
+              "name": "N8N_ORDER_PAID_KEY",
+              "value": "CONFIGURE_N8N_ORDER_PAID_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-order-paid-secret",
+              "name": "N8N_ORDER_PAID_SECRET",
+              "value": "CONFIGURE_N8N_ORDER_PAID_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-fulfillment-key",
+              "name": "N8N_FULFILLMENT_KEY",
+              "value": "CONFIGURE_N8N_FULFILLMENT_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-fulfillment-secret",
+              "name": "N8N_FULFILLMENT_SECRET",
+              "value": "CONFIGURE_N8N_FULFILLMENT_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "config-fft-api-user",
+              "name": "FFT_API_USER",
+              "value": "CONFIGURE_FFT_API_USER",
+              "type": "string"
+            },
+            {
+              "id": "config-fft-api-key",
+              "name": "FFT_API_KEY",
+              "value": "CONFIGURE_FFT_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-utt-api-key",
+              "name": "UTT_API_KEY",
+              "value": "CONFIGURE_UTT_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-arabut-store-url",
+              "name": "ARABUT_STORE_URL",
+              "value": "CONFIGURE_ARABUT_STORE_URL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {
+          "includeBinary": true
+        }
+      },
+      "id": "config-ship-coins-v1",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        400
+      ],
+      "notes": "Paste the real values here after import - N8N_ORDER_PAID_KEY: the store's publisher identity, compared with X-ArabUT-Key; N8N_ORDER_PAID_SECRET: HMAC secret of the incoming request, 32+ characters, same value as on the store; N8N_FULFILLMENT_KEY: X-ArabUT-Key the store expects on the placement report; N8N_FULFILLMENT_SECRET: HMAC secret of the placement report, 32+ characters, same value as on the store; FFT_API_USER: FuTTransfer API user; FFT_API_KEY: FuTTransfer API key; UTT_API_KEY: UT Auto Transfer API key; ARABUT_STORE_URL: optional - leave the placeholder to use https://store.arab-ut.com. Keep \"Include Other Input Fields\" and \"Include Binary\" on."
+    },
+    {
+      "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\n// ship-coins v1 — the store's order.paid (schema 2) request, verified before\n// anything reads it. Every failure in this workflow THROWS: the Error Workflow\n// sends the Telegram alert and the store, seeing no acknowledgement, retries\n// with whatever is still unplaced. There is no in-flow failure rail.\n//\n// The signature covers the exact bytes the store sent (timestamp, event id and\n// raw body joined by newlines, HMAC-SHA256 with N8N_ORDER_PAID_SECRET), so the\n// Webhook node must run with \"Raw Body\" on. Verification reads those bytes and\n// never a re-serialised copy: PHP writes 1.0 where JavaScript writes 1, and\n// escapes Arabic where JavaScript does not.\n\nconst crypto = require('crypto');\n\nconst requiredEnv = [\n    'N8N_ORDER_PAID_KEY',\n    'N8N_ORDER_PAID_SECRET',\n    'N8N_FULFILLMENT_KEY',\n    'N8N_FULFILLMENT_SECRET',\n    'FFT_API_USER',\n    'FFT_API_KEY',\n    'UTT_API_KEY',\n];\nconst missingEnv = requiredEnv.filter((name) => !$env[name]);\nif (missingEnv.length) {\n    throw new Error(\n        `[verify] missing n8n environment variable(s): ${missingEnv.join(', ')}`,\n    );\n}\nif (String($env.N8N_ORDER_PAID_SECRET).length < 32) {\n    throw new Error('[verify] N8N_ORDER_PAID_SECRET is shorter than 32 characters');\n}\n\nconst item = $input.first();\nconst json = item.json || {};\nconst headers = json.headers || {};\n\nfunction header(name) {\n    const value = headers[name] ?? headers[name.toLowerCase()];\n    return String(Array.isArray(value) ? value[0] : value ?? '');\n}\n\nfunction equal(left, right) {\n    const a = Buffer.from(String(left), 'utf8');\n    const b = Buffer.from(String(right), 'utf8');\n    return a.length === b.length && crypto.timingSafeEqual(a, b);\n}\n\n// The raw body. In n8n's default (memory) binary mode the Webhook node hands\n// it over base64-encoded under binary.data.data; the filesystem mode hands a\n// file id instead, which the helper below resolves when it exists.\nasync function rawBody() {\n    const helpers = typeof this === 'object' && this !== null ? this.helpers : null;\n    if (helpers && typeof helpers.getBinaryDataBuffer === 'function') {\n        try {\n            const buffer = await helpers.getBinaryDataBuffer(0, 'data');\n            if (buffer && buffer.length) return buffer.toString('utf8');\n        } catch (error) {\n            // fall through to the in-memory shape\n        }\n    }\n    const binary = item.binary && item.binary.data;\n    if (binary && typeof binary.data === 'string' && binary.data !== '') {\n        return Buffer.from(binary.data, 'base64').toString('utf8');\n    }\n    if (typeof json.rawBody === 'string') return json.rawBody;\n    return null;\n}\n\nconst raw = await rawBody.call(this);\nif (raw === null) {\n    throw new Error(\n        '[verify] the raw request body is unavailable - turn on \"Raw Body\" in the Webhook node options',\n    );\n}\n\nconst key = header('x-arabut-key');\nconst timestamp = header('x-arabut-timestamp');\nconst eventId = header('x-arabut-event');\nconst signature = header('x-arabut-signature');\n\nif (!equal(key, $env.N8N_ORDER_PAID_KEY)) {\n    throw new Error('[verify] X-ArabUT-Key does not match N8N_ORDER_PAID_KEY');\n}\nif (!/^\\d{10}$/.test(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {\n    throw new Error('[verify] X-ArabUT-Timestamp is outside the five-minute window');\n}\nconst expected = crypto\n    .createHmac('sha256', $env.N8N_ORDER_PAID_SECRET)\n    .update(`${timestamp}\\n${eventId}\\n${raw}`)\n    .digest('hex');\nif (!equal(signature, expected)) {\n    throw new Error('[verify] X-ArabUT-Signature does not match the request body');\n}\n\nlet event;\ntry {\n    event = JSON.parse(raw);\n} catch (error) {\n    throw new Error('[verify] the request body is not JSON');\n}\n\nif (!event || event.eventType !== 'order.paid') {\n    throw new Error(`[verify] unexpected eventType ${event && event.eventType}`);\n}\nif (Number(event.schemaVersion) !== 2) {\n    throw new Error(`[verify] unexpected schemaVersion ${event && event.schemaVersion}; this workflow reads schema 2`);\n}\nif (event.eventId !== eventId) {\n    throw new Error('[verify] X-ArabUT-Event does not match the body eventId');\n}\nconst order = event.data;\nif (!order || typeof order.order_number !== 'string' || !Array.isArray(order.items) || order.items.length === 0) {\n    throw new Error('[verify] the request carries no items to place');\n}\n\nreturn [{ json: { eventId, order, receivedAt: new Date().toISOString() } }];\n"
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — the store's order.paid (schema 2) request, verified before\n// anything reads it. Every failure in this workflow THROWS: the Error Workflow\n// sends the Telegram alert and the store, seeing no acknowledgement, retries\n// with whatever is still unplaced. There is no in-flow failure rail.\n//\n// The signature covers the exact bytes the store sent (timestamp, event id and\n// raw body joined by newlines, HMAC-SHA256 with N8N_ORDER_PAID_SECRET), so the\n// Webhook node must run with \"Raw Body\" on. Verification reads those bytes and\n// never a re-serialised copy: PHP writes 1.0 where JavaScript writes 1, and\n// escapes Arabic where JavaScript does not.\n//\n// Keys and secrets live in the Config node (Edit Fields) that sits between\n// the Webhook and this node - the instance has neither environment variables\n// nor $vars (owner decision, 2026-09-14). A value still reading CONFIGURE_...\n// is a value nobody pasted.\n\nconst crypto = require('crypto');\n\nconst config = $('Config').first().json || {};\nconst requiredKeys = [\n    'N8N_ORDER_PAID_KEY',\n    'N8N_ORDER_PAID_SECRET',\n    'N8N_FULFILLMENT_KEY',\n    'N8N_FULFILLMENT_SECRET',\n    'FFT_API_USER',\n    'FFT_API_KEY',\n    'UTT_API_KEY',\n];\nconst missingKeys = requiredKeys.filter((name) => !config[name] || /^CONFIGURE_/.test(String(config[name])));\nif (missingKeys.length) {\n    throw new Error(\n        `[verify] not set in the Config node: ${missingKeys.join(', ')}`,\n    );\n}\nif (String(config.N8N_ORDER_PAID_SECRET).length < 32) {\n    throw new Error('[verify] N8N_ORDER_PAID_SECRET is shorter than 32 characters');\n}\n\n// Read from the Webhook node by name: the Config node sits in between and\n// passes the request through, but the raw bytes are authoritative here.\nconst item = $('Webhook').first();\nconst json = item.json || {};\nconst headers = json.headers || {};\n\nfunction header(name) {\n    const value = headers[name] ?? headers[name.toLowerCase()];\n    return String(Array.isArray(value) ? value[0] : value ?? '');\n}\n\nfunction equal(left, right) {\n    const a = Buffer.from(String(left), 'utf8');\n    const b = Buffer.from(String(right), 'utf8');\n    return a.length === b.length && crypto.timingSafeEqual(a, b);\n}\n\n// The raw body. In n8n's default (memory) binary mode the Webhook node hands\n// it over base64-encoded under binary.data.data; the filesystem mode hands a\n// file id instead, which the helper below resolves when it exists (it reads\n// this node's input, so the Config node must keep \"Include Binary\" on).\nasync function rawBody() {\n    const helpers = typeof this === 'object' && this !== null ? this.helpers : null;\n    if (helpers && typeof helpers.getBinaryDataBuffer === 'function') {\n        try {\n            const buffer = await helpers.getBinaryDataBuffer(0, 'data');\n            if (buffer && buffer.length) return buffer.toString('utf8');\n        } catch (error) {\n            // fall through to the in-memory shape\n        }\n    }\n    const binary = item.binary && item.binary.data;\n    if (binary && binary.id) {\n        // Stored outside memory and the helper could not read it: the\n        // in-memory field holds a mode marker, not the bytes.\n        return null;\n    }\n    if (binary && typeof binary.data === 'string' && binary.data !== '') {\n        return Buffer.from(binary.data, 'base64').toString('utf8');\n    }\n    if (typeof json.rawBody === 'string') return json.rawBody;\n    return null;\n}\n\nconst raw = await rawBody.call(this);\nif (raw === null) {\n    throw new Error(\n        '[verify] the raw request body is unavailable - turn on \"Raw Body\" in the Webhook node options',\n    );\n}\n\nconst key = header('x-arabut-key');\nconst timestamp = header('x-arabut-timestamp');\nconst eventId = header('x-arabut-event');\nconst signature = header('x-arabut-signature');\n\nif (!equal(key, config.N8N_ORDER_PAID_KEY)) {\n    throw new Error('[verify] X-ArabUT-Key does not match N8N_ORDER_PAID_KEY');\n}\nif (!/^\\d{10}$/.test(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {\n    throw new Error('[verify] X-ArabUT-Timestamp is outside the five-minute window');\n}\nconst expected = crypto\n    .createHmac('sha256', config.N8N_ORDER_PAID_SECRET)\n    .update(`${timestamp}\\n${eventId}\\n${raw}`)\n    .digest('hex');\nif (!equal(signature, expected)) {\n    throw new Error('[verify] X-ArabUT-Signature does not match the request body');\n}\n\nlet event;\ntry {\n    event = JSON.parse(raw);\n} catch (error) {\n    throw new Error('[verify] the request body is not JSON');\n}\n\nif (!event || event.eventType !== 'order.paid') {\n    throw new Error(`[verify] unexpected eventType ${event && event.eventType}`);\n}\nif (Number(event.schemaVersion) !== 2) {\n    throw new Error(`[verify] unexpected schemaVersion ${event && event.schemaVersion}; this workflow reads schema 2`);\n}\nif (event.eventId !== eventId) {\n    throw new Error('[verify] X-ArabUT-Event does not match the body eventId');\n}\nconst order = event.data;\nif (!order || typeof order.order_number !== 'string' || !Array.isArray(order.items) || order.items.length === 0) {\n    throw new Error('[verify] the request carries no items to place');\n}\n\nreturn [{ json: { eventId, order, receivedAt: new Date().toISOString() } }];\n"
       },
       "id": "verify-request-ship-coins-v1",
       "name": "Verify Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        420,
+        620,
         400
       ],
       "notes": "Source: nodes/verify-request.js"
@@ -46,7 +115,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        660,
+        840,
         400
       ],
       "notes": "Source: nodes/plan-shipment.js"
@@ -81,7 +150,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        900,
+        1060,
         400
       ],
       "notes": "True = the shipment funds a challenge, and FFT has to price it first. False = plain coins."
@@ -95,11 +164,11 @@
           "parameters": [
             {
               "name": "apiUser",
-              "value": "={{ $env.FFT_API_USER }}"
+              "value": "={{ $('Config').first().json.FFT_API_USER }}"
             },
             {
               "name": "apiKey",
-              "value": "={{ $env.FFT_API_KEY }}"
+              "value": "={{ $('Config').first().json.FFT_API_KEY }}"
             }
           ]
         },
@@ -199,7 +268,7 @@
           "parameters": [
             {
               "name": "apiKey",
-              "value": "={{ $env.UTT_API_KEY }}"
+              "value": "={{ $('Config').first().json.UTT_API_KEY }}"
             },
             {
               "name": "platform",
@@ -238,7 +307,7 @@
           "parameters": [
             {
               "name": "apiKey",
-              "value": "={{ $env.UTT_API_KEY }}"
+              "value": "={{ $('Config').first().json.UTT_API_KEY }}"
             },
             {
               "name": "platform",
@@ -262,7 +331,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\n// ══════════════════════════════════════════════════════════════════════\n// SUPPLIER DECISION ENGINE — UTT vs FFT for a coins order.\n//\n// v14's node, verbatim, with two renames: the shipment is `$('Shipment')`\n// (v14 read `$('Coins Item')` on the coins path and\n// `$('SBC: Match & Validate')` on the challenge path; both end in Shipment\n// here) and the budget it reads was computed by the store rather than read\n// from the price sheet. Everything below the input block is v14.11.\n//\n// PRICE UNITS: calculatedMaxPrice and UTT stock.price are BOTH EUR per 100K.\n// COMBINED STOCKS (v14.6, validated live): UTT pools capacity across the stocks\n// listed in publicSale, so we greedily build the CHEAPEST combination whose combined\n// getMaxOrderPrediction covers the order. MAX_COMBO 10 = the EA card budget per\n// order/36h (raised from 4 on 2026-07-04); the publicSale stock list itself is\n// unlimited, so failover pads are free until a card is actually used, and compare\n// FFT against the BLENDED price of that combination (marginal-gain weighted).\n// COOLDOWN: orderCardsRemaining < 3 → force UTT (cross-system ban protection).\n// PARTIAL (v14.11): neither covers fully → whoever delivers MORE right now\n// (FFT keeps ties — it tops up; UTT must beat FFT by 20%+). Full-coverage FFT\n// price-win additionally needs 10% preview headroom (owner decision 2026-07-04).\n// ══════════════════════════════════════════════════════════════════════\nconst src = $('Shipment').first().json;\nlet uttStocksData = {};\ntry { uttStocksData = $('UTT: Get Stocks').first().json || {}; } catch (e) {}\n\nconst amountK = src.amountK;\nconst orderAmountCoins = amountK * 1000;\nconst platform = src.platform;\nconst startCoins = src.startCoins || 200000;\nconst maxPrice = Number(src.calculatedMaxPrice) || 0;\nconst stocks = uttStocksData.stocks || [];\nconst ratioEuroUsd = parseFloat(uttStocksData.ratioEuroUsd) || 1.15;\n\n// FFT preview balance ladder (kept as-is per business decision 2026-07)\nconst topUpTarget = platform === 'PC' ? 0 : (\n    amountK <= 300 ? 20000 : amountK <= 500 ? 50000 : amountK <= 1000 ? 200000\n  : amountK <= 1500 ? 300000 : amountK <= 2000 ? 300000 : 400000);\nconst fftCustomerBalance = Math.max(startCoins, topUpTarget);\n\n// keep stocks big enough to matter in a combination (not: cover alone)\nconst minUseful = Math.max(100000, orderAmountCoins * 0.15);\nconst validStocks = stocks\n  .filter(s => (parseFloat(s.averageCoinsAvailable) * 5) >= minUseful)\n  .filter(s => parseFloat(s.price) <= maxPrice)\n  .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))\n  .slice(0, 20);\n\nconst UTT_API_KEY = $env.UTT_API_KEY;\nconst uttPlatform = platform.toLowerCase();\nconst MAX_COMBO = 10;      // = card budget per order/36h (was 4); stock list is unlimited\nconst MAX_PREDICTION_CALLS = 12;\n\nlet forcedUTT = false;\nlet cardsRemaining = null;\nlet combo = [];            // {numberStock, price(str), marginal}\nlet comboPred = 0;\nlet calls = 0;\n\nasync function predict(sectionString) {\n  calls++;\n  const result = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://utautotransfer.com/api/getMaxOrderPrediction',\n    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n    body: `apiKey=${UTT_API_KEY}&platform=${uttPlatform}&orderMethod=public&stockSection=${encodeURIComponent(sectionString)}&startCoins=${startCoins}&email=${encodeURIComponent(src.eaEmail)}`,\n  });\n  return result;\n}\n\nfor (const stock of validStocks) {\n  if (calls >= MAX_PREDICTION_CALLS || combo.length >= MAX_COMBO) break;\n  if (comboPred >= orderAmountCoins) break;\n  const tentative = [...combo, { numberStock: stock.numberStock, price: stock.price }];\n  const section = tentative.map(s => `${s.numberStock},${s.price}`).join(',');\n  try {\n    const r = await predict.call(this, section);\n    const pred = r.maxTransferable || 0;\n    if (cardsRemaining === null) cardsRemaining = r.orderCardsRemaining ?? 10;\n    if ((r.orderCardsRemaining ?? 10) < 3) forcedUTT = true;\n    const marginal = pred - comboPred;\n    if (marginal > 50000) {           // stock adds real capacity → keep it\n      combo = tentative;\n      combo[combo.length - 1].marginal = marginal;\n      comboPred = pred;\n    }\n  } catch (e) { continue; }\n}\n\n// blended price = marginal-gain-weighted average over what the order actually uses\nlet blendedPrice = null;\nif (combo.length) {\n  let remaining = orderAmountCoins, costSum = 0, used = 0;\n  for (const c of combo) {\n    const take = Math.min(c.marginal, remaining);\n    costSum += take * parseFloat(c.price);\n    used += take; remaining -= take;\n    if (remaining <= 0) break;\n  }\n  blendedPrice = used > 0 ? Math.round((costSum / used) * 1000) / 1000 : parseFloat(combo[0].price);\n}\n\nconst fullCoverage = comboPred >= orderAmountCoins && combo.length > 0;\n\n// pad pure-failover backups (unused cheapest stocks) up to 8 entries total —\n// list is unlimited and a pad only consumes a card if UTT actually switches to it\n// (built whenever a combo exists — UTT can now also win partial-coverage orders)\nlet publicSaleString = null;\nif (combo.length) {\n  const usedStocks = new Set(combo.map(c => `${c.numberStock},${c.price}`));\n  const pads = validStocks\n    .map(s => `${s.numberStock},${s.price}`)\n    .filter(k => !usedStocks.has(k));\n  const parts = combo.map(c => `${c.numberStock},${c.price}`);\n  while (parts.length < 8 && pads.length) parts.push(pads.shift());\n  publicSaleString = parts.join(',');\n}\n\n// ── SUPPLIER DECISION ──\nlet supplier = '';\nlet fftMaxPossibleK = 0;\nlet fftTestPrice = null;\n\nconst askFFT = async (testPrice) => {\n  const fftResult = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://futtransfer.top/maxOrderPreviewAPI',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ apiUser: $env.FFT_API_USER, apiKey: $env.FFT_API_KEY,\n      platform, customerBalance: fftCustomerBalance, ownSenders: 0, maxPrice: testPrice, riskLevel: 10 }),\n  });\n  return typeof fftResult === 'string' ? JSON.parse(fftResult) : fftResult;\n};\n\nif (forcedUTT) {\n  supplier = combo.length > 0 ? 'UTT' : 'FFT';\n} else if (!fullCoverage) {\n  // neither side guaranteed → send to whoever moves more coins RIGHT NOW\n  const uttK = Math.round(comboPred / 1000);\n  try {\n    const parsed = await askFFT(maxPrice);\n    fftMaxPossibleK = (parsed.success && parsed.maxPossibleK) || 0;\n    if (fftMaxPossibleK >= amountK) supplier = 'FFT';                            // FFT covers fully after all\n    else if (combo.length > 0 && uttK > fftMaxPossibleK * 1.2) supplier = 'UTT'; // UTT clearly ahead\n    else supplier = 'FFT';                                                        // tie or FFT ahead → FFT tops up\n  } catch (e) { supplier = 'FFT'; }\n} else {\n  fftTestPrice = Math.round((blendedPrice - 0.09) * 100) / 100;\n  if (fftTestPrice <= 0) {\n    supplier = 'UTT';\n  } else {\n    try {\n      const parsed = await askFFT(fftTestPrice);\n      fftMaxPossibleK = parsed.maxPossibleK || 0;\n      supplier = (parsed.success && fftMaxPossibleK >= amountK * 1.10) ? 'FFT' : 'UTT';\n    } catch (e) { supplier = 'UTT'; }\n  }\n}\n\nreturn [{ json: {\n  supplier,\n  forcedUTT,\n  isPartialFulfillment: !!(supplier === 'UTT' && comboPred < orderAmountCoins),\n  uttPublicSaleString: publicSaleString,\n  uttPrice: blendedPrice,\n  uttComboStocks: combo.map(c => `${c.numberStock}@${c.price}(+${Math.round(c.marginal / 1000)}K)`).join(' '),\n  uttMaxK: comboPred ? Math.round(comboPred / 1000) : null,\n  uttCardsRemaining: cardsRemaining,\n  fftTestPrice, fftMaxK: fftMaxPossibleK || null, fftCustomerBalance,\n  amountK, platform, startCoins,\n  calculatedMaxPrice: src.calculatedMaxPrice,\n  ratioEuroUsd,\n  stocksTested: calls,\n  totalStocksAvailable: stocks.length,\n  orderId: src.orderId,\n}}];\n"
+        "jsCode": "/* eslint-disable */\n// ══════════════════════════════════════════════════════════════════════\n// SUPPLIER DECISION ENGINE — UTT vs FFT for a coins order.\n//\n// v14's node, verbatim, with two renames: the shipment is `$('Shipment')`\n// (v14 read `$('Coins Item')` on the coins path and\n// `$('SBC: Match & Validate')` on the challenge path; both end in Shipment\n// here) and the budget it reads was computed by the store rather than read\n// from the price sheet. Everything below the input block is v14.11.\n//\n// PRICE UNITS: calculatedMaxPrice and UTT stock.price are BOTH EUR per 100K.\n// COMBINED STOCKS (v14.6, validated live): UTT pools capacity across the stocks\n// listed in publicSale, so we greedily build the CHEAPEST combination whose combined\n// getMaxOrderPrediction covers the order. MAX_COMBO 10 = the EA card budget per\n// order/36h (raised from 4 on 2026-07-04); the publicSale stock list itself is\n// unlimited, so failover pads are free until a card is actually used, and compare\n// FFT against the BLENDED price of that combination (marginal-gain weighted).\n// COOLDOWN: orderCardsRemaining < 3 → force UTT (cross-system ban protection).\n// PARTIAL (v14.11): neither covers fully → whoever delivers MORE right now\n// (FFT keeps ties — it tops up; UTT must beat FFT by 20%+). Full-coverage FFT\n// price-win additionally needs 10% preview headroom (owner decision 2026-07-04).\n// ══════════════════════════════════════════════════════════════════════\nconst src = $('Shipment').first().json;\nlet uttStocksData = {};\ntry { uttStocksData = $('UTT: Get Stocks').first().json || {}; } catch (e) {}\n\nconst amountK = src.amountK;\nconst orderAmountCoins = amountK * 1000;\nconst platform = src.platform;\nconst startCoins = src.startCoins || 200000;\nconst maxPrice = Number(src.calculatedMaxPrice) || 0;\nconst stocks = uttStocksData.stocks || [];\nconst ratioEuroUsd = parseFloat(uttStocksData.ratioEuroUsd) || 1.15;\n\n// FFT preview balance ladder (kept as-is per business decision 2026-07)\nconst topUpTarget = platform === 'PC' ? 0 : (\n    amountK <= 300 ? 20000 : amountK <= 500 ? 50000 : amountK <= 1000 ? 200000\n  : amountK <= 1500 ? 300000 : amountK <= 2000 ? 300000 : 400000);\nconst fftCustomerBalance = Math.max(startCoins, topUpTarget);\n\n// keep stocks big enough to matter in a combination (not: cover alone)\nconst minUseful = Math.max(100000, orderAmountCoins * 0.15);\nconst validStocks = stocks\n  .filter(s => (parseFloat(s.averageCoinsAvailable) * 5) >= minUseful)\n  .filter(s => parseFloat(s.price) <= maxPrice)\n  .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))\n  .slice(0, 20);\n\nconst CONFIG = $('Config').first().json;\nconst UTT_API_KEY = CONFIG.UTT_API_KEY;\nconst uttPlatform = platform.toLowerCase();\nconst MAX_COMBO = 10;      // = card budget per order/36h (was 4); stock list is unlimited\nconst MAX_PREDICTION_CALLS = 12;\n\nlet forcedUTT = false;\nlet cardsRemaining = null;\nlet combo = [];            // {numberStock, price(str), marginal}\nlet comboPred = 0;\nlet calls = 0;\n\nasync function predict(sectionString) {\n  calls++;\n  const result = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://utautotransfer.com/api/getMaxOrderPrediction',\n    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n    body: `apiKey=${UTT_API_KEY}&platform=${uttPlatform}&orderMethod=public&stockSection=${encodeURIComponent(sectionString)}&startCoins=${startCoins}&email=${encodeURIComponent(src.eaEmail)}`,\n  });\n  return result;\n}\n\nfor (const stock of validStocks) {\n  if (calls >= MAX_PREDICTION_CALLS || combo.length >= MAX_COMBO) break;\n  if (comboPred >= orderAmountCoins) break;\n  const tentative = [...combo, { numberStock: stock.numberStock, price: stock.price }];\n  const section = tentative.map(s => `${s.numberStock},${s.price}`).join(',');\n  try {\n    const r = await predict.call(this, section);\n    const pred = r.maxTransferable || 0;\n    if (cardsRemaining === null) cardsRemaining = r.orderCardsRemaining ?? 10;\n    if ((r.orderCardsRemaining ?? 10) < 3) forcedUTT = true;\n    const marginal = pred - comboPred;\n    if (marginal > 50000) {           // stock adds real capacity → keep it\n      combo = tentative;\n      combo[combo.length - 1].marginal = marginal;\n      comboPred = pred;\n    }\n  } catch (e) { continue; }\n}\n\n// blended price = marginal-gain-weighted average over what the order actually uses\nlet blendedPrice = null;\nif (combo.length) {\n  let remaining = orderAmountCoins, costSum = 0, used = 0;\n  for (const c of combo) {\n    const take = Math.min(c.marginal, remaining);\n    costSum += take * parseFloat(c.price);\n    used += take; remaining -= take;\n    if (remaining <= 0) break;\n  }\n  blendedPrice = used > 0 ? Math.round((costSum / used) * 1000) / 1000 : parseFloat(combo[0].price);\n}\n\nconst fullCoverage = comboPred >= orderAmountCoins && combo.length > 0;\n\n// pad pure-failover backups (unused cheapest stocks) up to 8 entries total —\n// list is unlimited and a pad only consumes a card if UTT actually switches to it\n// (built whenever a combo exists — UTT can now also win partial-coverage orders)\nlet publicSaleString = null;\nif (combo.length) {\n  const usedStocks = new Set(combo.map(c => `${c.numberStock},${c.price}`));\n  const pads = validStocks\n    .map(s => `${s.numberStock},${s.price}`)\n    .filter(k => !usedStocks.has(k));\n  const parts = combo.map(c => `${c.numberStock},${c.price}`);\n  while (parts.length < 8 && pads.length) parts.push(pads.shift());\n  publicSaleString = parts.join(',');\n}\n\n// ── SUPPLIER DECISION ──\nlet supplier = '';\nlet fftMaxPossibleK = 0;\nlet fftTestPrice = null;\n\nconst askFFT = async (testPrice) => {\n  const fftResult = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://futtransfer.top/maxOrderPreviewAPI',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ apiUser: CONFIG.FFT_API_USER, apiKey: CONFIG.FFT_API_KEY,\n      platform, customerBalance: fftCustomerBalance, ownSenders: 0, maxPrice: testPrice, riskLevel: 10 }),\n  });\n  return typeof fftResult === 'string' ? JSON.parse(fftResult) : fftResult;\n};\n\nif (forcedUTT) {\n  supplier = combo.length > 0 ? 'UTT' : 'FFT';\n} else if (!fullCoverage) {\n  // neither side guaranteed → send to whoever moves more coins RIGHT NOW\n  const uttK = Math.round(comboPred / 1000);\n  try {\n    const parsed = await askFFT(maxPrice);\n    fftMaxPossibleK = (parsed.success && parsed.maxPossibleK) || 0;\n    if (fftMaxPossibleK >= amountK) supplier = 'FFT';                            // FFT covers fully after all\n    else if (combo.length > 0 && uttK > fftMaxPossibleK * 1.2) supplier = 'UTT'; // UTT clearly ahead\n    else supplier = 'FFT';                                                        // tie or FFT ahead → FFT tops up\n  } catch (e) { supplier = 'FFT'; }\n} else {\n  fftTestPrice = Math.round((blendedPrice - 0.09) * 100) / 100;\n  if (fftTestPrice <= 0) {\n    supplier = 'UTT';\n  } else {\n    try {\n      const parsed = await askFFT(fftTestPrice);\n      fftMaxPossibleK = parsed.maxPossibleK || 0;\n      supplier = (parsed.success && fftMaxPossibleK >= amountK * 1.10) ? 'FFT' : 'UTT';\n    } catch (e) { supplier = 'UTT'; }\n  }\n}\n\nreturn [{ json: {\n  supplier,\n  forcedUTT,\n  isPartialFulfillment: !!(supplier === 'UTT' && comboPred < orderAmountCoins),\n  uttPublicSaleString: publicSaleString,\n  uttPrice: blendedPrice,\n  uttComboStocks: combo.map(c => `${c.numberStock}@${c.price}(+${Math.round(c.marginal / 1000)}K)`).join(' '),\n  uttMaxK: comboPred ? Math.round(comboPred / 1000) : null,\n  uttCardsRemaining: cardsRemaining,\n  fftTestPrice, fftMaxK: fftMaxPossibleK || null, fftCustomerBalance,\n  amountK, platform, startCoins,\n  calculatedMaxPrice: src.calculatedMaxPrice,\n  ratioEuroUsd,\n  stocksTested: calls,\n  totalStocksAvailable: stocks.length,\n  orderId: src.orderId,\n}}];\n"
       },
       "id": "supplier-decision-ship-coins-v1",
       "name": "Supplier Decision Engine",
@@ -322,11 +391,11 @@
             },
             {
               "name": "apiUser",
-              "value": "={{ $env.FFT_API_USER }}"
+              "value": "={{ $('Config').first().json.FFT_API_USER }}"
             },
             {
               "name": "apiKey",
-              "value": "={{ $env.FFT_API_KEY }}"
+              "value": "={{ $('Config').first().json.FFT_API_KEY }}"
             }
           ]
         },
@@ -388,7 +457,7 @@
           "parameters": [
             {
               "name": "apiKey",
-              "value": "={{ $env.UTT_API_KEY }}"
+              "value": "={{ $('Config').first().json.UTT_API_KEY }}"
             },
             {
               "name": "email",
@@ -450,11 +519,11 @@
           "parameters": [
             {
               "name": "apiUser",
-              "value": "={{ $env.FFT_API_USER }}"
+              "value": "={{ $('Config').first().json.FFT_API_USER }}"
             },
             {
               "name": "apiKey",
-              "value": "={{ $env.FFT_API_KEY }}"
+              "value": "={{ $('Config').first().json.FFT_API_KEY }}"
             },
             {
               "name": "platform",
@@ -549,7 +618,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "/* eslint-disable */\n// ship-coins v1 — one signed placement report per funded item.\n//\n// The store verifies HMAC-SHA256 over `timestamp\\neventId\\nrawBody` with\n// N8N_FULFILLMENT_SECRET (VerifyN8nFulfillmentSignature). rawBody is the\n// exact byte sequence that is signed AND the exact byte sequence the HTTP\n// node sends raw, so the signature cannot drift from the payload.\n\nconst crypto = require('crypto');\nconst secret = $env.N8N_FULFILLMENT_SECRET;\nif (!secret || String(secret).length < 32) {\n    throw new Error('[report] N8N_FULFILLMENT_SECRET is missing or shorter than 32 characters');\n}\n\nconst ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = ALPHABET[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];\n    }\n    return timestamp + random;\n}\n\nreturn $input.all().map(({ json }) => {\n    const report = {\n        order_item_public_id: json.order_item_public_id,\n        supplier: json.supplier,\n        supplier_order_id: json.supplier_order_id,\n        delivery_phase: json.delivery_phase,\n    };\n    const rawBody = JSON.stringify(report);\n    const timestamp = String(Math.floor(Date.now() / 1000));\n    const event = ulid();\n    const signature = crypto\n        .createHmac('sha256', secret)\n        .update(`${timestamp}\\n${event}\\n${rawBody}`)\n        .digest('hex');\n\n    return { json: { ...json, rawBody, timestamp, event, signature } };\n});\n"
+        "jsCode": "/* eslint-disable */\n// ship-coins v1 — one signed placement report per funded item.\n//\n// The store verifies HMAC-SHA256 over `timestamp\\neventId\\nrawBody` with\n// N8N_FULFILLMENT_SECRET (VerifyN8nFulfillmentSignature). rawBody is the\n// exact byte sequence that is signed AND the exact byte sequence the HTTP\n// node sends raw, so the signature cannot drift from the payload.\n\nconst crypto = require('crypto');\nconst secret = $('Config').first().json.N8N_FULFILLMENT_SECRET;\nif (!secret || /^CONFIGURE_/.test(String(secret)) || String(secret).length < 32) {\n    throw new Error('[report] N8N_FULFILLMENT_SECRET is not set in the Config node or shorter than 32 characters');\n}\n\nconst ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = ALPHABET[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];\n    }\n    return timestamp + random;\n}\n\nreturn $input.all().map(({ json }) => {\n    const report = {\n        order_item_public_id: json.order_item_public_id,\n        supplier: json.supplier,\n        supplier_order_id: json.supplier_order_id,\n        delivery_phase: json.delivery_phase,\n    };\n    const rawBody = JSON.stringify(report);\n    const timestamp = String(Math.floor(Date.now() / 1000));\n    const event = ulid();\n    const signature = crypto\n        .createHmac('sha256', secret)\n        .update(`${timestamp}\\n${event}\\n${rawBody}`)\n        .digest('hex');\n\n    return { json: { ...json, rawBody, timestamp, event, signature } };\n});\n"
       },
       "id": "sign-reports-ship-coins-v1",
       "name": "Sign Placement Reports",
@@ -564,7 +633,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($env.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
+        "url": "={{ ($('Config').first().json.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -574,7 +643,7 @@
             },
             {
               "name": "X-ArabUT-Key",
-              "value": "={{ $env.N8N_FULFILLMENT_KEY }}"
+              "value": "={{ $('Config').first().json.N8N_FULFILLMENT_KEY }}"
             },
             {
               "name": "X-ArabUT-Timestamp",
@@ -616,7 +685,7 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 1500,
-      "notes": "Runs once per funded item. Signed with N8N_FULFILLMENT_KEY / N8N_FULFILLMENT_SECRET, the store-side credential of the placement endpoint (docs/api/n8n-fulfillment-v1.md)."
+      "notes": "Runs once per funded item. Signed with N8N_FULFILLMENT_KEY / N8N_FULFILLMENT_SECRET from the Config node, the store-side credential of the placement endpoint (docs/api/n8n-fulfillment-v1.md)."
     },
     {
       "parameters": {
@@ -654,6 +723,17 @@
   ],
   "connections": {
     "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
       "main": [
         [
           {

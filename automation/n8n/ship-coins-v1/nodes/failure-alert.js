@@ -33,12 +33,12 @@ if (workflow.name) {
 }
 
 // Deliberately no throw here. This code runs inside the error execution, so a
-// throw would only bury the original failure. An empty chat id makes the
-// Telegram node itself go red, which stays visible in the executions list.
+// throw would only bury the original failure. The chat id is typed into the
+// Telegram node itself; a placeholder left there makes that node go red,
+// which stays visible in the executions list.
 return [
     {
         json: {
-            to: $env.OPS_TELEGRAM_CHAT_ID || '',
             body: lines.join('\n'),
             failureReason: error.message || null,
         },

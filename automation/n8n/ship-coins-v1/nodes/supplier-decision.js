@@ -46,7 +46,8 @@ const validStocks = stocks
   .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))
   .slice(0, 20);
 
-const UTT_API_KEY = $env.UTT_API_KEY;
+const CONFIG = $('Config').first().json;
+const UTT_API_KEY = CONFIG.UTT_API_KEY;
 const uttPlatform = platform.toLowerCase();
 const MAX_COMBO = 10;      // = card budget per order/36h (was 4); stock list is unlimited
 const MAX_PREDICTION_CALLS = 12;
@@ -126,7 +127,7 @@ const askFFT = async (testPrice) => {
     method: 'POST',
     url: 'https://futtransfer.top/maxOrderPreviewAPI',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiUser: $env.FFT_API_USER, apiKey: $env.FFT_API_KEY,
+    body: JSON.stringify({ apiUser: CONFIG.FFT_API_USER, apiKey: CONFIG.FFT_API_KEY,
       platform, customerBalance: fftCustomerBalance, ownSenders: 0, maxPrice: testPrice, riskLevel: 10 }),
   });
   return typeof fftResult === 'string' ? JSON.parse(fftResult) : fftResult;

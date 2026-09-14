@@ -83,6 +83,50 @@ function supplierHttp(name, id, position, parameters, extra = {}) {
 }
 
 const S = "$('Shipment').first().json";
+const C = "$('Config').first().json";
+
+// The instance has neither environment variables nor $vars (owner decision,
+// 2026-09-14: "use the data inside the node"). Every key and secret is a
+// field of this Edit Fields node, pasted in the n8n UI after import. The
+// export carries CONFIGURE_ placeholders only; Verify Request refuses to run
+// while any of them is still there. It passes the webhook item through -
+// json and binary - so the raw body reaches Verify Request untouched.
+export const CONFIG_KEYS = [
+    ['N8N_ORDER_PAID_KEY', "the store's publisher identity, compared with X-ArabUT-Key"],
+    ['N8N_ORDER_PAID_SECRET', 'HMAC secret of the incoming request, 32+ characters, same value as on the store'],
+    ['N8N_FULFILLMENT_KEY', 'X-ArabUT-Key the store expects on the placement report'],
+    ['N8N_FULFILLMENT_SECRET', 'HMAC secret of the placement report, 32+ characters, same value as on the store'],
+    ['FFT_API_USER', 'FuTTransfer API user'],
+    ['FFT_API_KEY', 'FuTTransfer API key'],
+    ['UTT_API_KEY', 'UT Auto Transfer API key'],
+    ['ARABUT_STORE_URL', 'optional - leave the placeholder to use https://store.arab-ut.com'],
+];
+
+function configNode(position) {
+    return {
+        parameters: {
+            assignments: {
+                assignments: CONFIG_KEYS.map(([name]) => ({
+                    id: `config-${name.toLowerCase().replace(/_/g, '-')}`,
+                    name,
+                    value: `CONFIGURE_${name}`,
+                    type: 'string',
+                })),
+            },
+            includeOtherFields: true,
+            options: { includeBinary: true },
+        },
+        id: 'config-ship-coins-v1',
+        name: 'Config',
+        type: 'n8n-nodes-base.set',
+        typeVersion: 3.4,
+        position,
+        notes:
+            'Paste the real values here after import - ' +
+            CONFIG_KEYS.map(([name, purpose]) => `${name}: ${purpose}`).join('; ') +
+            '. Keep "Include Other Input Fields" and "Include Binary" on.',
+    };
+}
 
 const nodes = [
     {
@@ -108,13 +152,14 @@ const nodes = [
             'HMAC in Verify Request, not an n8n credential, so nothing is ' +
             'attached. Raw Body must stay on.',
     },
-    await codeNode('Verify Request', 'verify-request-ship-coins-v1', 'verify-request.js', [420, 400]),
-    await codeNode('Plan Shipment', 'plan-shipment-ship-coins-v1', 'plan-shipment.js', [660, 400]),
+    configNode([400, 400]),
+    await codeNode('Verify Request', 'verify-request-ship-coins-v1', 'verify-request.js', [620, 400]),
+    await codeNode('Plan Shipment', 'plan-shipment-ship-coins-v1', 'plan-shipment.js', [840, 400]),
     ifNode(
         'Needs Challenge Price?',
         'needs-challenge-price-ship-coins-v1',
         '={{ $json.needsChallengePricing }}',
-        [900, 400],
+        [1060, 400],
         'True = the shipment funds a challenge, and FFT has to price it first. False = plain coins.',
     ),
     // v14: SBC: Get Available SBCs
@@ -124,8 +169,8 @@ const nodes = [
         sendBody: true,
         bodyParameters: {
             parameters: [
-                { name: 'apiUser', value: '={{ $env.FFT_API_USER }}' },
-                { name: 'apiKey', value: '={{ $env.FFT_API_KEY }}' },
+                { name: 'apiUser', value: `={{ ${C}.FFT_API_USER }}` },
+                { name: 'apiKey', value: `={{ ${C}.FFT_API_KEY }}` },
             ],
         },
         options: { response: { response: { responseFormat: 'json' } } },
@@ -147,7 +192,7 @@ const nodes = [
         contentType: 'form-urlencoded',
         bodyParameters: {
             parameters: [
-                { name: 'apiKey', value: '={{ $env.UTT_API_KEY }}' },
+                { name: 'apiKey', value: `={{ ${C}.UTT_API_KEY }}` },
                 { name: 'platform', value: `={{ ${S}.platform.toLowerCase() }}` },
                 { name: 'orderMethod', value: 'public' },
                 { name: 'email', value: `={{ ${S}.eaEmail }}` },
@@ -162,7 +207,7 @@ const nodes = [
         contentType: 'form-urlencoded',
         bodyParameters: {
             parameters: [
-                { name: 'apiKey', value: '={{ $env.UTT_API_KEY }}' },
+                { name: 'apiKey', value: `={{ ${C}.UTT_API_KEY }}` },
                 { name: 'platform', value: `={{ ${S}.platform.toLowerCase() }}` },
             ],
         },
@@ -183,8 +228,8 @@ const nodes = [
         bodyParameters: {
             parameters: [
                 { name: 'account', value: `={{ ${S}.eaEmail }}` },
-                { name: 'apiUser', value: '={{ $env.FFT_API_USER }}' },
-                { name: 'apiKey', value: '={{ $env.FFT_API_KEY }}' },
+                { name: 'apiUser', value: `={{ ${C}.FFT_API_USER }}` },
+                { name: 'apiKey', value: `={{ ${C}.FFT_API_KEY }}` },
             ],
         },
     }),
@@ -203,7 +248,7 @@ const nodes = [
         contentType: 'form-urlencoded',
         bodyParameters: {
             parameters: [
-                { name: 'apiKey', value: '={{ $env.UTT_API_KEY }}' },
+                { name: 'apiKey', value: `={{ ${C}.UTT_API_KEY }}` },
                 { name: 'email', value: `={{ ${S}.eaEmail }}` },
                 { name: 'password', value: `={{ ${S}.eaPass }}` },
                 { name: 'amountOrder', value: `={{ ${S}.amountK * 1000 }}` },
@@ -224,8 +269,8 @@ const nodes = [
         sendBody: true,
         bodyParameters: {
             parameters: [
-                { name: 'apiUser', value: '={{ $env.FFT_API_USER }}' },
-                { name: 'apiKey', value: '={{ $env.FFT_API_KEY }}' },
+                { name: 'apiUser', value: `={{ ${C}.FFT_API_USER }}` },
+                { name: 'apiKey', value: `={{ ${C}.FFT_API_KEY }}` },
                 { name: 'platform', value: `={{ ${S}.platform }}` },
                 { name: 'amount', value: `={{ ${S}.amountK }}` },
                 { name: 'updateCustomer', value: '1' },
@@ -258,12 +303,12 @@ const nodes = [
     {
         parameters: {
             method: 'POST',
-            url: "={{ ($env.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
+            url: `={{ (${C}.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}`,
             sendHeaders: true,
             headerParameters: {
                 parameters: [
                     { name: 'Accept', value: 'application/json' },
-                    { name: 'X-ArabUT-Key', value: '={{ $env.N8N_FULFILLMENT_KEY }}' },
+                    { name: 'X-ArabUT-Key', value: `={{ ${C}.N8N_FULFILLMENT_KEY }}` },
                     { name: 'X-ArabUT-Timestamp', value: '={{ $json.timestamp }}' },
                     { name: 'X-ArabUT-Event', value: '={{ $json.event }}' },
                     { name: 'X-ArabUT-Signature', value: '={{ $json.signature }}' },
@@ -298,8 +343,8 @@ const nodes = [
         waitBetweenTries: 1500,
         notes:
             'Runs once per funded item. Signed with N8N_FULFILLMENT_KEY / ' +
-            'N8N_FULFILLMENT_SECRET, the store-side credential of the placement ' +
-            'endpoint (docs/api/n8n-fulfillment-v1.md).',
+            'N8N_FULFILLMENT_SECRET from the Config node, the store-side ' +
+            'credential of the placement endpoint (docs/api/n8n-fulfillment-v1.md).',
     },
     await codeNode('Confirm Reports', 'confirm-reports-ship-coins-v1', 'confirm-reports.js', [4260, 520]),
     {
@@ -322,7 +367,8 @@ const nodes = [
 ];
 
 const connections = {
-    Webhook: { main: [[edge('Verify Request')]] },
+    Webhook: { main: [[edge('Config')]] },
+    Config: { main: [[edge('Verify Request')]] },
     'Verify Request': { main: [[edge('Plan Shipment')]] },
     'Plan Shipment': { main: [[edge('Needs Challenge Price?')]] },
     // true -> FFT prices the challenge first; false -> plain coins
@@ -409,7 +455,9 @@ const errorWorkflow = {
         },
         {
             parameters: {
-                chatId: '={{ $json.to }}',
+                // Typed in here after import: the instance has no environment
+                // variables and no $vars.
+                chatId: 'CONFIGURE_OPS_TELEGRAM_CHAT_ID',
                 text: '={{ $json.body }}',
                 additionalFields: {},
             },
@@ -425,7 +473,7 @@ const errorWorkflow = {
                     name: 'Telegram account',
                 },
             },
-            notes: 'No onError override: an undelivered alert stays red.',
+            notes: 'Replace the Chat ID placeholder with the ops Telegram chat. No onError override: an undelivered alert stays red.',
         },
     ],
     connections: {

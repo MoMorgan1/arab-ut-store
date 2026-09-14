@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
+import { CONFIG_KEYS } from '../scripts/build-workflow.mjs';
+
 const root = new URL('../', import.meta.url);
 
 async function workflow(file = 'workflow.json') {
@@ -15,12 +17,12 @@ test('the export is inactive, secret-free, and carries no real credential ids', 
     assert.equal(exported.active, false);
     assert.doesNotMatch(text, /salla|supabase|google ?sheets|whapi/i);
 
-    // Every supplier credential comes from the environment. Asserted
+    // Every supplier credential comes from the Config node. Asserted
     // structurally: any 32-char hex literal in the export is treated as a leak.
     for (const node of exported.nodes) {
         for (const parameter of node.parameters?.bodyParameters?.parameters ?? []) {
             if (['apiKey', 'apiUser', 'user', 'pass', 'password', 'email'].includes(parameter.name)) {
-                assert.match(String(parameter.value), /^=\{\{/, `${node.name}.${parameter.name} must come from an expression, never a literal`);
+                assert.match(String(parameter.value), /^=\{\{ \$\('(Config|Shipment)'\)/, `${node.name}.${parameter.name} must come from Config or the shipment, never a literal`);
             }
         }
 
@@ -30,6 +32,27 @@ test('the export is inactive, secret-free, and carries no real credential ids', 
     }
 
     assert.doesNotMatch(text, /\b[0-9a-f]{32}\b/, 'the export contains something shaped like an API key');
+    assert.doesNotMatch(text, /\$env[.[]|\$vars[.[]/, 'the instance has neither environment variables nor $vars');
+});
+
+test('the Config node holds every key as a placeholder and passes the webhook item through', async () => {
+    const exported = await workflow();
+    const config = exported.nodes.find(({ name }) => name === 'Config');
+
+    assert.equal(config.type, 'n8n-nodes-base.set');
+    assert.deepEqual(
+        config.parameters.assignments.assignments.map(({ name, value, type }) => [name, value, type]),
+        CONFIG_KEYS.map(([name]) => [name, `CONFIGURE_${name}`, 'string']),
+    );
+    assert.equal(config.parameters.includeOtherFields, true, 'the webhook headers must reach Verify Request');
+    assert.equal(config.parameters.options.includeBinary, true, 'the raw body must reach Verify Request');
+    assert.deepEqual(exported.connections.Webhook.main, [[{ node: 'Config', type: 'main', index: 0 }]]);
+    assert.deepEqual(exported.connections.Config.main, [[{ node: 'Verify Request', type: 'main', index: 0 }]]);
+
+    // Every Code node that needs a key reads the Config node, never $env.
+    for (const node of exported.nodes.filter(({ type }) => type === 'n8n-nodes-base.code')) {
+        assert.doesNotMatch(node.parameters.jsCode, /\$env[.[]/, `${node.name} reads $env`);
+    }
 });
 
 test('no execution data is kept: the EA account travels in the request', async () => {
@@ -130,7 +153,7 @@ test('the placement report goes to the store signed, raw, and never as an unhand
     assert.match(report.parameters.url, /\/api\/automation\/v1\/fulfillment\/placements'/);
     assert.equal(report.parameters.contentType, 'raw');
     assert.equal(report.parameters.body, '={{ $json.rawBody }}');
-    assert.equal(headers['X-ArabUT-Key'], '={{ $env.N8N_FULFILLMENT_KEY }}');
+    assert.equal(headers['X-ArabUT-Key'], "={{ $('Config').first().json.N8N_FULFILLMENT_KEY }}");
     assert.equal(headers['X-ArabUT-Signature'], '={{ $json.signature }}');
     assert.equal(report.parameters.options.response.response.neverError, true);
     assert.equal(report.parameters.options.response.response.fullResponse, true);
@@ -144,6 +167,8 @@ test('the error workflow alerts on Telegram through a placeholder credential', a
 
     assert.equal(exported.active, false);
     assert.equal(telegram.credentials.telegramApi.id, 'CONFIGURE_TELEGRAM_CREDENTIAL_ID');
+    assert.equal(telegram.parameters.chatId, 'CONFIGURE_OPS_TELEGRAM_CHAT_ID', 'the chat id is typed into the node after import');
+    assert.doesNotMatch(JSON.stringify(exported), /\$env[.[]/);
     assert.equal(code.parameters.jsCode, await readFile(new URL('nodes/failure-alert.js', root), 'utf8'));
     assert.doesNotMatch(JSON.stringify(exported), /whapi/i);
 });
