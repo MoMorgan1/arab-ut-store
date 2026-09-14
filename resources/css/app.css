@@ -1366,7 +1366,7 @@ html.admin-document {
     }
 
     .store-shell {
-        --store-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --store-ease-out: var(--motion-ease);
         --store-header-height: 7rem;
         overflow-x: clip;
         background: var(--arabut-navy);
