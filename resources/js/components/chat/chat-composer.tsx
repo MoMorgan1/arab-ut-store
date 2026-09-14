@@ -92,7 +92,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     type="submit"
                     disabled={!canSubmit}
                     aria-label={sendLabel}
-                    className={`chat-press flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--chat-accent)] text-[var(--chat-hero)] transition-[transform,opacity] duration-200 [transition-timing-function:var(--chat-ease-spring)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed motion-reduce:transition-none ${
+                    className={`chat-press chat-btn chat-btn--primary flex h-11 w-11 flex-shrink-0 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed ${
                         hasText
                             ? 'scale-100 opacity-100'
                             : 'scale-90 opacity-40'

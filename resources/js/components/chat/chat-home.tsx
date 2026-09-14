@@ -226,7 +226,7 @@ export const ChatHome: React.FC<ChatHomeProps> = ({
                         type="button"
                         onClick={onStart}
                         disabled={disabled}
-                        className="chat-press flex h-11 flex-shrink-0 items-center gap-2 rounded-xl bg-[var(--chat-accent)] px-4 text-sm font-bold text-[var(--chat-hero)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="chat-press chat-btn chat-btn--primary flex h-11 flex-shrink-0 items-center gap-2 px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--arabut-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <span>{copy.startCta}</span>
                         <Send
