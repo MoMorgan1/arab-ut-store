@@ -649,10 +649,13 @@ for (const { path, language, direction, heading } of [
     });
 }
 
-test('desktop login uses the annotated compact credential rhythm', async ({
+test('desktop login keeps every credential control on one 48px rhythm', async ({
     page,
 }) => {
-    // Regression: 2026-08-22 browser annotations require 40px and 71px rows.
+    // The card ran a 40px "compact" row here and 44px on a phone (annotated
+    // 2026-08-22). Mohamed dropped that on 2026-09-14 with the glass control
+    // language: the sizes did not suit the card, and one height across every
+    // viewport is what lets the tabs, fields and buttons read as one column.
     await page.setViewportSize({ width: 916, height: 912 });
     await page.goto('/login');
 
@@ -670,11 +673,31 @@ test('desktop login uses the annotated compact credential rhythm', async ({
     await expect(
         emailField.getByText('البريد الإلكتروني', { exact: true }),
     ).toBeVisible();
-    await expect(emailField).toHaveCSS('height', '40px');
+    await expect(emailInput).toHaveCSS('height', '48px');
+    await expect(passwordInput).toHaveCSS('height', '48px');
+    await expect(emailField).toHaveCSS('height', '48px');
+    // The password row carries its "forgot password?" link above the control,
+    // so it stands one label-line taller than the email row.
     const passwordFieldHeight = await passwordField.evaluate(
         (element) => element.getBoundingClientRect().height,
     );
-    expect(passwordFieldHeight).toBeCloseTo(71, 0);
+    expect(passwordFieldHeight).toBeGreaterThan(48);
+
+    // The Google button renders only where OAuth is configured, so it is
+    // measured when it is there rather than waited for.
+    const google = page.locator('.auth-google-action');
+    const controls = [
+        page.locator('.auth-login-method__tab').first(),
+        page.locator('.auth-form__submit'),
+        ...((await google.count()) > 0 ? [google] : []),
+    ];
+
+    for (const control of controls) {
+        const height = await control.evaluate(
+            (element) => element.getBoundingClientRect().height,
+        );
+        expect(height).toBeGreaterThanOrEqual(48);
+    }
 });
 
 test('mobile login keeps credential controls touch sized', async ({ page }) => {
@@ -687,12 +710,24 @@ test('mobile login keeps credential controls touch sized', async ({ page }) => {
         name: 'نسيت كلمة المرور؟',
     });
 
-    await expect(emailInput).toHaveCSS('height', '44px');
-    await expect(passwordInput).toHaveCSS('height', '44px');
+    // Same 48px rhythm as the desktop card since 2026-09-14; 44 is only the
+    // floor a finger needs, and the card reads better one step above it.
+    await expect(emailInput).toHaveCSS('height', '48px');
+    await expect(passwordInput).toHaveCSS('height', '48px');
     const forgotPasswordHeight = await forgotPassword.evaluate(
         (element) => element.getBoundingClientRect().height,
     );
     expect(forgotPasswordHeight).toBeGreaterThanOrEqual(44);
+
+    // The remember-me box stays checkbox-sized; the row it sits in is what the
+    // finger actually hits.
+    const rememberRowHeight = await page
+        .locator('[data-slot="checkbox"]')
+        .evaluate(
+            (element) =>
+                element.parentElement?.getBoundingClientRect().height ?? 0,
+        );
+    expect(rememberRowHeight).toBeGreaterThanOrEqual(44);
 });
 
 test('mobile home opens and closes chat without overflow', async ({ page }) => {
