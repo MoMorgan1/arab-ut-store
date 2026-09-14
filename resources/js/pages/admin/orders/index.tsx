@@ -9,8 +9,10 @@ import type {
     SortingState,
     VisibilityState,
 } from '@tanstack/react-table';
+import { Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
+import AdminManualOrderDrawer from '@/components/admin/orders/admin-manual-order-drawer';
 import { getAdminOrderColumns } from '@/components/admin/orders/admin-orders-columns';
 import AdminOrdersPagination from '@/components/admin/orders/admin-orders-pagination';
 import AdminOrdersTable from '@/components/admin/orders/admin-orders-table';
@@ -34,6 +36,8 @@ export default function AdminOrdersPage() {
     const pathname = new URL(url, window.location.origin).pathname;
     const queryScope = JSON.stringify(props.filters);
     const [isNavigating, setIsNavigating] = useState(false);
+    const [manualOrderOpen, setManualOrderOpen] = useState(false);
+    const canCreateOrder = props.permissions.includes('orders.create');
     const [queryFailed, setQueryFailed] = useState(false);
     const [failedFilters, setFailedFilters] =
         useState<AdminOrdersQueryState | null>(null);
@@ -161,13 +165,25 @@ export default function AdminOrdersPage() {
         <article className="space-y-6" dir={props.direction}>
             <Head title={copy.headTitle} />
 
-            <header className="flex flex-col gap-1 border-b border-border pb-5">
-                <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                    {copy.title}
-                </h1>
-                <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-                    {copy.description}
-                </p>
+            <header className="flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                        {copy.title}
+                    </h1>
+                    <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+                        {copy.description}
+                    </p>
+                </div>
+                {canCreateOrder ? (
+                    <Button
+                        className="min-h-11 w-full md:w-auto"
+                        onClick={() => setManualOrderOpen(true)}
+                        type="button"
+                    >
+                        <Plus aria-hidden="true" className="size-4" />
+                        <span>{copy.manual.createButton}</span>
+                    </Button>
+                ) : null}
             </header>
 
             {queryFailed ? (
@@ -221,6 +237,18 @@ export default function AdminOrdersPage() {
                 perPageOptions={props.filterOptions.perPageOptions}
                 table={table}
             />
+
+            {canCreateOrder ? (
+                <AdminManualOrderDrawer
+                    // Keyed so every opening mounts a fresh drawer with an
+                    // empty form, rather than an effect clearing one.
+                    key={manualOrderOpen ? 'open' : 'closed'}
+                    copy={copy.manual}
+                    onClose={() => setManualOrderOpen(false)}
+                    open={manualOrderOpen}
+                    urls={props.manualOrder}
+                />
+            ) : null}
         </article>
     );
 }

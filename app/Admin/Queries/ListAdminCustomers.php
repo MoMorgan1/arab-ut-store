@@ -2,6 +2,7 @@
 
 namespace App\Admin\Queries;
 
+use App\Admin\Support\CustomerSearchPredicate;
 use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Support\PublicHandle\CustomerHandle;
@@ -147,30 +148,7 @@ final class ListAdminCustomers
 
     private function applySearch(Builder $query, ?string $search): void
     {
-        $search = trim((string) $search);
-
-        if ($search === '') {
-            return;
-        }
-
-        $lowercaseSearch = mb_strtolower($search);
-        $phoneDigits = preg_replace('/\D+/', '', $search);
-
-        $query->where(function (Builder $customerQuery) use ($search, $lowercaseSearch, $phoneDigits): void {
-            $customerQuery->whereRaw('LOWER(users.customer_number) = ?', [$lowercaseSearch])
-                ->orWhereRaw('LOWER(users.customer_number) = ?', ['cus-'.$lowercaseSearch])
-                ->orWhereRaw('LOWER(users.first_name) LIKE ?', ['%'.$lowercaseSearch.'%'])
-                ->orWhereRaw('LOWER(users.last_name) LIKE ?', ['%'.$lowercaseSearch.'%'])
-                ->orWhereRaw("LOWER(CONCAT(users.first_name, ' ', users.last_name)) LIKE ?", ['%'.$lowercaseSearch.'%'])
-                ->orWhereRaw('LOWER(users.email) = ?', [$lowercaseSearch])
-                ->orWhere('users.phone', $search);
-
-            if ($phoneDigits !== '' && $phoneDigits !== null) {
-                $customerQuery->orWhere('users.phone', $phoneDigits)
-                    ->orWhere('users.phone', '+'.$phoneDigits)
-                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(users.phone, '+', ''), ' ', ''), '-', '') LIKE ?", ['%'.$phoneDigits.'%']);
-            }
-        });
+        CustomerSearchPredicate::apply($query, $search);
     }
 
     private function applyDateFilters(

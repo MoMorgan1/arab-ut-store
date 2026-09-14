@@ -12,6 +12,7 @@ final class AdminAccess
     private const STAFF = [
         AdminPermission::DashboardView,
         AdminPermission::OrdersView,
+        AdminPermission::OrdersCreate,
         AdminPermission::OrdersUpdate,
         AdminPermission::OrdersCancel,
         AdminPermission::OrderCredentialsView,

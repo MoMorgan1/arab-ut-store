@@ -187,6 +187,7 @@ export type AdminTranslations = {
         sortBy: string;
         services: Record<string, string>;
         platforms: Record<string, string>;
+        manual: AdminManualOrderTranslations;
     };
     orderDetail: {
         headTitle: string;
@@ -1900,6 +1901,143 @@ export type AdminFilterOption = {
     label: string;
 };
 
+/**
+ * Every string the manual-order drawer renders. Spelled out rather than
+ * `Record<string, string>` so a key renamed in the admin lang files fails the
+ * type check instead of rendering as nothing on a form about money.
+ */
+export type AdminManualOrderTranslations = {
+    createButton: string;
+    title: string;
+    description: string;
+    close: string;
+    typeLabel: string;
+    typeTransfer: string;
+    typeGift: string;
+    transferNote: string;
+    giftNote: string;
+    customerLabel: string;
+    customerPlaceholder: string;
+    customerHelp: string;
+    customerSearching: string;
+    customerNoResults: string;
+    customerSelect: string;
+    customerChange: string;
+    customerOrders: string;
+    customerSuspended: string;
+    deliveryLabel: string;
+    deliveryPlacedTitle: string;
+    deliveryPlacedBody: string;
+    deliveryLaterTitle: string;
+    deliveryLaterBody: string;
+    itemLabel: string;
+    removeItem: string;
+    addItem: string;
+    serviceLabel: string;
+    platformLabel: string;
+    priceLabel: string;
+    currency: string;
+    priceSuggestion: string;
+    priceUse: string;
+    priceChanged: string;
+    coinsQuantity: string;
+    coinsDelivery: string;
+    deliveryNormal: string;
+    deliveryFast: string;
+    completionCount: string;
+    sbcVariant: string;
+    sbcVariantPlaceholder: string;
+    rank: string;
+    rankNumber: string;
+    matchesPlayed: string;
+    urgent: string;
+    rivalsMode: string;
+    rivalsPromotion: string;
+    rivalsWeekly: string;
+    currentDivision: string;
+    targetDivision: string;
+    divisionElite: string;
+    divisionNumber: string;
+    credentialsLabel: string;
+    eaEmail: string;
+    eaPassword: string;
+    backupCodes: string;
+    backupCodesHelp: string;
+    credentialsOptional: string;
+    addCredentials: string;
+    hideCredentials: string;
+    supplierLabel: string;
+    supplierReference: string;
+    phaseLabel: string;
+    challengeIds: string;
+    challengeIdsHelp: string;
+    uttNoChallenges: string;
+    placementUnavailable: string;
+    paymentLabel: string;
+    paymentAmount: string;
+    paymentAmountHelp: string;
+    paymentReceivedAt: string;
+    paymentReference: string;
+    paymentHelp: string;
+    giftHeading: string;
+    giftBody: string;
+    total: string;
+    auditNote: string;
+    submit: string;
+    submitting: string;
+    cancel: string;
+    phases: Record<string, string>;
+    errors: {
+        validation: string;
+        forbidden: string;
+        generic: string;
+        network: string;
+        optionsFailed: string;
+        noCustomer: string;
+    };
+};
+
+/** What `ManualOrderOptions` answers with when the drawer opens. */
+export type AdminManualOrderOptions = {
+    services: Array<{
+        value: string;
+        label: string;
+        platforms: string[];
+        acceptsPlacement: boolean;
+    }>;
+    platforms: Array<{ value: string; label: string }>;
+    suppliers: Array<{
+        value: string;
+        label: string;
+        handlesChallenges: boolean;
+    }>;
+    deliveryPhases: Array<{ value: string; label: string }>;
+    sbcVariants: Array<{
+        publicId: string;
+        name: string;
+        platform: string;
+        priceHalalah: number;
+    }>;
+    rivals: { divisions: string[]; offersWeeklyMatches: boolean } | null;
+    futChampions: { ranks: number[] } | null;
+};
+
+export type AdminManualOrderCustomer = {
+    handle: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    ordersCount: number;
+    isActive: boolean;
+};
+
+export type AdminManualOrderUrls = {
+    createUrl: string;
+    optionsUrl: string;
+    customerSearchUrl: string;
+    priceUrl: string;
+};
+
 export type AdminOrdersPageProps = {
     locale: 'ar' | 'en';
     direction: 'rtl' | 'ltr';
@@ -1917,6 +2055,7 @@ export type AdminOrdersPageProps = {
         paymentStatuses: AdminFilterOption[];
         perPageOptions: number[];
     };
+    manualOrder: AdminManualOrderUrls;
     logoutUrl: string;
 };
 

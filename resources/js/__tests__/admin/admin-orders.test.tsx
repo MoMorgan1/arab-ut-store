@@ -51,6 +51,12 @@ function defaultProps(): AdminOrdersPageProps {
         direction: 'ltr',
         adminUi: englishAdminUi,
         adminIdentity: { name: 'Operations Owner', role: 'admin' },
+        manualOrder: {
+            createUrl: '/admin/orders',
+            optionsUrl: '/admin/api/orders/new/options',
+            customerSearchUrl: '/admin/api/orders/new/customers',
+            priceUrl: '/admin/api/orders/new/price',
+        },
         adminNavigation: [
             { key: 'overview', label: 'Overview', url: '/admin' },
             { key: 'orders', label: 'Orders', url: '/admin/orders' },

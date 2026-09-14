@@ -6,6 +6,7 @@ enum AdminPermission: string
 {
     case DashboardView = 'dashboard.view';
     case OrdersView = 'orders.view';
+    case OrdersCreate = 'orders.create';
     case OrdersUpdate = 'orders.update';
     case OrdersCancel = 'orders.cancel';
     case OrdersRefund = 'orders.refund';

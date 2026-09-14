@@ -35,8 +35,20 @@ final readonly class AdminOrdersPage
     public function for(User $actor, string $locale, array $filters): array
     {
         $orderData = $this->ordersQuery->paginate($filters);
+        $prefix = str_starts_with((string) request()->route()?->getName(), 'localized.admin.')
+            ? 'localized.admin.'
+            : 'admin.';
 
         return [
+            // Where the drawer posts and what it asks before it can. The
+            // choices themselves are fetched when it opens rather than shipped
+            // here: a manual order is rare and this list is not.
+            'manualOrder' => [
+                'createUrl' => route($prefix.'orders.store', absolute: false),
+                'optionsUrl' => route($prefix.'orders.new.options', absolute: false),
+                'customerSearchUrl' => route($prefix.'orders.new.customers', absolute: false),
+                'priceUrl' => route($prefix.'orders.new.price', absolute: false),
+            ],
             'locale' => $locale,
             'direction' => $locale === 'en' ? 'ltr' : 'rtl',
             'adminUi' => (array) trans('admin', locale: $locale),
