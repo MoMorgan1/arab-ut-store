@@ -11,4 +11,28 @@
     --arabut-focus: #d4a843;
     --arabut-danger: #ffb4a9;
     --arabut-radius: 1.25rem;
+
+    /* Motion scale. Duration is chosen by USAGE, not by feel. */
+    --motion-stagger: 40ms; /* per-item offset in a staggered group */
+    --motion-micro: 80ms; /* intent delay, shake segment */
+    --motion-quick: 150ms; /* hover/focus colour, text swap, close of a small surface */
+    --motion-fast: 250ms; /* icon swap, dropdown/modal open, tab slide, page slide */
+    --motion-medium: 350ms; /* panel close, toast close */
+    --motion-slow: 400ms; /* panel open, skeleton reveal, input clear */
+    --motion-emphasis: 500ms; /* badge appear, text reveal, success check */
+
+    --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-ease-in-out: ease-in-out;
+    --motion-ease-linear: linear;
+    --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@theme {
+    --transition-duration-stagger: var(--motion-stagger);
+    --transition-duration-micro: var(--motion-micro);
+    --transition-duration-quick: var(--motion-quick);
+    --transition-duration-fast: var(--motion-fast);
+    --transition-duration-medium: var(--motion-medium);
+    --transition-duration-slow: var(--motion-slow);
+    --transition-duration-emphasis: var(--motion-emphasis);
 }
