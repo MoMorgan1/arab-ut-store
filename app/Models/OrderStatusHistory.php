@@ -3,8 +3,14 @@
 namespace App\Models;
 
 use App\Enums\OrderStatusHistoryStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property OrderStatusHistoryStatus $status
+ * @property array<string, mixed>|null $metadata
+ * @property CarbonImmutable $created_at
+ */
 class OrderStatusHistory extends DomainModel
 {
     protected $table = 'order_status_history';

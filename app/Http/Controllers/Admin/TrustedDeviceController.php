@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Admin\Actions\RecordStaffAudit;
 use App\Admin\Audit\StaffAuditEvent;
+use App\Auth\AdminMfaSession;
 use App\Auth\TrustedDeviceRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -19,6 +20,7 @@ final class TrustedDeviceController extends Controller
     public function __construct(
         private readonly TrustedDeviceRegistry $trustedDevices,
         private readonly RecordStaffAudit $recordStaffAudit,
+        private readonly AdminMfaSession $mfaSession,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -27,6 +29,10 @@ final class TrustedDeviceController extends Controller
         abort_unless($actor instanceof User, 401);
 
         $revoked = $this->trustedDevices->forgetAll($actor);
+
+        // The browser asking to revoke everything must itself be challenged
+        // again on the next admin request instead of riding its session grant.
+        $this->mfaSession->forget($request);
 
         $this->recordStaffAudit->execute(
             $actor,

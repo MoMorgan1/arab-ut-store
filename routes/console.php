@@ -2,6 +2,7 @@
 
 use App\Console\Commands\ExpireAbandonedCheckouts;
 use App\Console\Commands\MaintainChatConversations;
+use App\Console\Commands\PollFulfillmentJobs;
 use App\Console\Commands\PrunePricingHistory;
 use App\Console\Commands\PublishOrderPaidEvents;
 use App\Console\Commands\PurgeDeadCancelledOrders;
@@ -26,6 +27,14 @@ Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapp
 Schedule::command(ExpireAbandonedCheckouts::class)->hourly()->withoutOverlapping();
 Schedule::command(PurgeDeadCancelledOrders::class)->hourly()->withoutOverlapping();
 Schedule::command(PrunePricingHistory::class)->dailyAt('03:20')->withoutOverlapping();
+
+// No withoutOverlapping() here on purpose: the command's own Cache::lock is the
+// lease. The default mutex lasts a day, so a tick that was OOM-killed or left
+// behind after a reboot would silently stop every poll for twenty-four hours;
+// the command's lock carries the deadline as its TTL instead, so a killed
+// process frees it in under two minutes. runInBackground lets schedule:run
+// return before a slow supplier, so the next minute's cron is not blocked.
+Schedule::command(PollFulfillmentJobs::class)->everyMinute()->runInBackground();
 
 /*
  * Queued work is drained by the scheduler rather than a long-running worker.

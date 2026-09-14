@@ -16,3 +16,39 @@
  * `money.ts`, because number and currency formatting were never the problem.
  */
 export const DATE_LOCALE = 'en-GB';
+
+/**
+ * A timestamp for a header: the day, the month short, the year, then the time.
+ *
+ * `dateStyle: 'long'` with `timeStyle: 'short'` produces "13 September 2026 at
+ * 01:59" — a spelled-out month and an English preposition sitting inside an
+ * Arabic line. The pieces are the same; only the joinery changes, so the
+ * Gregorian-calendar decision above is untouched.
+ */
+export function formatTimestamp(value: string | Date): string {
+    const date = value instanceof Date ? value : new Date(value);
+
+    // en-GB abbreviates September to "Sept", the one four-letter short month
+    // it has. Three letters everywhere keeps the line the same length whatever
+    // month it lands in, which matters because it sits at the end of the row.
+    const parts = new Intl.DateTimeFormat(DATE_LOCALE, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    }).formatToParts(date);
+
+    const day = parts
+        .map((part) =>
+            part.type === 'month'
+                ? part.value.replace(/\.$/, '').slice(0, 3)
+                : part.value,
+        )
+        .join('');
+
+    const time = new Intl.DateTimeFormat(DATE_LOCALE, {
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+
+    return `${day} · ${time}`;
+}

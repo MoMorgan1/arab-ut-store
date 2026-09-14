@@ -19,4 +19,15 @@ class FulfillmentJobFactory extends Factory
             'attempt_count' => 0,
         ];
     }
+
+    /**
+     * A live job actively polling for supplier updates.
+     */
+    public function live(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => FulfillmentStatus::InProgress,
+            'next_poll_at' => now()->addMinutes(5),
+        ]);
+    }
 }

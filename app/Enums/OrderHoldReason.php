@@ -3,7 +3,15 @@
 namespace App\Enums;
 
 /**
- * The curated set of reasons an order stops and waits on the customer.
+ * The curated set of reasons an order is not moving.
+ *
+ * Not all of them wait on the customer, and the distinction decides the
+ * canonical status above: eleven of these ask the customer to do something or
+ * to message us, and seven - EaServers, StoreStock, Connection, NoPlayer,
+ * Maintenance, Paused, and BelowMinimum - say we are handling it and ask nothing. A reason in
+ * the second group must never move an item to WaitingForCustomer, because the
+ * customer has nothing to wait on. The reason texts in lang/ar/orders.php are
+ * where that split is visible.
  *
  * These mirror the issue topics Luna already answers in the knowledge base,
  * so the message on the order page and the message in the chat agree.
@@ -21,12 +29,24 @@ enum OrderHoldReason: string
     case TransferListFull = 'transfer_list_full';
     case Captcha = 'captcha';
     case Unassigned = 'unassigned';
+    // Nothing reports a genuine EA suspension. Every code that resolves here is a device
+    // ban or a locked web app - LoginFailedDeviceBan, FailWebAppCustomerLocked,
+    // FailedReceiverDeviceBan - each of which the customer may be able to clear themselves,
+    // which is why the text hedges and offers both buttons rather than sending them to us.
+    // Owner decision, 2026-09-13. The case name is now narrower than what reaches it.
     case AccountBanned = 'account_banned';
     case StoreStock = 'store_stock';
     case Connection = 'connection';
     case NoPlayer = 'no_player';
     case Maintenance = 'maintenance';
     case Paused = 'paused';
+    case BelowMinimum = 'below_minimum';
+
+    // Owner-visible vocabulary added 2026-09-13, because `Credentials` was
+    // answering for five different problems and its sentence was true for one.
+    case TwoFactorOff = 'two_factor_off';
+    case EmailConfirm = 'email_confirm';
+    case WebAppLocked = 'web_app_locked';
 
     /**
      * The customer-facing message for this reason, frozen at transition time.

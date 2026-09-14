@@ -8,6 +8,7 @@ import {
     formatDocumentTitle,
 } from '@/lib/document-title';
 import { resolveApplicationLayout } from '@/lib/page-layout';
+import { initializePageTransitions } from '@/lib/page-transitions';
 
 const appName = import.meta.env.VITE_APP_NAME || DEFAULT_APPLICATION_NAME;
 
@@ -30,6 +31,9 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Animates the swap between pages instead of replacing it in one frame.
+initializePageTransitions();
 
 // Loads nothing until the visitor has accepted the consent banner.
 initAnalytics();

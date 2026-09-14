@@ -3,15 +3,14 @@
 namespace App\Account\Queries;
 
 use App\Account\Presenters\AccountMoney;
-use App\Account\Presenters\ServiceArtwork;
+use App\Account\Presenters\ItemArtwork;
+use App\Account\Presenters\ItemTracking;
 use App\Enums\OrderStatus;
 use App\Enums\ServiceType;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Payment;
-use App\Models\Product;
-use App\Models\ProductMedia;
 use App\Models\Review;
 use App\Models\User;
 use App\Payments\PaymentMethodLabel;
@@ -19,7 +18,6 @@ use App\Support\PublicHandle\OrderHandle;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Facades\Storage;
 
 final class ReadLiveOrder
 {
@@ -73,11 +71,52 @@ final class ReadLiveOrder
                         ->with(['product' => fn ($products) => $products
                             ->select(['id'])
                             ->with('media')]),
+                    'fulfillmentJob' => fn ($jobs) => $jobs->select([
+                        'id',
+                        'order_item_id',
+                        'supplier',
+                        // Selected because ItemTracking treats a job with no
+                        // reference as unplaced: omit this column and every item
+                        // silently reports no tracking at all.
+                        'supplier_order_id',
+                        'delivery_phase',
+                        'hold_reason',
+                        'presentation',
+                        'hold_tone',
+                        'observation',
+                        'allowed_actions',
+                        'observation_supported',
+                        'observed_at',
+                        'completed_at',
+                        'coins_delivered',
+                        'coins_ordered',
+                        // The same reason as supplier_order_id above: an unselected
+                        // counter reads as null, so the page renders "no progress" for
+                        // a challenge that is halfway through. The rename to squads/
+                        // solves had to reach this list.
+                        'squads_done',
+                        'squads_total',
+                        'solves_done',
+                        'solves_total',
+                    ])->with(['placements' => fn ($placements) => $placements->select([
+                        'id',
+                        'fulfillment_job_id',
+                        'supplier',
+                        'delivery_phase',
+                        'supplier_challenge_ids',
+                    ])]),
                 ])
                 ->withExists('secret')
                 ->withExists('squadImage')
                 ->orderBy('id')])
             ->firstOrFail();
+
+        // The items already have their order in hand; say so, or ItemTracking fetches the
+        // same row again once per challenge item further down this method.
+        foreach ($order->items as $orderItem) {
+            $orderItem->setRelation('order', $order);
+        }
+
         $terminal = in_array($order->status, [
             OrderStatus::Completed,
             OrderStatus::Cancelled,
@@ -139,7 +178,12 @@ final class ReadLiveOrder
                     'id' => (string) $item->getAttribute('public_id'),
                     'name' => (string) $item->getAttribute($locale === 'en' ? 'name_en' : 'name_ar'),
                     'platform' => $item->platform->value,
-                    'imageUrl' => $this->itemImageUrl($item),
+                    'imageUrl' => ItemArtwork::for($item),
+                    'actionUrls' => $this->itemActionUrls(
+                        $item,
+                        (string) $order->getAttribute('order_number'),
+                        $locale,
+                    ),
                     'status' => $item->status->forCustomer()->value,
                     'quantity' => (int) $item->getAttribute('quantity'),
                     'total' => AccountMoney::fromMinor(
@@ -148,6 +192,7 @@ final class ReadLiveOrder
                     ),
                     'credentialsPresent' => (bool) $item->getAttribute('secret_exists'),
                     'manualFulfillment' => $this->manualFulfillment($item, (string) $order->getAttribute('order_number'), $locale),
+                    'tracking' => ItemTracking::for($item, $locale),
                 ])
                 ->values()
                 ->all(),
@@ -283,34 +328,6 @@ final class ReadLiveOrder
      * back to the storefront artwork for the service so a manual service
      * (which has no product media) never renders as an empty box.
      */
-    private function itemImageUrl(OrderItem $item): string
-    {
-        if ($item->service_type === ServiceType::Coins) {
-            return '/images/store/coins/ut-coin-80.webp';
-        }
-
-        $product = $item->productVariant?->product;
-        $media = $product instanceof Product ? $this->safeImageUrl($product->media->first()) : null;
-
-        return $media ?? ServiceArtwork::for($item->service_type);
-    }
-
-    private function safeImageUrl(?ProductMedia $media): ?string
-    {
-        if (! $media instanceof ProductMedia || $media->disk !== 'public') {
-            return null;
-        }
-
-        $path = (string) $media->path;
-
-        if ($path === '' || str_contains($path, '..')
-            || preg_match('/\A[A-Za-z0-9_\/.\-]+\z/D', $path) !== 1) {
-            return null;
-        }
-
-        return Storage::disk('public')->url($path);
-    }
-
     /** @return array<string, mixed>|null */
     private function manualFulfillment(OrderItem $item, string $orderId, string $locale): ?array
     {
@@ -348,6 +365,34 @@ final class ReadLiveOrder
             'squadImageUrl' => $squadImageUrl,
             'platform' => $item->platform->value,
             ...$this->safeManualConfiguration($configuration, $item->service_type),
+        ];
+    }
+
+    /**
+     * Where the card's three buttons post to.
+     *
+     * The URLs travel with the item rather than being assembled in the browser,
+     * which is how the credentials and squad-image links already work. They are
+     * present whatever the allowed-action set says: the server re-authorises
+     * every press anyway, so a URL is not a permission.
+     *
+     * @return array{editCredentials: string, resume: string, retryChallenge: string}
+     */
+    private function itemActionUrls(OrderItem $item, string $orderId, string $locale): array
+    {
+        $prefix = $locale === 'en' ? 'localized.store' : 'store';
+        // The localised block sits under a {locale} prefix, so its routes need
+        // that parameter as well as the two the path names.
+        $parameters = [
+            ...($locale === 'en' ? ['locale' => 'en'] : []),
+            'order' => $orderId,
+            'item' => $item->public_id,
+        ];
+
+        return [
+            'editCredentials' => route("{$prefix}.orders.items.actions.edit-credentials", $parameters, absolute: false),
+            'resume' => route("{$prefix}.orders.items.actions.resume", $parameters, absolute: false),
+            'retryChallenge' => route("{$prefix}.orders.items.actions.retry-challenge", $parameters, absolute: false),
         ];
     }
 

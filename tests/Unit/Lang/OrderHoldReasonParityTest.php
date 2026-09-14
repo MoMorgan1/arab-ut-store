@@ -52,8 +52,11 @@ test('the customer message says more than the admin picker label', function () u
 });
 
 test('a banned account message clears the store of blame', function () use ($read) {
-    // Customers reach for the store first when EA suspends them. Saying whose
-    // decision it was is the whole point of curating this one.
+    // Customers reach for the store first when EA blocks them. Saying whose decision
+    // it was is the whole point of curating this one. What actually reaches this reason
+    // is a device ban or a locked web app, never a suspension, so the message hedges and
+    // offers both buttons - but it still has to name EA, or "we hit a problem signing in"
+    // reads as the store having failed.
     expect($read('ar', 'orders', 'hold_reasons')['account_banned'])->toContain('EA')
         ->and($read('en', 'orders', 'hold_reasons')['account_banned'])->toContain('EA');
 });

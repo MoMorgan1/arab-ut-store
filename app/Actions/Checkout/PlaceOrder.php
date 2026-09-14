@@ -47,6 +47,7 @@ use App\ValueObjects\Cart\CartItemPrice;
 use App\ValueObjects\Cart\CartOwner;
 use App\ValueObjects\Cart\CartRepricing;
 use App\ValueObjects\Cart\ManualServiceCredentials;
+use App\ValueObjects\EaAccountCredentials;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -467,13 +468,15 @@ final readonly class PlaceOrder
             throw new CheckoutUnavailable('A cart item is invalid.');
         }
 
-        $isManualService = $this->isManualService($service);
+        $isBoosterConfigured = $this->isBoosterConfiguredService($service);
         $secret = match (true) {
-            $isManualService => $this->requiredManualSecret($item, $configuration),
-            in_array($service, [ServiceType::Coins, ServiceType::Sbc], true) => $this->requiredSecret($item),
+            $isBoosterConfigured => $this->requiredManualSecret($item, $configuration),
+            // Coins, SBC, and Objectives all carry EA credentials collected in the cart,
+            // which is a different question from whether a bot or a person delivers them.
+            in_array($service, [ServiceType::Coins, ServiceType::Sbc, ServiceType::Objectives], true) => $this->requiredSecret($item),
             default => null,
         };
-        $attachment = $isManualService ? $this->requiredManualAttachment($item) : null;
+        $attachment = $isBoosterConfigured ? $this->requiredManualAttachment($item) : null;
         $category = $variant->product->category;
 
         return [
@@ -515,7 +518,7 @@ final readonly class PlaceOrder
 
         // Only the manual services carry a schedule version; the other
         // allow-lists would drop the key silently.
-        if ($this->isManualService($service) && $price->scheduleVersion !== null) {
+        if ($this->isBoosterConfiguredService($service) && $price->scheduleVersion !== null) {
             $configuration['schedule_version'] = $price->scheduleVersion;
         }
 
@@ -586,9 +589,16 @@ final readonly class PlaceOrder
         return $attachment;
     }
 
-    private function isManualService(ServiceType $service): bool
+    /**
+     * Deliberately not isManual(): Objectives is delivered by a person too, but
+     * it is a catalog product with no division target and no squad image. This
+     * helper was called isManualService while meaning the narrower thing, and
+     * that mislabelling is what silently dropped Objectives credentials at
+     * checkout - so the name now says which question it answers.
+     */
+    private function isBoosterConfiguredService(ServiceType $service): bool
     {
-        return $service->isManual();
+        return $service->isBoosterConfigured();
     }
 
     private function requiredSecret(CartItem $item): CartItemSecret
@@ -598,18 +608,16 @@ final readonly class PlaceOrder
 
         if (! $secret instanceof CartItemSecret
             || $secret->deleted_at !== null
-            || ! is_array($payload)
-            || ! isset($payload['ea_email'], $payload['ea_password'], $payload['backup_codes'])
-            || ! is_string($payload['ea_email'])
-            || filter_var($payload['ea_email'], FILTER_VALIDATE_EMAIL) === false
-            || ! is_string($payload['ea_password'])
-            || $payload['ea_password'] === ''
-            || ! is_array($payload['backup_codes'])
-            || count($payload['backup_codes']) !== 3
-            || count(array_unique($payload['backup_codes'])) !== 3
-            || collect($payload['backup_codes'])->contains(fn (mixed $code): bool => ! is_string($code)
-                || preg_match('/\A[0-9]{8}\z/D', $code) !== 1)) {
+            || ! is_array($payload)) {
             throw new CheckoutUnavailable('EA account details are required.');
+        }
+
+        // One definition of valid EA details, shared with the customer's
+        // correction action: checkout and correction cannot drift apart.
+        try {
+            EaAccountCredentials::fromValidated($payload);
+        } catch (DomainException $exception) {
+            throw new CheckoutUnavailable('EA account details are required.', previous: $exception);
         }
 
         return $secret;

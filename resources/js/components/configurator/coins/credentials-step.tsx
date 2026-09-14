@@ -448,7 +448,7 @@ export function CredentialsStep({
                                                 );
                                             }
                                         }}
-                                        pattern="[0-9]{8}"
+                                        pattern="[0-9]{6}|[0-9]{8}"
                                         placeholder="12345678"
                                         ref={(node) => {
                                             fieldRefs.current[field] = node;

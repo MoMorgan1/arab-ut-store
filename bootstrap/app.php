@@ -8,6 +8,7 @@ use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\SetDisplayCurrency;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\VerifyN8nFulfillmentSignature;
 use App\Http\Middleware\VerifyN8nSbcPricingReadSignature;
 use App\Http\Responses\ChatErrorResponse;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -35,7 +36,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 || $request->is('cart/items/sbc')
                 || $request->is('*/cart/items/sbc')
                 || $request->is('cart/items/*/credentials')
-                || $request->is('*/cart/items/*/credentials'),
+                || $request->is('*/cart/items/*/credentials')
+                // A password is whatever the customer typed, spaces included.
+                // Trimming it here would store and forward a different password
+                // from the one that works, and the customer would have no way to
+                // see why their correction did not help.
+                || $request->is('orders/*/items/*/actions/edit-credentials')
+                || $request->is('*/orders/*/items/*/actions/edit-credentials'),
         ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCoinsCartJson::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireCatalogCartJson::class);
@@ -46,6 +53,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(
             ThrottleRequests::class,
             VerifyN8nSbcPricingReadSignature::class,
+        );
+        $middleware->prependToPriorityList(
+            ThrottleRequests::class,
+            VerifyN8nFulfillmentSignature::class,
         );
         $middleware->redirectGuestsTo(fn (Request $request): string => $request->route('locale') === 'en'
             ? route('localized.login', ['locale' => 'en'], absolute: false)
@@ -69,7 +80,13 @@ return Application::configure(basePath: dirname(__DIR__))
                 || $request->is('*/chat/*')
                 || $request->expectsJson()
                 || ($request->isMethod('POST') && (
-                    $request->is('cart/items/coins') || $request->is('*/cart/items/coins')
+                    // Without this a validation failure redirects instead of
+                    // answering, and a redirect flashes what was submitted into
+                    // the session - which for this route means the EA password
+                    // and the backup codes, in a store outside the encrypted
+                    // column and its access log. See dontFlash below.
+                    $request->is('orders/*/items/*/actions/*') || $request->is('*/orders/*/items/*/actions/*')
+                    || $request->is('cart/items/coins') || $request->is('*/cart/items/coins')
                     || $request->is('cart/items/catalog') || $request->is('*/cart/items/catalog')
                     || $request->is('cart/items/sbc') || $request->is('*/cart/items/sbc')
                     || $request->is('checkout/paylink') || $request->is('*/checkout/paylink')
@@ -80,6 +97,21 @@ return Application::configure(basePath: dirname(__DIR__))
                     || $request->is('*/cart/items/*/credentials')
                 )),
         );
+        // A redirect after a failed validation flashes what was submitted into the
+        // session so the form can be refilled. Laravel's own list covers fields
+        // named `password`; ours are not, and the session store is the database
+        // with encryption off by default, so a mistyped correction would leave a
+        // readable copy of an EA password outside the encrypted column that exists
+        // to hold it. The routes above answer with JSON so this path should not be
+        // reached at all - this is the belt behind that brace.
+        $exceptions->dontFlash([
+            'backup_codes',
+            'current_password',
+            'ea_password',
+            'password',
+            'password_confirmation',
+        ]);
+
         $exceptions->respond(function (Response $exceptionResponse, Throwable $exception, Request $request): Response {
             if ($request->is('chat') || $request->is('chat/*') || $request->is('*/chat') || $request->is('*/chat/*')) {
                 return app(ChatErrorResponse::class)->render($exceptionResponse, $exception, $request);

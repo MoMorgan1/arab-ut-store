@@ -80,6 +80,115 @@ Before calling a new or redesigned interface complete, verify Arabic RTL and Eng
 - Push back honestly on weak ideas, unsafe shortcuts, unrealistic scope, or avoidable complexity.
 - Never substitute a mockup for a working product unless Mohamed explicitly requests a mockup.
 
+## Customer copy
+
+Owner rule, 2026-09-13: **the store's customers are Gulf readers.** Mohamed is Egyptian and the
+copy kept drifting into his own dialect, which reads as foreign to the people buying. Every string a
+customer can see - screens, emails, WhatsApp messages, validation errors - is simple Arabic that a
+Gulf reader would write. Admin screens are exempt: they have one reader.
+
+What that rules out, with what replaced it when this was swept:
+
+| Egyptian | Write instead |
+| --- | --- |
+| `دلوقتي` | `الآن` |
+| `ماعليكش` | `ما عليك` |
+| `شغالين` / `نشتغل` | `نعمل` |
+| `لحد ما` | `حتى` |
+| `عشان` | `حتى` / `لأن` |
+| `دي` / `دا` as a demonstrative | `هذه` / `هذا` |
+| `مش متاح` | `غير متاح` |
+| `مفيش` | `لا يوجد` / `ما فيه` |
+| `لسه` | `ما زال` |
+| `خالص` (as "at all") | `تماماً` / `أبداً` |
+| `بيكمل` / `بنرسل` (the `ب-` present) | `يكمل` / `نرسل` |
+| `يفرّق معنا` | `يهمنا` |
+
+`تقدر`, `تبي`, `فالك التوفيق` and `أول ما` are Gulf-natural and stay.
+
+The table is not a specification, it is what has been caught so far - Mohamed found `مفيش` in a
+string written the same day the rule was added. Grep for these words before shipping customer copy,
+then read every hit: most matches are substrings (`دي` inside `التحدي`, `دة` inside `إعادة`), and the
+real ones are what survive reading, not what the grep counted.
+
+Ported copy is not exempt. `track.arab-ut.com`'s message catalogue is the specification for **what**
+each message says, never for which dialect says it - the tracker is written in Egyptian throughout.
+
+## Failures
+
+Owner rule, 2026-09-13: every path handles its failures, and this is how.
+
+A failure has three audiences and they want different things. Decide which you are writing for
+before you write a line of it.
+
+**The customer** gets one sentence: what happened, and what to do next. Never a code, never a
+supplier's name, never anything about how we work. If nothing is being asked of them, the sentence
+says so.
+
+**The operator** gets everything, in the log: the identifiers, the machine-readable reason, and
+enough to find the row. A configuration fault - a missing key, an unset base URL - is logged at
+error level, because it is ours to fix and nobody else will notice it.
+
+**The caller** gets a truthful outcome, and truthful means it describes what was actually written,
+not what was attempted. See the third rule below.
+
+### The rules
+
+1. **An outside failure is never a 500.** A supplier, a webhook, a gateway or a third-party read
+   that fails leaves the screen standing with the last good value and its age on it. Catch the
+   specific exceptions - not `\Throwable` - and return the stored state.
+   `RefreshItemTracking` catches both `SupplierUnavailable` and `SupplierNotConfigured` for this
+   reason: the second one escaped once and turned every customer's order page into an error page
+   the moment a key went missing.
+
+2. **Fail closed before the request leaves, not after.** Missing configuration throws rather than
+   sending a blank credential (`SupplierGuard`, `PublishOrderPaidEvent`). Half-working is worse
+   than not working, because it looks like it worked.
+
+3. **Say what was written, not what was attempted.** If a write landed and the call after it did
+   not, the answer is "saved, not sent" - never "that failed". A customer told their correction
+   failed retypes details we already hold, and stops trusting the screen when it later works.
+
+4. **Writes that belong together are one write.** A payload and its audit row, a status and its
+   counters, a hold's reason and its colour: wrap them in a transaction, or accept that one can
+   exist without the other and say in a comment why that is safe.
+
+5. **A write path is serialised per subject.** Two tabs are the test. Read-modify-write on a
+   version, a counter or a balance takes a lock on the thing it is writing
+   (`Cache::lock("<purpose>:<subject>:{$id}")`), and holds it across any outbound call the write
+   has to be consistent with. Refuse a held lock rather than queueing behind it.
+
+6. **Throttle on something the caller owns.** A limiter keyed on an order number, an email or any
+   other public identifier is a limiter a stranger can empty on someone else's behalf, because
+   throttling runs before the controller checks who is asking. Key it on the authenticated caller,
+   and on the resource only in addition.
+
+7. **An error path must not store what the success path protects.** Credentials, tokens and card
+   details are excluded from flashed input (`dontFlash` in `bootstrap/app.php`) and never appear in
+   a log line, an exception message, or a validation response. A route that takes a secret answers
+   with JSON rather than a redirect, so there is no old input to flash.
+
+8. **Trimming, casting and normalising are not free.** A password is what the customer typed,
+   spaces included; `trimStrings` has an exemption list and every credential route belongs on it.
+
+9. **Timeouts are chosen, not inherited.** A read a customer is waiting behind gets a short one; a
+   write that has to land gets the longer one. A loop over several of them carries a wall-clock
+   budget so one slow supplier cannot hold a page open.
+
+10. **The client's rule is the server's rule.** A form stricter than the server locks a customer
+    out of fixing their own order; a form looser than it spends a round trip to say no. When they
+    disagree, the server is right and the form is the bug.
+
+11. **What a failure did is tested.** Not that it throws: what remains afterwards. The stored row,
+    the status the caller got, what a second press does while the first is in flight.
+
+### Reviewing for them
+
+Six consecutive reviews of one branch each found a real defect, and the shape repeated: two parts
+of one screen, or one transaction, answering from different facts. When reviewing a failure path,
+ask what is written when it fails halfway, what a second caller sees, and whether the sentence the
+customer reads is true of what the database now holds.
+
 ## Working relationship
 
 - Treat Mohamed as the product owner: he decides; execute the approved direction.

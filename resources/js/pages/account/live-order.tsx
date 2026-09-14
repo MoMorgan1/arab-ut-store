@@ -10,10 +10,11 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import OrderReviewCard from '@/components/account/order-review-card';
+import OrderTracking from '@/components/account/order-tracking';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
 import { trackBeginCheckout, trackPurchase } from '@/lib/analytics';
-import { DATE_LOCALE } from '@/lib/date-locale';
+import { formatTimestamp } from '@/lib/date-locale';
 import { formatInteger } from '@/lib/money';
 import { loadOrderCredentials } from '@/lib/order-fulfillment-api';
 import type { OrderCredentials } from '@/lib/order-fulfillment-api';
@@ -24,7 +25,10 @@ import {
     resumePaylinkCheckout,
 } from '@/lib/paylink-checkout-api';
 import { cn } from '@/lib/utils';
-import type { AccountLiveOrderPageProps } from '@/types/account';
+import type {
+    AccountLiveOrderPageProps,
+    OrderItemTracking,
+} from '@/types/account';
 
 /**
  * How often an open order asks the server where it is. Replaces the old
@@ -52,10 +56,7 @@ export default function AccountLiveOrder() {
     const ordersUrl =
         props.accountNavigation.find((item) => item.key === 'orders')?.url ??
         props.storeShell.accountUrl;
-    const placedAt = new Intl.DateTimeFormat(DATE_LOCALE, {
-        dateStyle: 'long',
-        timeStyle: 'short',
-    }).format(new Date(props.order.placedAt));
+    const placedAt = formatTimestamp(props.order.placedAt);
     const order = props.order;
     const pending = order.status === 'pending_payment';
     const closed = order.status === 'cancelled' || order.status === 'refunded';
@@ -214,13 +215,6 @@ export default function AccountLiveOrder() {
                                 <time dateTime={order.placedAt}>
                                     {placedAt}
                                 </time>
-                                {!pending && !closed ? (
-                                    <>
-                                        {' · '}
-                                        {ui.invoice.freelance_label}{' '}
-                                        <bdi dir="ltr">FL-621205220</bdi>
-                                    </>
-                                ) : null}
                             </span>
                         </div>
                         {pending || closed ? (
@@ -255,19 +249,6 @@ export default function AccountLiveOrder() {
                     <dl className="account-invoice__totals">
                         {pending ? (
                             <>
-                                {order.discount.amountMinor !== '0' ||
-                                (order.walletPayment &&
-                                    order.walletPayment.amountMinor !== '0') ? (
-                                    <div>
-                                        <dt>{ui.invoice.subtotal}</dt>
-                                        <dd>
-                                            {formatAccountMoney(
-                                                order.subtotal,
-                                                props.locale,
-                                            )}
-                                        </dd>
-                                    </div>
-                                ) : null}
                                 {order.discount.amountMinor !== '0' ? (
                                     <div>
                                         <dt>{ui.orders.discount}</dt>
@@ -309,15 +290,6 @@ export default function AccountLiveOrder() {
                             </>
                         ) : (
                             <>
-                                <div>
-                                    <dt>{ui.invoice.subtotal}</dt>
-                                    <dd>
-                                        {formatAccountMoney(
-                                            order.subtotal,
-                                            props.locale,
-                                        )}
-                                    </dd>
-                                </div>
                                 {order.discount.amountMinor !== '0' ? (
                                     <div>
                                         <dt>{ui.orders.discount}</dt>
@@ -555,6 +527,65 @@ function InvoiceItem({
     const [expanded, setExpanded] = useState(false);
     const contentId = `order-item-${item.id}`;
 
+    // An action answers with a whole tracking object, and the card should show it
+    // straight away rather than wait for a reload. It is held as an override of
+    // the reading it replaced, not as a copy of it: when the page is reloaded and
+    // hands down a newer reading, that one wins without an effect to sync it.
+    const [override, setOverride] = useState<{
+        of: OrderItemTracking | null;
+        value: OrderItemTracking;
+    } | null>(null);
+
+    const tracking =
+        override !== null && override.of === item.tracking
+            ? override.value
+            : item.tracking;
+    const details = useRef<HTMLDivElement | null>(null);
+
+    // The status card is taller than the row that opens it, and the row can sit
+    // anywhere down a long invoice, so opening it often leaves the thing just
+    // asked for below the fold. Bring its first line to just under the sticky
+    // header once it has laid out. Its top, not its middle: on an order with
+    // several items the card is too tall to centre without hiding where it
+    // starts.
+    useEffect(() => {
+        if (!expanded) {
+            return;
+        }
+
+        const frame = requestAnimationFrame(() => {
+            const panel = details.current;
+
+            if (panel === null || typeof window.scrollTo !== 'function') {
+                return;
+            }
+
+            const header = document.querySelector('.store-header');
+            const gap =
+                (header === null ? 0 : header.getBoundingClientRect().height) +
+                12;
+            const box = panel.getBoundingClientRect();
+
+            window.scrollTo({
+                behavior: window.matchMedia?.(
+                    '(prefers-reduced-motion: reduce)',
+                )?.matches
+                    ? 'auto'
+                    : 'smooth',
+                top: window.scrollY + box.top - gap,
+            });
+        });
+
+        return () => cancelAnimationFrame(frame);
+    }, [expanded]);
+
+    const ordered = item.tracking?.progress?.coinsOrdered ?? 0;
+    const delivered = item.tracking?.progress?.coinsDelivered ?? 0;
+    const trackingPercent =
+        ordered > 0
+            ? Math.min(Math.round((delivered / ordered) * 100), 100)
+            : null;
+
     return (
         <li className="account-invoice__item">
             <img
@@ -578,6 +609,21 @@ function InvoiceItem({
             <strong className="account-invoice__item-total">
                 {formatAccountMoney(item.total, locale)}
             </strong>
+            {/* Collapsed, the row still says where the order is: the customer
+                should not have to open anything to learn that much. */}
+            {item.tracking !== null && !expanded ? (
+                <span className="account-invoice__item-state">
+                    <span
+                        aria-hidden="true"
+                        className="account-invoice__item-state-dot"
+                        data-tone={item.tracking.holdTone ?? 'none'}
+                    />
+                    {item.tracking.headline}
+                    {trackingPercent !== null ? (
+                        <bdi dir="ltr">{` · ${trackingPercent}%`}</bdi>
+                    ) : null}
+                </span>
+            ) : null}
             <button
                 aria-controls={contentId}
                 aria-expanded={expanded}
@@ -585,29 +631,56 @@ function InvoiceItem({
                 onClick={() => setExpanded((value) => !value)}
                 type="button"
             >
-                {expanded ? translations.hide_details : translations.details}
+                {item.tracking !== null
+                    ? expanded
+                        ? translations.tracking.hide_status
+                        : translations.tracking.show_status
+                    : expanded
+                      ? translations.hide_details
+                      : translations.details}
                 <ChevronDown aria-hidden="true" />
             </button>
             {expanded ? (
-                <div className="account-invoice__item-details" id={contentId}>
-                    <dl className="account-order-facts">
-                        <OrderFact
-                            label={translations.platform}
-                            value={platformName(item.platform, translations)}
-                        />
-                        {item.manualFulfillment !== null ? (
+                <div
+                    className={cn(
+                        'account-invoice__item-details',
+                        item.manualFulfillment === null &&
+                            'account-invoice__item-details--bare',
+                    )}
+                    id={contentId}
+                    ref={details}
+                >
+                    {item.manualFulfillment !== null ? (
+                        <dl className="account-order-facts">
                             <ManualFacts
                                 fulfillment={item.manualFulfillment}
                                 locale={locale}
                                 translations={translations}
                             />
-                        ) : null}
-                    </dl>
+                        </dl>
+                    ) : null}
                     {item.manualFulfillment !== null ? (
                         <ManualCredentials
                             fulfillment={item.manualFulfillment}
                             itemId={item.id}
                             translations={translations}
+                        />
+                    ) : null}
+                    {tracking !== null ? (
+                        <OrderTracking
+                            actionUrls={item.actionUrls}
+                            imageUrl={item.imageUrl}
+                            itemName={item.name}
+                            locale={locale}
+                            // An action answers with the whole tracking object,
+                            // so the card shows what the supplier just said
+                            // without a page reload behind it.
+                            onTracking={(next) =>
+                                setOverride({ of: item.tracking, value: next })
+                            }
+                            platform={item.platform}
+                            strings={translations.tracking}
+                            tracking={tracking}
                         />
                     ) : null}
                 </div>

@@ -94,7 +94,8 @@ export async function loadCartCredentials(
     return payload.data;
 }
 
-const EA_CODE_PATTERN = /^[0-9]{8}$/;
+// Six or eight digits, the same rule the server applies.
+const EA_CODE_PATTERN = /^(?:[0-9]{6}|[0-9]{8})$/;
 const PS_CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 function isCodeTriple(

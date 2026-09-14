@@ -1,0 +1,1256 @@
+<?php
+
+require_once dirname(__DIR__).'/Loyalty/LoyaltyFixtures.php';
+
+use App\Actions\Fulfillment\ApplySupplierObservation;
+use App\Enums\DeliveryPhase;
+use App\Enums\FulfillmentStatus;
+use App\Enums\HoldTone;
+use App\Enums\OrderHoldReason;
+use App\Enums\OrderItemStatus;
+use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\PaymentStatus;
+use App\Enums\Supplier;
+use App\Enums\SupplierAction;
+use App\Enums\TrackingPresentation;
+use App\Models\FulfillmentJob;
+use App\Models\FulfillmentPlacement;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
+use App\Models\User;
+use App\Models\WalletEntry;
+use App\Notifications\ReviewInviteNotification;
+use App\Suppliers\Translation\TranslatedState;
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
+
+uses(RefreshDatabase::class);
+
+afterEach(function (): void {
+    Carbon::setTestNow();
+});
+
+/**
+ * Creates an order, item, and linked fulfillment job for observation tests.
+ *
+ * @param  array<string, mixed>  $orderAttributes
+ * @param  array<string, mixed>  $itemAttributes
+ * @param  array<string, mixed>  $jobAttributes
+ * @return array{0: Order, 1: OrderItem, 2: FulfillmentJob}
+ */
+function createObservationContext(
+    OrderStatus $orderStatus = OrderStatus::InProgress,
+    OrderItemStatus $itemStatus = OrderItemStatus::InProgress,
+    array $orderAttributes = [],
+    array $itemAttributes = [],
+    array $jobAttributes = [],
+    bool $live = false,
+): array {
+    $customer = User::factory()->create();
+
+    $order = Order::factory()->for($customer)->create([
+        'status' => $orderStatus,
+        'channel' => 'store',
+        'currency' => 'SAR',
+        'paid_at' => now(),
+        'subtotal_halalah' => 20_000,
+        'payment_halalah' => 20_000,
+        'total_halalah' => 20_000,
+        ...$orderAttributes,
+    ]);
+
+    $item = OrderItem::factory()->for($order)->create([
+        'status' => $itemStatus,
+        'unit_price_halalah' => 20_000,
+        'subtotal_halalah' => 20_000,
+        'total_halalah' => 20_000,
+        ...$itemAttributes,
+    ]);
+
+    $jobFactory = $live ? FulfillmentJob::factory()->live() : FulfillmentJob::factory();
+
+    $job = $jobFactory->create([
+        'order_item_id' => $item->id,
+        'status' => FulfillmentStatus::InProgress,
+        'supplier' => Supplier::Fft,
+        'delivery_phase' => DeliveryPhase::Coins,
+        ...$jobAttributes,
+    ]);
+
+    return [$order, $item, $job];
+}
+
+it('discards older observations under the lock (Rule 1)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'observed_at' => CarbonImmutable::parse('2026-09-12 12:03:00'),
+            'observed_state' => 'initial',
+        ],
+    );
+
+    // Simulate a concurrent writer that committed a newer observation to the database
+    // after this worker fetched the model but before acquiring the transaction lock.
+    // The in-memory $job still has 12:03:00 (bypassing pre-lock fast path at :48-50),
+    // but the locked read at :77-80 will see 12:05:00.
+    FulfillmentJob::query()->where('id', $job->id)->update([
+        'observed_at' => CarbonImmutable::parse('2026-09-12 12:05:00'),
+        'observed_state' => 'concurrent_winner',
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'stale_working',
+    );
+
+    $staleTimestamp = CarbonImmutable::parse('2026-09-12 12:04:00');
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $staleTimestamp,
+        rawPayload: ['status' => 'stale_working'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->observed_at?->toDateTimeString())->toBe('2026-09-12 12:05:00')
+        ->and($freshJob->observed_state)->toBe('concurrent_winner')
+        ->and(OrderStatusHistory::query()->count())->toBe(0);
+});
+
+it('discards older observations via the pre-lock fast path (Rule 1)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'observed_at' => CarbonImmutable::parse('2026-09-12 12:05:00'),
+            'observed_state' => 'entered',
+        ],
+    );
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'working',
+    );
+
+    $staleTimestamp = CarbonImmutable::parse('2026-09-12 12:04:00');
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $staleTimestamp,
+        rawPayload: ['status' => 'working'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->observed_at?->toDateTimeString())->toBe('2026-09-12 12:05:00')
+        ->and($freshJob->observed_state)->toBe('entered')
+        ->and(OrderStatusHistory::query()->count())->toBe(0);
+});
+
+it('never moves a terminal order or its items and stores observation for diagnosis (Rule 2)', function (OrderStatus $terminalStatus): void {
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: $terminalStatus,
+        itemStatus: OrderItemStatus::from($terminalStatus->value),
+        orderAttributes: [
+            'completed_at' => $terminalStatus === OrderStatus::Completed ? now() : null,
+            'cancelled_at' => $terminalStatus === OrderStatus::Cancelled ? now() : null,
+        ],
+        live: true,
+    );
+
+    expect($job->next_poll_at)->not->toBeNull();
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [SupplierAction::Resume],
+        supported: true,
+        observedState: 'entered',
+        coinsDelivered: 50_000,
+        coinsOrdered: 100_000,
+    );
+
+    $observedAt = CarbonImmutable::parse('2026-09-12 13:00:00');
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $observedAt,
+        rawPayload: ['status' => 'entered', 'coins' => ['delivered' => 50_000]],
+    );
+
+    // Order and item must remain untouched in their terminal state
+    expect($order->fresh()->status)->toBe($terminalStatus)
+        ->and($item->fresh()->status->value)->toBe($terminalStatus->value)
+        ->and(OrderStatusHistory::query()->count())->toBe(0);
+
+    // Diagnostic fields are recorded on the job without re-opening polling
+    $freshJob = $job->fresh();
+    expect($freshJob->observed_at?->toDateTimeString())->toBe('2026-09-12 13:00:00')
+        ->and($freshJob->observed_state)->toBe('entered')
+        ->and($freshJob->coins_delivered)->toBe(50_000)
+        ->and($freshJob->coins_ordered)->toBe(100_000)
+        ->and($freshJob->next_poll_at)->toBeNull();
+})->with([
+    'completed order' => [OrderStatus::Completed],
+    'cancelled order' => [OrderStatus::Cancelled],
+    'refunded order' => [OrderStatus::Refunded],
+]);
+
+it('marks a live job completed when completed observation arrives for a terminal order (Rule 2)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::Completed,
+        itemStatus: OrderItemStatus::Completed,
+        orderAttributes: [
+            'completed_at' => now(),
+        ],
+        live: true,
+    );
+
+    expect($job->next_poll_at)->not->toBeNull();
+
+    $state = new TranslatedState(
+        status: OrderStatus::Completed,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'finished',
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'finished'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->status)->toBe(FulfillmentStatus::Completed)
+        ->and($freshJob->completed_at)->not->toBeNull()
+        ->and($freshJob->next_poll_at)->toBeNull();
+});
+
+it('respects a manual admin hold on WaitingForCustomer and withholds the observation (Rule 3)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::WaitingForCustomer,
+        itemStatus: OrderItemStatus::WaitingForCustomer,
+        jobAttributes: [
+            'hold_reason' => OrderHoldReason::Credentials,
+            'allowed_actions' => [SupplierAction::EditCredentials->value],
+        ],
+    );
+
+    $admin = User::factory()->create();
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'actor_user_id' => $admin->id,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => 'توقف يدوي',
+        'note_en' => 'Manual hold',
+        'metadata' => [
+            'source' => 'admin',
+            'previous_status' => OrderStatus::InProgress->value,
+            'new_status' => OrderStatus::WaitingForCustomer->value,
+        ],
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: OrderHoldReason::Credentials,
+        allowedActions: [SupplierAction::Resume],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    $observedAt = CarbonImmutable::parse('2026-09-12 13:00:00');
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $observedAt,
+        rawPayload: ['status' => 'entered'],
+    );
+
+    // Item must remain in WaitingForCustomer due to the admin hold
+    expect($item->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer);
+
+    // Hold fields must remain untouched
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBe(OrderHoldReason::Credentials)
+        ->and($freshJob->allowed_actions)->toBe([SupplierAction::EditCredentials->value]);
+
+    // Observation must be visibly marked as withheld on the job under the service namespace
+    expect($freshJob->observation)->toMatchArray([
+        '_service' => [
+            'withheld' => true,
+            'withheld_reason' => 'admin_hold',
+        ],
+        'status' => 'entered',
+    ]);
+});
+
+it('respects an order-level manual admin hold with no item-level history and withholds the observation (Rule 3)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::WaitingForCustomer,
+        itemStatus: OrderItemStatus::WaitingForCustomer,
+        jobAttributes: [
+            'hold_reason' => OrderHoldReason::Credentials,
+            'allowed_actions' => [SupplierAction::EditCredentials->value],
+        ],
+    );
+
+    $admin = User::factory()->create();
+
+    // Order-level history row only; order_item_id is NULL
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => null,
+        'actor_user_id' => $admin->id,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => 'توقف يدوي للطلب',
+        'note_en' => 'Order manual hold',
+        'metadata' => [
+            'source' => 'admin',
+            'previous_status' => OrderStatus::InProgress->value,
+            'new_status' => OrderStatus::WaitingForCustomer->value,
+        ],
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: OrderHoldReason::Credentials,
+        allowedActions: [SupplierAction::Resume],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    $observedAt = CarbonImmutable::parse('2026-09-12 13:00:00');
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $observedAt,
+        rawPayload: ['status' => 'entered'],
+    );
+
+    // Item must not move under an order-level admin hold
+    expect($item->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer);
+
+    // Hold fields must remain untouched
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBe(OrderHoldReason::Credentials)
+        ->and($freshJob->allowed_actions)->toBe([SupplierAction::EditCredentials->value]);
+
+    // Observation must be marked withheld under the service namespace
+    expect($freshJob->observation)->toMatchArray([
+        '_service' => [
+            'withheld' => true,
+            'withheld_reason' => 'admin_hold',
+        ],
+        'status' => 'entered',
+    ]);
+});
+
+it('allows a non-admin WaitingForCustomer item to be transitioned by a supplier observation (Rule 3)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::WaitingForCustomer,
+        itemStatus: OrderItemStatus::WaitingForCustomer,
+        jobAttributes: [
+            'hold_reason' => OrderHoldReason::Credentials,
+            'allowed_actions' => [SupplierAction::EditCredentials->value],
+        ],
+    );
+
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'actor_user_id' => null,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => null,
+        'note_en' => null,
+        'metadata' => [
+            'source' => 'supplier',
+            'previous_status' => OrderStatus::InProgress->value,
+            'new_status' => OrderStatus::WaitingForCustomer->value,
+        ],
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    $observedAt = CarbonImmutable::parse('2026-09-12 13:00:00');
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $observedAt,
+        rawPayload: ['status' => 'entered'],
+    );
+
+    // Item successfully transitions because the hold was from a supplier, not an admin
+    expect($item->fresh()->status)->toBe(OrderItemStatus::InProgress);
+
+    $latestHistory = OrderStatusHistory::query()
+        ->where('order_item_id', $item->id)
+        ->latest('id')
+        ->first();
+
+    expect($latestHistory?->metadata['source'])->toBe('supplier')
+        ->and($latestHistory?->metadata['new_status'])->toBe(OrderStatus::InProgress->value);
+
+    // Hold fields must be updated to the state values when not withheld
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBeNull()
+        ->and($freshJob->allowed_actions)->toBe([])
+        ->and($freshJob->observation)->not->toHaveKey('_service');
+});
+
+it('refuses to produce a Refunded status from a supplier observation (Rule 4)', function (): void {
+    [$order, $item, $job] = createObservationContext();
+
+    $state = new TranslatedState(
+        status: OrderStatus::Refunded,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'refunded',
+    );
+
+    $observedAt = CarbonImmutable::parse('2026-09-12 13:00:00');
+
+    expect(fn () => app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $observedAt,
+        rawPayload: ['status' => 'refunded'],
+    ))->toThrow(DomainException::class, 'A supplier observation cannot produce a refunded status.');
+
+    expect($order->fresh()->status)->toBe(OrderStatus::InProgress)
+        ->and($item->fresh()->status)->toBe(OrderItemStatus::InProgress);
+});
+
+it('aggregates every item completed to order completed (Rule 5)', function (): void {
+    [$order, $item1, $job1] = createObservationContext(
+        orderStatus: OrderStatus::InProgress,
+        itemStatus: OrderItemStatus::InProgress,
+    );
+
+    $item2 = OrderItem::factory()->for($order)->create([
+        'status' => OrderItemStatus::Completed,
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::Completed,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'finished',
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job1,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'finished'],
+    );
+
+    expect($item1->fresh()->status)->toBe(OrderItemStatus::Completed)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Completed)
+        ->and($order->fresh()->completed_at)->not->toBeNull();
+});
+
+it('prefers WaitingForCustomer over InProgress when aggregating items (Rule 5)', function (): void {
+    [$order, $item1, $job1] = createObservationContext(
+        orderStatus: OrderStatus::InProgress,
+        itemStatus: OrderItemStatus::InProgress,
+    );
+
+    $item2 = OrderItem::factory()->for($order)->create([
+        'status' => OrderItemStatus::InProgress,
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::WaitingForCustomer,
+        holdReason: OrderHoldReason::Credentials,
+        allowedActions: [SupplierAction::EditCredentials],
+        supported: true,
+        observedState: 'wrongUserPass',
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job1,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'wrongUserPass'],
+    );
+
+    // Waiting beats progress: item 2 is in progress, but item 1 needs customer action
+    expect($item1->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer)
+        ->and($item2->fresh()->status)->toBe(OrderItemStatus::InProgress)
+        ->and($order->fresh()->status)->toBe(OrderStatus::WaitingForCustomer);
+});
+
+it('aggregates to InProgress when one item is completed and another is in progress (Rule 5)', function (): void {
+    [$order, $item1, $job1] = createObservationContext(
+        orderStatus: OrderStatus::Received,
+        itemStatus: OrderItemStatus::Received,
+    );
+
+    $item2 = OrderItem::factory()->for($order)->create([
+        'status' => OrderItemStatus::Completed,
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job1,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'entered'],
+    );
+
+    expect($item1->fresh()->status)->toBe(OrderItemStatus::InProgress)
+        ->and($item2->fresh()->status)->toBe(OrderItemStatus::Completed)
+        ->and($order->fresh()->status)->toBe(OrderStatus::InProgress);
+});
+
+it('never moves the order to Cancelled because of an observation (Rule 5)', function (): void {
+    [$order, $item1, $job1] = createObservationContext(
+        orderStatus: OrderStatus::InProgress,
+        itemStatus: OrderItemStatus::InProgress,
+    );
+
+    $state = new TranslatedState(
+        status: OrderStatus::Cancelled,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'cancelled',
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job1,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'cancelled'],
+    );
+
+    // The item was cancelled by the supplier, but the order stays InProgress for human decision
+    expect($item1->fresh()->status)->toBe(OrderItemStatus::Cancelled)
+        ->and($order->fresh()->status)->toBe(OrderStatus::InProgress);
+});
+
+it('fires completion effects once and is idempotent against repeated completions (Rule 6)', function (): void {
+    Carbon::setTestNow('2026-09-12 12:00:00');
+    Notification::fake();
+    config()->set('store.features.loyalty_enabled', true);
+    loyaltySeedTiers();
+
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::InProgress,
+        itemStatus: OrderItemStatus::InProgress,
+    );
+
+    loyaltySettledPayment($order, PaymentStatus::Paid, 20_000);
+
+    $state = new TranslatedState(
+        status: OrderStatus::Completed,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'finished',
+    );
+
+    $action = app(ApplySupplierObservation::class);
+
+    // First completion
+    $action->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'finished'],
+    );
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Completed)
+        ->and($order->fresh()->review_invited_at)->not->toBeNull();
+
+    // Cashback accrued exactly once
+    $cashbackEntries = WalletEntry::query()
+        ->where('reference', "cashback:{$order->id}")
+        ->get();
+    expect($cashbackEntries)->toHaveCount(1);
+
+    // Review invite notification queued once
+    Notification::assertSentTo(
+        $order->user,
+        ReviewInviteNotification::class,
+        function (ReviewInviteNotification $notification): bool {
+            return $notification->delay?->toDateTimeString() === '2026-09-12 13:00:00';
+        },
+    );
+
+    // Reset order and item status to InProgress so Rule 2 does not short-circuit,
+    // allowing the second execute to aggregate to Completed and genuinely reach completion effects.
+    $order->update(['status' => OrderStatus::InProgress]);
+    $item->update(['status' => OrderItemStatus::InProgress]);
+
+    // Repeat completion call
+    $action->execute(
+        job: $job,
+        state: $state,
+        observedAt: now()->addMinute(),
+        rawPayload: ['status' => 'finished'],
+    );
+
+    // Guards must hold: still exactly one cashback entry and one review notification
+    expect(WalletEntry::query()->where('reference', "cashback:{$order->id}")->count())->toBe(1);
+    Notification::assertSentTimes(ReviewInviteNotification::class, 1);
+});
+
+it('does not fire completion effects on non-completing observations (Rule 6)', function (): void {
+    Notification::fake();
+    config()->set('store.features.loyalty_enabled', true);
+    loyaltySeedTiers();
+
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::Received,
+        itemStatus: OrderItemStatus::Received,
+    );
+
+    loyaltySettledPayment($order, PaymentStatus::Paid, 20_000);
+
+    // State transitions item and order from Received to InProgress
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: ['status' => 'entered'],
+    );
+
+    expect($order->fresh()->status)->toBe(OrderStatus::InProgress)
+        ->and($order->fresh()->review_invited_at)->toBeNull();
+
+    expect(WalletEntry::query()->where('reference', "cashback:{$order->id}")->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+it('stores only allowlisted supplier keys and masks addresses in the prose that survives (Rule 7)', function (): void {
+    [$order, $item, $job] = createObservationContext();
+
+    // Shaped like the real responses read on 2026-09-12: UTT returns the
+    // customer's account name, address, password and backup codes on every
+    // status poll, and FFT returns what we pay the supplier.
+    $rawPayload = [
+        'status' => 'entered',
+        'amount' => 250,
+        'amountOrdered' => 500,
+        'accountCheck' => 'wrongUserPass',
+        'accountCheckLong' => 'login failed for fifa_customer@example.com',
+        'nameAccount' => 'Mohamed Abdallah',
+        'emailAccount' => 'fifa_customer@example.com',
+        'passwordAccount' => 'a-real-password',
+        'backupCodes' => '11111111,22222222',
+        'toPay' => 3.1008,
+        'sellerReceives' => 2.7910,
+        'moneySpent' => '31.20',
+        'publicSaleStocks' => '159,1.04',
+        'somethingTheSupplierAddedLater' => 'unexpected',
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+        coinsDelivered: 250_000,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $freshJob = $job->fresh();
+    $stored = $freshJob->observation;
+
+    // Dropped, not masked: asserted by absence of the key, because a masked
+    // value still records that the field was there and what to look for.
+    foreach ([
+        'nameAccount', 'emailAccount', 'passwordAccount', 'backupCodes',
+        'toPay', 'sellerReceives', 'moneySpent', 'publicSaleStocks',
+        'somethingTheSupplierAddedLater',
+    ] as $forbidden) {
+        expect($stored)->not->toHaveKey($forbidden);
+    }
+
+    // The password must not survive anywhere in the row, under any key.
+    expect(json_encode($stored))->not->toContain('a-real-password');
+
+    // What we do keep, including the supplier's prose with the address masked
+    // out of it rather than the whole field discarded.
+    expect($stored['status'])->toBe('entered')
+        ->and($stored['amount'])->toBe(250)
+        ->and($stored['amountOrdered'])->toBe(500)
+        ->and($stored['accountCheck'])->toBe('wrongUserPass')
+        ->and($stored['accountCheckLong'])->toBe('login failed for f...@example.com');
+});
+
+it('re-opens polling and resets job completion while preserving earlier coins progress counters when challenge observation arrives on completed coins job (Rule 8)', function (): void {
+    $completedAt = CarbonImmutable::parse('2026-09-12 11:00:00');
+
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::InProgress,
+        itemStatus: OrderItemStatus::InProgress,
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Coins,
+            'status' => FulfillmentStatus::Completed,
+            'completed_at' => $completedAt,
+            'next_poll_at' => null,
+            'coins_delivered' => 250_000,
+            'coins_ordered' => 250_000,
+        ],
+    );
+
+    FulfillmentPlacement::query()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'CHALLENGE-SUPPLIER-1',
+        'idempotency_key' => 'placement-test-chal-1',
+        'placed_at' => now(),
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'challenge_running',
+        coinsDelivered: null, // Challenge payload does not carry coins
+        coinsOrdered: null,
+        squadsDone: 3,
+        squadsTotal: 10,
+        solvesDone: null,
+        solvesTotal: null,
+    );
+
+    $now = CarbonImmutable::parse('2026-09-12 12:00:00');
+    Carbon::setTestNow($now);
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: $now,
+        rawPayload: [
+            'delivery_phase' => 'challenge',
+            'state' => 'challenge_running',
+            'challenges' => ['solved' => 3, 'requested' => 10],
+        ],
+    );
+
+    $freshJob = $job->fresh();
+
+    // Polling re-opened
+    expect($freshJob->completed_at)->toBeNull()
+        ->and($freshJob->next_poll_at?->toDateTimeString())->toBe($now->toDateTimeString())
+        ->and($freshJob->status)->toBe(FulfillmentStatus::InProgress)
+        ->and($freshJob->delivery_phase)->toBe(DeliveryPhase::Challenge);
+
+    // Coins progress counters from previous phase were NOT erased
+    expect($freshJob->coins_delivered)->toBe(250_000)
+        ->and($freshJob->coins_ordered)->toBe(250_000)
+        ->and($freshJob->squads_done)->toBe(3)
+        ->and($freshJob->squads_total)->toBe(10);
+});
+
+it('never moves a completed order backwards when a challenge observation arrives (Rule 2 + Rule 8)', function (): void {
+    $completedAt = CarbonImmutable::parse('2026-09-12 11:00:00');
+
+    [$order, $item, $job] = createObservationContext(
+        orderStatus: OrderStatus::Completed,
+        itemStatus: OrderItemStatus::Completed,
+        orderAttributes: [
+            'completed_at' => $completedAt,
+        ],
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Coins,
+            'status' => FulfillmentStatus::Completed,
+            'completed_at' => $completedAt,
+            'next_poll_at' => null,
+            'coins_delivered' => 250_000,
+            'coins_ordered' => 250_000,
+        ],
+    );
+
+    FulfillmentPlacement::query()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'CHALLENGE-SUPPLIER-2',
+        'idempotency_key' => 'placement-test-chal-2',
+        'placed_at' => now(),
+    ]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'challenge_running',
+        squadsDone: 2,
+        squadsTotal: 10,
+        solvesDone: null,
+        solvesTotal: null,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: [
+            'delivery_phase' => 'challenge',
+            'state' => 'challenge_running',
+        ],
+    );
+
+    // Rule 2 prevents completed order and its items from moving backwards
+    expect($order->fresh()->status)->toBe(OrderStatus::Completed)
+        ->and($item->fresh()->status)->toBe(OrderItemStatus::Completed)
+        ->and(OrderStatusHistory::query()->count())->toBe(0);
+
+    $freshJob = $job->fresh();
+    expect($freshJob->status)->toBe(FulfillmentStatus::Completed)
+        ->and($freshJob->completed_at?->toDateTimeString())->toBe($completedAt->toDateTimeString())
+        ->and($freshJob->next_poll_at)->toBeNull();
+});
+
+it('test 9: challenge observations are stored as a map keyed by challenge id, each filtered by the allowlist', function (): void {
+    $challengeId1 = '1803b7a6-0000-0000-0000-00000064265f';
+    $challengeId2 = '2b8e38f6-1111-2222-3333-444455556666';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        $challengeId1 => [
+            'challengesDone' => 7,
+            'totalChallenges' => 7,
+            'challengesSubmitted' => 14,
+            'timesSolved' => 2,
+            'timesToSolve' => 2,
+            'sbcStatus' => 'finished',
+            'costCoins' => 546650,
+            'setId' => 702,
+            'sbcSolveID' => $challengeId1,
+            'account' => 'customer@example.com',
+            'created' => '2026-04-02 17:56:00',
+            'cached' => 0,
+            'sbcName' => 'Icon Challenge',
+            'sbcImageUrl' => 'https://example.test/icon.png',
+        ],
+        $challengeId2 => [
+            'challengesDone' => 3,
+            'totalChallenges' => 7,
+            'challengesSubmitted' => 6,
+            'timesSolved' => 1,
+            'timesToSolve' => 2,
+            'sbcStatus' => 'solvingChallenge',
+            'costCoins' => 250000,
+            'setId' => 702,
+            'sbcSolveID' => $challengeId2,
+            'cached' => 0,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: 3,
+        squadsTotal: 7,
+        solvesDone: 1,
+        solvesTotal: 2,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $freshJob = $job->fresh();
+    $stored = $freshJob->observation;
+
+    expect($stored)->toHaveKeys([$challengeId1, $challengeId2])
+        ->and($stored[$challengeId1])->toHaveKey('sbcStatus', 'finished')
+        ->and($stored[$challengeId1])->toHaveKey('timesSolved', 2)
+        ->and($stored[$challengeId1])->toHaveKey('timesToSolve', 2)
+        ->and($stored[$challengeId1])->toHaveKey('setId', 702)
+        ->and($stored[$challengeId1])->toHaveKey('costCoins', 546650)
+        ->and($stored[$challengeId1])->toHaveKey('challengesDone', 7)
+        ->and($stored[$challengeId1])->toHaveKey('totalChallenges', 7)
+        ->and($stored[$challengeId1])->toHaveKey('challengesSubmitted', 14)
+        ->and($stored[$challengeId1])->toHaveKey('sbcSolveID', $challengeId1)
+        ->and($stored[$challengeId1])->toHaveKey('cached', 0)
+        ->and($stored[$challengeId1])->not->toHaveKey('sbcName')
+        ->and($stored[$challengeId1])->not->toHaveKey('sbcImageUrl')
+        ->and($stored[$challengeId1])->not->toHaveKey('created')
+        ->and($stored[$challengeId2])->toHaveKey('sbcStatus', 'solvingChallenge')
+        ->and($stored[$challengeId2])->toHaveKey('challengesDone', 3)
+        ->and($stored[$challengeId2])->toHaveKey('totalChallenges', 7)
+        ->and($stored[$challengeId2])->toHaveKey('timesSolved', 1)
+        ->and($stored[$challengeId2])->toHaveKey('timesToSolve', 2)
+        // Counters on fulfillment job populated from active (unfinished) challenge
+        ->and($freshJob->squads_done)->toBe(3)
+        ->and($freshJob->squads_total)->toBe(7)
+        ->and($freshJob->solves_done)->toBe(1)
+        ->and($freshJob->solves_total)->toBe(2);
+});
+
+it('test 10: account is absent from every stored inner object', function (): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        $challengeId => [
+            'sbcStatus' => 'solvingChallenge',
+            'account' => 'customer@example.com',
+            'challengesDone' => 1,
+            'totalChallenges' => 5,
+            'timesSolved' => 0,
+            'timesToSolve' => 1,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: 1,
+        squadsTotal: 5,
+        solvesDone: 0,
+        solvesTotal: 1,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $stored = $job->fresh()->observation;
+
+    expect($stored)->toHaveKey($challengeId)
+        ->and($stored[$challengeId])->not->toHaveKey('account')
+        ->and(json_encode($stored))->not->toContain('customer@example.com');
+});
+
+it('test 11: an unnamed inner key is dropped without error', function (): void {
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        $challengeId => [
+            'sbcStatus' => 'solvingChallenge',
+            'unnamedCustomKey' => 'secret_val',
+            'sbcName' => 'Winter Wildcards',
+            'sbcImageUrl' => 'https://example.test/img.png',
+            'supplierInternalRef' => 9999,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: null,
+        squadsTotal: null,
+        solvesDone: null,
+        solvesTotal: null,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $stored = $job->fresh()->observation;
+
+    expect($stored)->toHaveKey($challengeId)
+        ->and($stored[$challengeId]['sbcStatus'])->toBe('solvingChallenge')
+        ->and($stored[$challengeId])->not->toHaveKey('unnamedCustomKey')
+        ->and($stored[$challengeId])->not->toHaveKey('sbcName')
+        ->and($stored[$challengeId])->not->toHaveKey('sbcImageUrl')
+        ->and($stored[$challengeId])->not->toHaveKey('supplierInternalRef');
+});
+
+it('test 12: a malformed challenge id in the response is not used as a storage key', function (): void {
+    $validUuid = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Challenge,
+        ],
+    );
+
+    $rawPayload = [
+        'not-a-valid-uuid' => [
+            'sbcStatus' => 'started',
+        ],
+        '1803b7a6' => [
+            'sbcStatus' => 'started',
+        ],
+        '../malicious/path' => [
+            'sbcStatus' => 'started',
+        ],
+        $validUuid => [
+            'sbcStatus' => 'solvingChallenge',
+            'challengesDone' => 2,
+            'totalChallenges' => 4,
+            'timesSolved' => 0,
+            'timesToSolve' => 1,
+        ],
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'solvingChallenge',
+        squadsDone: 2,
+        squadsTotal: 4,
+        solvesDone: 0,
+        solvesTotal: 1,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $stored = $job->fresh()->observation;
+
+    expect($stored)->toHaveKey($validUuid)
+        ->and($stored)->not->toHaveKey('not-a-valid-uuid')
+        ->and($stored)->not->toHaveKey('1803b7a6')
+        ->and($stored)->not->toHaveKey('../malicious/path')
+        ->and(count($stored))->toBe(1);
+});
+
+it('test 13: a coins-phase payload is still stored flat and is unaffected', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'delivery_phase' => DeliveryPhase::Coins,
+        ],
+    );
+
+    $rawPayload = [
+        'status' => 'entered',
+        'amount' => 250,
+        'amountOrdered' => 500,
+        'accountCheck' => 'none',
+        'economyState' => 'none',
+        'toPay' => 100, // forbidden key dropped
+        'passwordAccount' => 'secret-ea-pass', // forbidden key dropped
+        'emailAccount' => 'cust@example.com', // forbidden key dropped
+    ];
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+        coinsDelivered: 250_000,
+        coinsOrdered: 500_000,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: now(),
+        rawPayload: $rawPayload,
+    );
+
+    $freshJob = $job->fresh();
+    $stored = $freshJob->observation;
+
+    // Coins-phase payload must remain flat
+    expect($stored)->toHaveKey('status', 'entered')
+        ->and($stored)->toHaveKey('amount', 250)
+        ->and($stored)->toHaveKey('amountOrdered', 500)
+        ->and($stored)->toHaveKey('accountCheck', 'none')
+        ->and($stored)->toHaveKey('economyState', 'none')
+        ->and($stored)->not->toHaveKey('toPay')
+        ->and($stored)->not->toHaveKey('passwordAccount')
+        ->and($stored)->not->toHaveKey('emailAccount')
+        ->and($freshJob->coins_delivered)->toBe(250_000)
+        ->and($freshJob->coins_ordered)->toBe(500_000);
+
+    // Verify it is not nested under any keys
+    foreach ($stored as $value) {
+        expect(is_array($value))->toBeFalse();
+    }
+});
+
+it('clears a stored hold tone when a readable observation says the hold is over', function (): void {
+    // The hold is one fact: its reason, its colour, its buttons and its headline.
+    // Writing the reason on recovery while keeping the old colour is how an order
+    // ended up ringed amber underneath the word "Transferring".
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'presentation' => TrackingPresentation::CooldownTempban,
+            'hold_reason' => OrderHoldReason::Paused,
+            'hold_tone' => HoldTone::Info,
+            'allowed_actions' => [SupplierAction::Resume->value],
+            'observed_at' => CarbonImmutable::parse('2026-09-12 12:00:00'),
+        ],
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: true,
+            observedState: 'transfersInProgress',
+            presentation: TrackingPresentation::Transferring,
+            holdTone: null,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-12 12:05:00'),
+        rawPayload: ['economyState' => 'transfersInProgress'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBeNull()
+        ->and($freshJob->hold_tone)->toBeNull()
+        ->and($freshJob->allowed_actions)->toBe([])
+        ->and($freshJob->presentation)->toBe(TrackingPresentation::Transferring);
+});
+
+it('preserves established presentation and hold_tone when given an unsupported observation (Defect 2c)', function (): void {
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'presentation' => TrackingPresentation::Transferring,
+            // Seeded non-null on purpose: with a null here the hold_tone half of this
+            // test passes whether or not the guard exists.
+            'hold_tone' => HoldTone::Info,
+            'observed_at' => CarbonImmutable::parse('2026-09-12 12:00:00'),
+        ],
+    );
+
+    // Unsupported observation returns null presentation and null holdTone
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: false,
+        observedState: null,
+        presentation: null,
+        holdTone: null,
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: $state,
+        observedAt: CarbonImmutable::parse('2026-09-12 12:05:00'),
+        rawPayload: ['garbage' => 'unparseable'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->presentation)->toBe(TrackingPresentation::Transferring)
+        ->and($freshJob->hold_tone)->toBe(HoldTone::Info)
+        ->and($freshJob->observation_supported)->toBeFalse();
+});
+
+it('leaves the whole hold alone when the observation could not be read', function (): void {
+    // A response we could not parse carries no news, so it must not empty the
+    // action the customer is being asked to take either.
+    [$order, $item, $job] = createObservationContext(
+        jobAttributes: [
+            'presentation' => TrackingPresentation::Stopped,
+            'hold_reason' => OrderHoldReason::Credentials,
+            'hold_tone' => HoldTone::Action,
+            'allowed_actions' => [SupplierAction::EditCredentials->value],
+        ],
+    );
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: false,
+            observedState: null,
+            presentation: null,
+            holdTone: null,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-12 12:05:00'),
+        rawPayload: ['garbage' => 'unparseable'],
+    );
+
+    $freshJob = $job->fresh();
+    expect($freshJob->hold_reason)->toBe(OrderHoldReason::Credentials)
+        ->and($freshJob->hold_tone)->toBe(HoldTone::Action)
+        ->and($freshJob->allowed_actions)->toBe([SupplierAction::EditCredentials->value]);
+});

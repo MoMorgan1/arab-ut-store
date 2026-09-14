@@ -326,7 +326,9 @@ it('renders the paid invoice with letterhead, totals, and method, and no payment
         invoice.getByRole('heading', { level: 2, name: 'UT-00000001' }),
     ).toBeVisible();
     expect(invoice.getByText('Invoice · Arab UT')).toBeVisible();
-    expect(invoice.getByText(/FL-621205220/)).toBeVisible();
+    // The freelance permit number belongs on the legal footer, not over a
+    // customer's own order.
+    expect(invoice.queryByText(/FL-621205220/)).not.toBeInTheDocument();
     expect(invoice.getByText('Total paid')).toBeVisible();
     // The method the customer used, not the gateway that moved the money.
     expect(invoice.getByText('Payment method: mada')).toBeVisible();
@@ -372,9 +374,10 @@ it('renders a payment request, not an invoice, while payment is pending', () => 
     expect(invoice.getByText('Paid from wallet')).toBeVisible();
     expect(invoice.queryByText(/Total paid/)).not.toBeInTheDocument();
     expect(invoice.queryByText(/Payment method/)).not.toBeInTheDocument();
-    // The request adds up: subtotal, the discount and the wallet part, then
-    // what is still due.
-    expect(invoice.getByText('Subtotal')).toBeVisible();
+    // What came off and what the wallet covered, then what is still due. The
+    // subtotal it is all derived from is the lines above added up, so it is
+    // not restated.
+    expect(invoice.queryByText('Subtotal')).not.toBeInTheDocument();
     expect(invoice.getByText('Discount')).toBeVisible();
     expect(invoice.queryByText(/Invoice ·/)).not.toBeInTheDocument();
     expect(invoice.queryByText(/FL-621205220/)).not.toBeInTheDocument();
@@ -786,6 +789,14 @@ function liveOrder(
                 quantity: 1,
                 total: { amountMinor: '12999', currency: 'SAR' },
                 credentialsPresent: true,
+                actionUrls: {
+                    editCredentials:
+                        '/orders/UT-1/items/i1/actions/edit-credentials',
+                    resume: '/orders/UT-1/items/i1/actions/resume',
+                    retryChallenge:
+                        '/orders/UT-1/items/i1/actions/retry-challenge',
+                },
+                tracking: null,
                 manualFulfillment: null,
             },
         ],

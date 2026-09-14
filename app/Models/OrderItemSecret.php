@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property array<string, mixed>|null $encrypted_payload
  * @property array<string, mixed>|null $masked_summary
+ * @property int $version
  * @property CarbonImmutable|null $deleted_at
  */
 #[Hidden(['encrypted_payload'])]
@@ -24,6 +25,7 @@ class OrderItemSecret extends DomainModel
         return [
             'encrypted_payload' => 'encrypted:array',
             'masked_summary' => 'array',
+            'version' => 'integer',
             'retained_until' => 'immutable_datetime',
             'deleted_at' => 'immutable_datetime',
         ];

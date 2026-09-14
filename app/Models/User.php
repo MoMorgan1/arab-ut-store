@@ -36,6 +36,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
+ * @property int $mfa_revocation
  * @property string|null $remember_token
  * @property UserRole $role
  * @property bool $is_active
@@ -49,6 +50,18 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasPublicUlid, Notifiable, TwoFactorAuthenticatable;
+
+    /**
+     * The admin MFA gate compares a session marker's counter against this
+     * attribute on whatever instance the request carries, and Eloquent does not
+     * hydrate database defaults after an insert. Declaring the default here
+     * keeps a freshly created user from reading null and refusing its own mark.
+     *
+     * @var array<string, int>
+     */
+    protected $attributes = [
+        'mfa_revocation' => 0,
+    ];
 
     /**
      * Customer accounts get a short, quotable number alongside the ULID public
@@ -131,6 +144,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'mfa_revocation' => 'integer',
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'password' => 'hashed',

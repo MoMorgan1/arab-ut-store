@@ -218,6 +218,10 @@ return [
         'no_player' => 'No suitable player for delivery',
         'maintenance' => 'Game servers under maintenance',
         'paused' => 'Order temporarily paused',
+        'two_factor_off' => 'Two-factor is off',
+        'email_confirm' => 'Email needs confirming',
+        'web_app_locked' => 'Web App never opened',
+        'below_minimum' => 'Amount below minimum transfer',
     ],
     'statuses' => [
         'pending_payment' => 'Pending payment',

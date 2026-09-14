@@ -32,7 +32,7 @@ final class UpdateServicePriceScheduleStatus
 
         $type = is_string($serviceType) ? ServiceType::tryFrom($serviceType) : $serviceType;
 
-        if ($type === null || ! $type->isManual()) {
+        if ($type === null || ! $type->isBoosterConfigured()) {
             throw ValidationException::withMessages([
                 'service_type' => ['The requested service type is not supported.'],
             ]);

@@ -92,6 +92,35 @@ function checkoutSbcCart(array $changes = []): array
     return compact('user', 'cart', 'item', 'variant');
 }
 
+/** @return array{user: User, cart: Cart, item: CartItem, variant: ProductVariant} */
+function checkoutObjectivesCart(array $changes = []): array
+{
+    $itemChanges = $changes['item'] ?? [];
+    unset($changes['item']);
+
+    return checkoutSbcCart([
+        'product' => [
+            'service_type' => ServiceType::Objectives,
+            'name_ar' => 'خدمة الأهداف',
+            'name_en' => 'Objectives service',
+        ],
+        'variant' => [
+            'service_type' => ServiceType::Objectives,
+        ],
+        'item' => [
+            'configuration' => [
+                'service_type' => 'objectives',
+                'platform' => 'playstation',
+                'market' => 'console',
+                'quoted_at' => now()->utc()->toIso8601String(),
+                'price_version' => 4,
+            ],
+            ...$itemChanges,
+        ],
+        ...$changes,
+    ]);
+}
+
 test('checkout atomically snapshots a verified users active cart and encrypted credentials', function () {
     ['user' => $user, 'cart' => $cart, 'variant' => $variant] = checkoutSbcCart();
 
@@ -123,6 +152,34 @@ test('checkout atomically snapshots a verified users active cart and encrypted c
         'ea_password' => 'Opaque password',
         'backup_codes' => ['12345678', '23456789', '34567890'],
     ])->and(DB::table('order_item_secrets')->value('encrypted_payload'))
+        ->not->toContain('owner@example.test')
+        ->not->toContain('Opaque password')
+        ->not->toContain('12345678')
+        ->and(IdempotencyKey::sole()->response_body)
+        ->not->toContain('owner@example.test')
+        ->not->toContain('12345678');
+});
+
+test('an objectives order placed with EA credentials in the cart ends up with an order_item_secrets row containing them', function () {
+    ['user' => $user, 'variant' => $variant] = checkoutObjectivesCart();
+
+    $result = app(PlaceOrder::class)->execute($user, 'ar', 'checkout-objectives-order');
+    $order = $result->order->fresh(['items.secret', 'payments']);
+
+    expect($result->replayed)->toBeFalse()
+        ->and($order->status)->toBe(OrderStatus::PendingPayment)
+        ->and($order->items)->toHaveCount(1)
+        ->and($order->items->first()->product_variant_id)->toBe($variant->id)
+        ->and($order->items->first()->service_type)->toBe(ServiceType::Objectives)
+        ->and($order->items->first()->name_ar)->toBe('خدمة الأهداف');
+
+    $orderSecret = OrderItemSecret::sole();
+    expect($orderSecret->order_item_id)->toBe($order->items->first()->id)
+        ->and($orderSecret->encrypted_payload)->toBe([
+            'ea_email' => 'owner@example.test',
+            'ea_password' => 'Opaque password',
+            'backup_codes' => ['12345678', '23456789', '34567890'],
+        ])->and(DB::table('order_item_secrets')->value('encrypted_payload'))
         ->not->toContain('owner@example.test')
         ->not->toContain('Opaque password')
         ->not->toContain('12345678')
@@ -312,6 +369,24 @@ test('checkout fails closed when required credentials are missing or deleted', f
     }
 
     expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-secret-'.(int) $deleteRow))
+        ->toThrow(CheckoutUnavailable::class, 'EA account details are required.')
+        ->and(Order::count())->toBe(0);
+})->with([
+    'missing' => true,
+    'soft deleted marker' => false,
+]);
+
+test('checkout fails closed when required credentials for objectives are missing or deleted', function (bool $deleteRow) {
+    $state = checkoutObjectivesCart();
+    $secret = $state['item']->secret()->sole();
+
+    if ($deleteRow) {
+        $secret->delete();
+    } else {
+        $secret->update(['deleted_at' => now()]);
+    }
+
+    expect(fn () => app(PlaceOrder::class)->execute($state['user'], 'ar', 'checkout-objectives-secret-'.(int) $deleteRow))
         ->toThrow(CheckoutUnavailable::class, 'EA account details are required.')
         ->and(Order::count())->toBe(0);
 })->with([
