@@ -1,3 +1,4 @@
+import { SwapText } from '@/components/motion/swap-text';
 import { formatInteger } from '@/lib/money';
 import type {
     Division,
@@ -83,7 +84,7 @@ export function DivisionLadder({
             {/* Compact Summary Row (plain text on surface, no track/dots) */}
             <div aria-hidden="true" className="manual-route-strip">
                 <span className="manual-route-strip__route">
-                    {routeSummary}
+                    <SwapText value={routeSummary} />
                 </span>
                 <span className="manual-route-strip__badge">{stepsCount}</span>
             </div>

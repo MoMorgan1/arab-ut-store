@@ -1,6 +1,7 @@
 import { ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
+import { IconSwap } from '@/components/motion/icon-swap';
 import { focusSiblingCodeField } from '@/lib/code-field-focus';
 import type {
     ManualCredentialsDraft,
@@ -147,11 +148,11 @@ export function CredentialsFields({
                                     }
                                     type="button"
                                 >
-                                    {visible.playstation ? (
-                                        <EyeOff aria-hidden="true" />
-                                    ) : (
-                                        <Eye aria-hidden="true" />
-                                    )}
+                                    <IconSwap
+                                        state={visible.playstation ? 'b' : 'a'}
+                                        a={<Eye aria-hidden="true" />}
+                                        b={<EyeOff aria-hidden="true" />}
+                                    />
                                 </button>
                             </div>
                             <FieldError
@@ -250,11 +251,11 @@ export function CredentialsFields({
                                     }
                                     type="button"
                                 >
-                                    {visible.ea ? (
-                                        <EyeOff aria-hidden="true" />
-                                    ) : (
-                                        <Eye aria-hidden="true" />
-                                    )}
+                                    <IconSwap
+                                        state={visible.ea ? 'b' : 'a'}
+                                        a={<Eye aria-hidden="true" />}
+                                        b={<EyeOff aria-hidden="true" />}
+                                    />
                                 </button>
                             </div>
                             <FieldError
@@ -362,11 +363,11 @@ export function CredentialsFields({
                                     }
                                     type="button"
                                 >
-                                    {visible.steam ? (
-                                        <EyeOff aria-hidden="true" />
-                                    ) : (
-                                        <Eye aria-hidden="true" />
-                                    )}
+                                    <IconSwap
+                                        state={visible.steam ? 'b' : 'a'}
+                                        a={<Eye aria-hidden="true" />}
+                                        b={<EyeOff aria-hidden="true" />}
+                                    />
                                 </button>
                             </div>
                             <FieldError

@@ -3,6 +3,9 @@
 @import 'tw-animate-css';
 
 @import '../js/styles/tokens.css';
+@import '../js/styles/motion/text-swap.css';
+@import '../js/styles/motion/icon-swap.css';
+@import '../js/styles/motion/error-shake.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';

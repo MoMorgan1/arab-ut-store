@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { SwapText } from '@/components/motion/swap-text';
 import {
     announceCartAddition,
     announceCartDuplicate,
@@ -483,6 +484,13 @@ export function RivalsConfigurator({
               ]),
     ];
 
+    const modeHint = isWeekly
+        ? service.mode_weekly_hint.replace(
+              ':wins',
+              formatInteger(weekly.includedWins, locale),
+          )
+        : service.mode_promotion_hint;
+
     return (
         <form
             className="manual-configurator"
@@ -614,15 +622,7 @@ export function RivalsConfigurator({
                                 </SelectionCard>
                             </div>
                             <p className="manual-configurator__hint">
-                                {isWeekly
-                                    ? service.mode_weekly_hint.replace(
-                                          ':wins',
-                                          formatInteger(
-                                              weekly.includedWins,
-                                              locale,
-                                          ),
-                                      )
-                                    : service.mode_promotion_hint}
+                                <SwapText value={modeHint} />
                             </p>
                         </fieldset>
                     ) : null}

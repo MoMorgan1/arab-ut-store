@@ -1,6 +1,8 @@
 import { Eye, EyeOff } from 'lucide-react';
 import type { ComponentProps, Ref } from 'react';
 import { useState } from 'react';
+
+import { IconSwap } from '@/components/motion/icon-swap';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -31,11 +33,11 @@ export default function PasswordInput({
                 className="password-input__toggle absolute inset-y-0 right-0 flex min-w-11 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={showPassword ? hideLabel : showLabel}
             >
-                {showPassword ? (
-                    <EyeOff className="size-4" />
-                ) : (
-                    <Eye className="size-4" />
-                )}
+                <IconSwap
+                    state={showPassword ? 'b' : 'a'}
+                    a={<Eye className="size-4" />}
+                    b={<EyeOff className="size-4" />}
+                />
             </button>
         </div>
     );

@@ -1,0 +1,12 @@
+/* Text states swap — old text exits up with blur, new text enters from below. */
+:root {
+    --text-swap-dur: var(--motion-quick);
+    --text-swap-translate-y: 4px;
+    --text-swap-blur: 2px;
+    --text-swap-ease: var(--motion-ease-in-out);
+}
+
+.t-text-swap {
+    display: inline-block;
+    will-change: transform, filter, opacity;
+}

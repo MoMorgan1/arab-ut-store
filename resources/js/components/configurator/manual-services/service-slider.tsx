@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 
+import { SwapText } from '@/components/motion/swap-text';
+
 export function ServiceSlider({
     direction,
     inputName,
@@ -36,11 +38,8 @@ export function ServiceSlider({
             <div className="manual-service-slider__surface">
                 <div className="manual-service-slider__header">
                     <div className="manual-service-slider__cluster">
-                        <span
-                            className="manual-service-slider__value"
-                            key={`label-${selectedValue}-${valueLabel}`}
-                        >
-                            {valueLabel}
+                        <span className="manual-service-slider__value">
+                            <SwapText value={valueLabel} />
                         </span>
                         {price === undefined ? null : (
                             <strong

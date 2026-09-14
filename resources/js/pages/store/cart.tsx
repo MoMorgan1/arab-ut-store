@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import { SwapText } from '@/components/motion/swap-text';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
@@ -583,6 +584,10 @@ function CheckoutSummary({
         startPayment,
         dismissRepricing,
     } = controller;
+    const checkoutLabel =
+        state === 'loading'
+            ? translations.checkout_loading
+            : translations.checkout;
 
     return (
         <aside
@@ -763,9 +768,7 @@ function CheckoutSummary({
                         onClick={() => startPayment()}
                         type="button"
                     >
-                        {state === 'loading'
-                            ? translations.checkout_loading
-                            : translations.checkout}
+                        <SwapText value={checkoutLabel} />
                     </button>
                     {blockedByUnavailable ? (
                         <p className="store-cart-checkout__blocked">
@@ -816,6 +819,10 @@ function CartDock({
 }) {
     const { errorCode, state, repricing, payableHalalah, startPayment } =
         controller;
+    const dockPayLabel =
+        state === 'loading'
+            ? translations.checkout_loading
+            : translations.pay_now;
 
     return (
         <div className="store-cart-dock">
@@ -859,9 +866,7 @@ function CartDock({
                     onClick={() => startPayment()}
                     type="button"
                 >
-                    {state === 'loading'
-                        ? translations.checkout_loading
-                        : translations.pay_now}
+                    <SwapText value={dockPayLabel} />
                 </button>
             )}
             {state === 'error' ? (
@@ -994,7 +999,9 @@ function CartUndoBar({
             }}
             role="status"
         >
-            <p className="store-cart-undo__message">{message}</p>
+            <p className="store-cart-undo__message">
+                <SwapText value={message} />
+            </p>
             {notice === 'removed' ? (
                 <button
                     className="store-cart-undo__action"
