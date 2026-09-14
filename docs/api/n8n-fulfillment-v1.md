@@ -148,3 +148,148 @@ comfortably inside the window.
 Signature authentication runs before the rate limiter: an invalid signature
 cannot consume the authenticated credential's limiter bucket, and the `429`
 carries `Cache-Control: no-store` like every other response.
+
+## The placement request (`order.paid`, schema version 2)
+
+The other direction. When an order is paid and holds at least one automated
+item (Coins or SBC) that no supplier has been asked to deliver, the store
+queues one `order.paid` event and the scheduler posts it to
+`N8N_ORDER_PAID_URL` (`orders:publish-paid-events`, every minute). This is
+the request the `ship-coins` workflow starts from; it replaces the Salla
+`order.created` webhook, the `Router Logic1` option parsing, and the
+`ArabUT Price Settings` sheet in `Fulfillment v14`.
+
+No event is queued for an order of booster services alone, nor for a manual
+order whose every automated item already carries a pasted supplier
+reference (owner decisions, 2026-09-14). A manual order **without** a
+reference is dispatched exactly like a storefront order.
+
+### Headers and signature
+
+Same convention as the placement report, with the publisher's own key pair:
+
+```text
+X-ArabUT-Key: <N8N_ORDER_PAID_KEY>
+X-ArabUT-Timestamp: <unix seconds>
+X-ArabUT-Event: <same value as eventId>
+X-ArabUT-Signature: hex HMAC-SHA256 of timestamp + "\n" + eventId + "\n" + raw body, keyed with N8N_ORDER_PAID_SECRET
+```
+
+### Body
+
+```json
+{
+  "eventId": "01K52J0V4M8R1YQ6H2Z7N9P3C5",
+  "eventType": "order.paid",
+  "schemaVersion": 2,
+  "occurredAt": "2026-09-14T09:12:44+00:00",
+  "data": {
+    "order_public_id": "01K52J0V3B7X2Y9Q5H8N1M4R6T",
+    "order_number": "AUT-7K2MQ4",
+    "channel": "store",
+    "locale": "ar",
+    "currency": "SAR",
+    "total_halalah": 61500,
+    "item_count": 2,
+    "customer_name": "فهد العتيبي",
+    "items": [
+      {
+        "order_item_public_id": "01K52J0V3C1A8W4E7R2T9Y6U3I",
+        "service": "coins",
+        "platform": "playstation",
+        "supplier_platform": "PS",
+        "quantity": 1,
+        "coins": { "quantity": 1250000, "delivery": "fast" },
+        "budget": { "max_eur_per_100k": 1.0, "basis": "console_fast:2000K", "pricing_version": 12 },
+        "account": {
+          "ea_email": "fahad@example.test",
+          "ea_password": "…",
+          "backup_codes": ["11111111", "22222222", "33333333"],
+          "current_balance": 350000,
+          "credential_version": 1
+        }
+      },
+      {
+        "order_item_public_id": "01K52J0V3D5S9F2G6H8J1K4L7Z",
+        "service": "sbc",
+        "platform": "playstation",
+        "supplier_platform": "PS",
+        "quantity": 1,
+        "sbc": { "set_id": 412, "times_to_solve": 3 },
+        "budget": { "max_eur_per_100k": 1.0, "basis": "console_fast:2000K", "pricing_version": 12 },
+        "account": { "…": "same shape" }
+      }
+    ]
+  }
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `data.channel` | `store`, `manual` or `salla_import`. |
+| `data.customer_name` | What both suppliers file the account under (`customerName` at FFT, `name` at UTT). Phone and email are not sent. |
+| `items[].order_item_public_id` | The ULID the placement report must echo back. |
+| `items[].service` | `coins` or `sbc`. Booster services never appear. |
+| `items[].platform` / `supplier_platform` | The store's value and the suppliers' spelling. Only `playstation` → `PS` and `pc` → `PC` exist; an item on any other platform is never sent. |
+| `items[].quantity` | The order line's quantity. |
+| `items[].coins.quantity` | Coins to ship. |
+| `items[].coins.delivery` | `fast`, `normal`, or `null` on PC. `normal` is v14's slow shipping. |
+| `items[].sbc.set_id` | FFT's `setID` (the EasySBC id the SBC catalogue keys the product by; the catalogue's join check proves them equal). |
+| `items[].sbc.times_to_solve` | `completion_count × quantity`, v14's `sbcTimesToSolve`. |
+| `items[].budget.max_eur_per_100k` | The most a supplier may charge per 100K coins for this item, in euros. v14's `calculatedMaxPrice` / `buyNowThreshold`. |
+| `items[].budget.basis` | Which figure produced it: `console_fast:<tier>K`, `pc:<tier>K`, or `cycle:ps`. For audit; nothing downstream should branch on it. |
+| `items[].budget.pricing_version` | The applied pricing run the table came from. |
+| `items[].account` | The EA account, decrypted for this request only (ADR 2026-09-12). `current_balance` is what the customer said they hold, or `null`; v14 defaulted an unknown balance to 200,000. `credential_version` rises when the customer corrects the account. |
+
+### Where the budget comes from
+
+`Fulfillment v14` read `ArabUT Price Settings`: a USD-per-million figure per
+platform, one for slow delivery and six by quantity tier for fast, times the
+sheet's USD→EUR rate, divided by ten. That sheet was filled by the hourly
+supplier probe, and the probe now publishes the same figures to the store
+inside every pricing run (`observations.tierCosts`, `cyclePSUsdPerM`,
+`ratioEuroUsd`). The store keeps them from the newest **applied** run and
+computes, at send time:
+
+- fast console delivery and every PC order: the first tier whose cap reaches
+  the quantity (1M, 2M, 5M, 10M, 15M, 20M; anything larger uses the last);
+- slow console delivery: the FFT cycle cost (`slow_AnyQty` in the sheet);
+- a challenge: the 2M tier, as v14 did (`fast_Tier2`), because the coins a
+  challenge costs are only known once FFT prices it at solve time.
+
+Owner decision, 2026-09-14: the observed cost is sent as it is, with no margin
+on top, exactly as v14 took the sheet's number. When one order carries both a
+challenge and coins, v14 merged them and priced the total by tier; here each
+item carries its own budget, and the workflow should take the larger of the
+two for the merged shipment.
+
+### What the store guarantees about retries
+
+The outbox row holds identifiers only. Everything in `items` is read when
+the request is about to leave: the EA account from `order_item_secrets`
+(each read written to `secret_access_logs` with purpose
+`fulfillment_placement`), the budget from the newest applied pricing run,
+and the item list from the order as it stands. So a retried send carries a
+password the customer corrected after the first attempt, a price the market
+moved to since, and leaves out an item staff have meanwhile placed by hand.
+
+A request that cannot be composed is not sent at all - half an order is worse
+than none - and the row goes back to pending with the reason as
+`last_error`: `budget_unavailable` (no applied pricing run, or one without
+the cost table), `credentials_missing`, `credentials_incomplete` (an email
+with no password, which a manual order may hold), `credentials_purged`,
+`challenge_unknown`, `platform_unsupported`, or `delivery_failed` (n8n did
+not acknowledge). After ten attempts the row is retired as failed and
+surfaces on the admin queue-health panel;
+`php artisan orders:requeue-paid-event <eventId>` sends it again.
+
+### What n8n must do
+
+- Deduplicate on `eventId`; a retry carries the same id with possibly newer
+  contents, and the newer contents are the ones to use.
+- Answer `{"data":{"acknowledged":true}}` with a 2xx. Anything else is a
+  retry in one, two, four … up to sixty minutes.
+- Place each item and report each placement through the endpoint above.
+- Save no execution data on this workflow or any sub-workflow it calls, in
+  every mode (success, error, manual, progress), before a real order runs
+  through it - the condition the ADR attaches to carrying the account here.

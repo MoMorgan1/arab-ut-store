@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int|null $pricing_version
+ * @property array<string, mixed>|null $payload
+ */
 class PriceRun extends DomainModel
 {
     /** @return array<string, string> */

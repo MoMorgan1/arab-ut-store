@@ -16,6 +16,7 @@ use App\Enums\Supplier;
 use App\Enums\UserRole;
 use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Loyalty\Support\EligibleOrderSpend;
+use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\StaffAuditLog;
 use App\Models\User;
@@ -436,4 +437,50 @@ test('UTT cannot be named for a challenge placed by hand', function (): void {
             ]),
         ]),
     ))->toThrow(RuntimeException::class, 'supplier_cannot_solve_challenges');
+});
+
+test('an automated item without a pasted reference is queued for n8n, and one with a reference is not', function (): void {
+    $actor = createStaffTestActor(UserRole::Admin);
+
+    $dispatched = app(CreateManualOrder::class)->execute(
+        $actor,
+        manualCustomer(),
+        'ar',
+        new ManualOrderDraft(true, null, [
+            manualItem(['credentials' => ['ea_email' => 'fahad@example.test', 'ea_password' => 'safe password', 'backup_codes' => ['11111111', '22222222', '33333333']]]),
+        ]),
+    );
+
+    // The reference means "already placed", so there is nothing for n8n to do.
+    $placed = app(CreateManualOrder::class)->execute(
+        $actor,
+        manualCustomer(),
+        'ar',
+        new ManualOrderDraft(true, null, [
+            manualItem(['placement' => new ManualOrderPlacement(Supplier::Fft, '84190', DeliveryPhase::Coins)]),
+        ]),
+    );
+
+    // Nor for a booster service, which a person delivers.
+    $booster = app(CreateManualOrder::class)->execute(
+        $actor,
+        manualCustomer(),
+        'ar',
+        new ManualOrderDraft(true, null, [
+            manualItem([
+                'service' => ServiceType::Rivals,
+                'sku' => 'MANUAL-RIVALS',
+                'configuration' => ['service_type' => 'rivals', 'platform' => 'playstation', 'mode' => 'wins', 'current_division' => 5, 'target_division' => 3],
+            ]),
+        ]),
+    );
+
+    $events = IntegrationEvent::query()->where('event_type', 'order.paid')->get();
+
+    expect($events)->toHaveCount(1)
+        ->and($events->sole()->aggregate_id)->toBe($dispatched->public_id)
+        ->and($events->sole()->payload['channel'])->toBe('manual')
+        ->and($events->sole()->idempotency_key)->toBe('order-paid:'.$dispatched->id)
+        ->and($placed->id)->not->toBe($dispatched->id)
+        ->and($booster->id)->not->toBe($dispatched->id);
 });

@@ -3,17 +3,19 @@
 **Status:** In build. Revised 2026-09-12 after an adversarial review (Codex/sol, read-only) that
 found twenty-five issues in the first draft; approved and dispatched since.
 
-**Shipped on `feat/order-tracking-slice-a-b`** (branch, not merged):
-A, B0-B3, B5, C1-C3, D1, and as of 2026-09-13 **D3a** (the scheduled sweep) and **D2 + C4** (the
-signed per-order link and its own presenter). D2b - the three actions over that link - is the task
-in flight; nothing retires the tracker until it lands.
+**Shipped to `main`** (2026-09-14): A, B0-B5, C1-C4, D1, D2 with its three actions, D3a, G1
+(#134, #136, #137, #138, #141), and **B4** - the store composes the placement request itself
+(this branch). Contract: `docs/api/n8n-fulfillment-v1.md`, *The placement request*.
 
-**Not started:** B4 (the store placing orders itself), B6, D3b (stall detection - waits on the
-cadence numbers D3a's instrumentation produces), E1, F1-F3, G1-G2.
+**Not started:** B6, D3b (waits on the cadence numbers D3a's instrumentation produces), E1, E2,
+F1-F3, G2.
 
-**Blocked on Mohamed:** D3c's message catalogue (approved 2026-09-13 with three corrections - see
-below), G1's admin screen (needs a `/design` canvas), and the FFT/UTT key rotation (explicitly
-deferred by the owner, 2026-09-13, not forgotten).
+**Blocked on Mohamed:** D3c's sending (copy approved 2026-09-13; nothing may be sent yet), the
+FFT/UTT key rotation (deferred again 2026-09-14, and now consequential: the store calls the
+suppliers with the current keys the moment a manual order carries a pasted reference), and
+`N8N_ORDER_PAID_*` on production, which stay unset until `ship-coins` (F1) exists - the
+publisher fails closed without them, so B4 is inert in production today.
+
 **Spec:** `docs/decisions/2026-09-12-order-tracking-in-store-design.md`
 **ADR:** `docs/decisions/2026-09-12-ea-credentials-in-placement-payload.md`
 **Glossary:** `CONTEXT.md`
@@ -51,6 +53,18 @@ Added 2026-09-12, after the first implementation round:
 - **The activation gate is documentation, not a blocker right now**: the store is taking no orders
   at all while FIFA 26 winds down, so there is nothing to strand. It becomes real again the day
   orders resume - see the gate section below.
+
+Decided 2026-09-14, building B4 (the outbound placement request):
+
+- **The purchase budget is the supplier cost the hourly probe observed, as it is.** The
+  `ArabUT Price Settings` sheet v14 read was filled by that probe; the pricing run already
+  carries the same figures (`observations.tierCosts`), so the store keeps them and computes
+  v14's `calculatedMaxPrice` from the newest applied run at send time. No margin on top.
+- **A manual order without a pasted reference is dispatched** like a storefront order. The
+  reference means "already placed"; its absence means "place it".
+- **An order of booster services alone sends no event.** n8n has nothing to place. (Noted at the
+  same time: the store sends Mohamed no alert for a new paid order; v14's `WA: Manual Order Alert`
+  had that job. Separate work if wanted.)
 
 Decided 2026-09-12, briefing the C3 canvas:
 
@@ -447,7 +461,7 @@ before the body (`VerifyN8nSbcCatalogSignature.php:17`); SBC pricing read signs
 `timestamp\nGET\n<path>\n` with no event header. Adopt the first. SHA-256 hex, the existing
 ±300-second window, its own key, 32-char secret and named limiter.
 
-**B4. Outbound placement request.** The real gap in the first draft: today both payment paths
+**B4. Outbound placement request.** *Shipped 2026-09-14; see the decisions above and the contract.* The real gap in the first draft: today both payment paths
 publish only identifiers, locale, currency, total and item count (`PlaceOrder.php:331`,
 `ReconcilePaylinkPayment.php:77`). This task builds the payload — automated items selected, their
 configuration, and the credential block the ADR authorises — **composed at send time** from

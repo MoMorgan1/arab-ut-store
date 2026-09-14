@@ -67,39 +67,18 @@ The webhook body may announce a state, but the application trusts only the subse
 
 ## Paid-order n8n event
 
-The scheduler publishes pending `order.paid` rows to `N8N_ORDER_PAID_URL`. It sends one raw JSON body with:
+The scheduler publishes pending `order.paid` rows to `N8N_ORDER_PAID_URL`. Since
+2026-09-14 the body is the **placement request** (schema version 2): the order's
+identifiers plus one entry per automated item awaiting a supplier, each with its
+configuration, the purchase budget, and the EA account. The full contract - body,
+headers, signature, retry and acknowledgement rules - is in
+[`n8n-fulfillment-v1.md`](n8n-fulfillment-v1.md) under *The placement request*.
 
-```json
-{
-  "eventId": "01...",
-  "eventType": "order.paid",
-  "schemaVersion": 1,
-  "occurredAt": "2026-08-14T00:00:00Z",
-  "data": {
-    "order_public_id": "01...",
-    "order_number": "AUT-...",
-    "locale": "ar",
-    "currency": "SAR",
-    "total_halalah": 1250,
-    "item_count": 1
-  }
-}
-```
-
-Headers:
-
-- `X-ArabUT-Key`
-- `X-ArabUT-Timestamp`
-- `X-ArabUT-Event`
-- `X-ArabUT-Signature`
-
-The signature is lowercase hex HMAC-SHA256 of:
-
-```text
-timestamp + "\n" + eventId + "\n" + exactRawBody
-```
-
-n8n must deduplicate on `eventId` and respond with `{"data":{"acknowledged":true}}`. The payload deliberately excludes customer phone/email and all EA emails, passwords, and backup codes. Fulfillment-secret access must use a separate, authenticated, audited boundary.
+Two things this file used to say no longer hold. The payload **does** carry the
+customer's EA email, password and backup codes, by owner decision recorded in
+`docs/decisions/2026-09-12-ea-credentials-in-placement-payload.md`; and no separate
+credential boundary is planned. The outbox row in `integration_events` still holds
+none of it - the account is read and decrypted at send time only.
 
 ## Official Paylink references
 

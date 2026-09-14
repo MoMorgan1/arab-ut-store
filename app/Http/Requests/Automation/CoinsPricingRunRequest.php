@@ -68,8 +68,58 @@ final class CoinsPricingRunRequest extends FormRequest
                 $this->validateGeneratedAt($validator);
                 $this->validateLegalRanges($validator);
                 $this->validateRuleConfigurations($validator);
+                $this->validateCostTiers($validator);
             },
         ];
+    }
+
+    /**
+     * `observations.tierCosts` is optional - an older workflow does not send
+     * it - but once present it is the placement budget, so a malformed table
+     * is refused here rather than stored and discovered by the first paid
+     * order that cannot be dispatched.
+     */
+    private function validateCostTiers(Validator $validator): void
+    {
+        $tiers = $this->input('observations.tierCosts');
+
+        if ($tiers === null) {
+            return;
+        }
+
+        if (! is_array($tiers)) {
+            $validator->errors()->add('observations.tierCosts', 'The supplier cost tiers must be an object.');
+
+            return;
+        }
+
+        foreach (['console_fast', 'pc'] as $group) {
+            $rows = $tiers[$group] ?? null;
+
+            if (! is_array($rows) || ! array_is_list($rows) || $rows === []) {
+                $validator->errors()->add("observations.tierCosts.{$group}", 'The supplier cost tiers must list every tier.');
+
+                continue;
+            }
+
+            $previousK = 0;
+
+            foreach ($rows as $index => $row) {
+                $targetK = is_array($row) ? ($row['targetK'] ?? null) : null;
+                $usdPerM = is_array($row) ? ($row['rawUsdPerM'] ?? null) : null;
+
+                if (! is_int($targetK) || $targetK <= $previousK || ! is_numeric($usdPerM) || (float) $usdPerM <= 0) {
+                    $validator->errors()->add(
+                        "observations.tierCosts.{$group}.{$index}",
+                        'A supplier cost tier needs an increasing integer targetK and a positive rawUsdPerM.',
+                    );
+
+                    break;
+                }
+
+                $previousK = $targetK;
+            }
+        }
     }
 
     private function validateTopLevelShape(Validator $validator): void

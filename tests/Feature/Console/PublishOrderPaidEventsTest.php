@@ -1,33 +1,24 @@
 <?php
 
+use App\Actions\Fulfillment\EnqueueOrderPlacement;
 use App\Models\IntegrationEvent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 function publisherEvent(array $overrides = []): IntegrationEvent
 {
-    $suffix = (string) Str::ulid();
+    // The publisher composes the request from the order itself, so the event
+    // needs a real order behind it - one Coins item with an EA account, and a
+    // pricing run to budget against.
+    static $sequence = 1000;
+    $sequence++;
 
-    return IntegrationEvent::create(array_merge([
-        'event_id' => $suffix,
-        'event_type' => 'order.paid',
-        'aggregate_type' => 'order',
-        'aggregate_id' => (string) Str::ulid(),
-        'schema_version' => 1,
-        'payload' => [
-            'order_public_id' => (string) Str::ulid(),
-            'order_number' => 'AUT-PUB-1001',
-            'locale' => 'ar',
-            'currency' => 'SAR',
-            'total_halalah' => 1250,
-            'item_count' => 1,
-        ],
-        'status' => 'pending',
-        'idempotency_key' => 'order-paid:pub:'.$suffix,
-        'attempts' => 0,
-        'available_at' => now(),
-    ], $overrides));
+    $order = placeableOrder('AUT-PUB-'.$sequence);
+    $event = app(EnqueueOrderPlacement::class)->execute($order);
+
+    $event->forceFill($overrides)->save();
+
+    return $event->fresh();
 }
 
 beforeEach(function (): void {

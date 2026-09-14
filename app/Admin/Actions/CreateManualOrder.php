@@ -2,6 +2,7 @@
 
 namespace App\Admin\Actions;
 
+use App\Actions\Fulfillment\EnqueueOrderPlacement;
 use App\Actions\Fulfillment\RecordSupplierPlacement;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Admin\ManualOrder\ManualOrderDraft;
@@ -47,6 +48,7 @@ final readonly class CreateManualOrder
     public function __construct(
         private RecordStaffAudit $audit,
         private RecordSupplierPlacement $recordSupplierPlacement,
+        private EnqueueOrderPlacement $enqueueOrderPlacement,
     ) {}
 
     /**
@@ -88,6 +90,12 @@ final readonly class CreateManualOrder
             if ($draft->payment !== null) {
                 $this->writePayment($order, $draft);
             }
+
+            // A pasted reference means "already placed"; an automated item
+            // without one is dispatched exactly like a storefront order
+            // (owner decision, 2026-09-14). The action writes nothing when
+            // every item is either a booster service or already placed.
+            $this->enqueueOrderPlacement->execute($order);
 
             $this->recordHistory($order, $actor, $draft);
 

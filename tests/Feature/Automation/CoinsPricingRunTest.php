@@ -217,3 +217,57 @@ it('rejects a duplicate signed event with a different run id', function () {
 
     expect(PriceRun::count())->toBe(1);
 });
+
+it('keeps the supplier cost tiers a placement budgets against, and only the figures the budget reads', function () {
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+    $payload['observations']['cyclePSUsdPerM'] = 9.2;
+    $payload['observations']['tierCosts'] = [
+        'console_fast' => [
+            ['targetK' => 1000, 'rawUsdPerM' => 11.0, 'selectedSource' => 'fft_targeted_ps', 'candidates' => [['source' => 'utt_ps', 'orderCardsRemaining' => 7]]],
+            ['targetK' => 2000, 'rawUsdPerM' => 11.5, 'selectedSource' => 'utt_ps', 'candidates' => []],
+        ],
+        'pc' => [
+            ['targetK' => 1000, 'rawUsdPerM' => 25.0, 'selectedSource' => 'fft_targeted_pc', 'fallback' => false],
+            ['targetK' => 2000, 'rawUsdPerM' => 25.5, 'selectedSource' => 'carry_forward:fft_targeted_pc', 'fallback' => true],
+        ],
+    ];
+
+    signedCoinsPricingRun($payload)->assertCreated();
+
+    // Loose on purpose: JSON drops a whole number's fraction, and 11 == 11.0 is the point.
+    expect(PriceRun::sole()->payload['observations'])->toEqual([
+        'source' => 'fft+utt',
+        'ratioEuroUsd' => 1.1,
+        'cyclePSUsdPerM' => 9.2,
+        'tierCosts' => [
+            'console_fast' => [
+                ['targetK' => 1000, 'rawUsdPerM' => 11.0, 'source' => 'fft_targeted_ps'],
+                ['targetK' => 2000, 'rawUsdPerM' => 11.5, 'source' => 'utt_ps'],
+            ],
+            'pc' => [
+                ['targetK' => 1000, 'rawUsdPerM' => 25.0, 'source' => 'fft_targeted_pc'],
+                ['targetK' => 2000, 'rawUsdPerM' => 25.5, 'source' => 'carry_forward:fft_targeted_pc'],
+            ],
+        ],
+    ]);
+});
+
+it('refuses a malformed cost table rather than storing a budget nothing can spend against', function (array $tierCosts) {
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+    $payload['observations']['tierCosts'] = $tierCosts;
+
+    signedCoinsPricingRun($payload)->assertUnprocessable();
+
+    expect(PriceRun::count())->toBe(0);
+})->with([
+    'a missing platform' => [['console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 11.0]]]],
+    'tiers out of order' => [[
+        'console_fast' => [['targetK' => 2000, 'rawUsdPerM' => 11.0], ['targetK' => 1000, 'rawUsdPerM' => 11.5]],
+        'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]],
+    ]],
+    'a zero cost' => [[
+        'console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 0]],
+        'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]],
+    ]],
+    'an empty platform' => [['console_fast' => [], 'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]]]],
+]);
