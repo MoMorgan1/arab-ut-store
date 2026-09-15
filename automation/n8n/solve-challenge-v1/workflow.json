@@ -1,0 +1,423 @@
+{
+  "name": "solve-challenge v1 - submit the solve for a funded challenge",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "arabut-solve-challenge-v1",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-solve-challenge-v1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        400
+      ],
+      "webhookId": "7d3a5f92-1c8e-4b07-a6d4-9e2f1c5b8a70",
+      "notes": "The store posts challenge.ready (schema 1) here. Authentication is the HMAC in Verify Request, not an n8n credential, so nothing is attached. Raw Body must stay on."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "config-n8n-solve-challenge-key",
+              "name": "N8N_SOLVE_CHALLENGE_KEY",
+              "value": "CONFIGURE_N8N_SOLVE_CHALLENGE_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-solve-challenge-secret",
+              "name": "N8N_SOLVE_CHALLENGE_SECRET",
+              "value": "CONFIGURE_N8N_SOLVE_CHALLENGE_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-fulfillment-key",
+              "name": "N8N_FULFILLMENT_KEY",
+              "value": "CONFIGURE_N8N_FULFILLMENT_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-fulfillment-secret",
+              "name": "N8N_FULFILLMENT_SECRET",
+              "value": "CONFIGURE_N8N_FULFILLMENT_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "config-fft-api-user",
+              "name": "FFT_API_USER",
+              "value": "CONFIGURE_FFT_API_USER",
+              "type": "string"
+            },
+            {
+              "id": "config-fft-api-key",
+              "name": "FFT_API_KEY",
+              "value": "CONFIGURE_FFT_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-arabut-store-url",
+              "name": "ARABUT_STORE_URL",
+              "value": "https://store.arab-ut.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {
+          "includeBinary": true
+        }
+      },
+      "id": "config-solve-challenge-v1",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        400
+      ],
+      "notes": "Paste the real values here after import - N8N_SOLVE_CHALLENGE_KEY: the store's solve publisher identity, compared with X-ArabUT-Key; N8N_SOLVE_CHALLENGE_SECRET: HMAC secret of the incoming request, 32+ characters, same value as on the store; N8N_FULFILLMENT_KEY: X-ArabUT-Key the store expects on the placement report - the same value ship-coins uses; N8N_FULFILLMENT_SECRET: HMAC secret of the placement report, 32+ characters, same value as on the store; FFT_API_USER: FuTTransfer API user; FFT_API_KEY: FuTTransfer API key; ARABUT_STORE_URL: the store origin - ships filled in, change only for a staging store. Keep \"Include Other Input Fields\" and \"Include Binary\" on."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// solve-challenge v1 — the store's challenge.ready (schema 1) request,\n// verified before anything reads it. Every failure in this workflow THROWS:\n// the Error Workflow sends the Telegram alert and the store, seeing no\n// acknowledgement, retries the same item later. There is no in-flow failure\n// rail.\n//\n// The signature covers the exact bytes the store sent (timestamp, event id and\n// raw body joined by newlines, HMAC-SHA256 with N8N_SOLVE_CHALLENGE_SECRET), so\n// the Webhook node must run with \"Raw Body\" on. Verification reads those bytes\n// and never a re-serialised copy: PHP writes 1.0 where JavaScript writes 1,\n// and escapes Arabic where JavaScript does not.\n//\n// Keys and secrets live in the Config node (Edit Fields) that sits between\n// the Webhook and this node - the instance has neither environment variables\n// nor $vars (owner decision, 2026-09-14). A value still reading CONFIGURE_...\n// is a value nobody pasted.\n\nconst crypto = require('crypto');\n\nconst config = $('Config').first().json || {};\nconst requiredKeys = [\n    'N8N_SOLVE_CHALLENGE_KEY',\n    'N8N_SOLVE_CHALLENGE_SECRET',\n    'N8N_FULFILLMENT_KEY',\n    'N8N_FULFILLMENT_SECRET',\n    'FFT_API_USER',\n    'FFT_API_KEY',\n];\nconst missingKeys = requiredKeys.filter((name) => !config[name] || /^CONFIGURE_/.test(String(config[name])));\nif (missingKeys.length) {\n    throw new Error(\n        `[verify] not set in the Config node: ${missingKeys.join(', ')}`,\n    );\n}\nif (String(config.N8N_SOLVE_CHALLENGE_SECRET).length < 32) {\n    throw new Error('[verify] N8N_SOLVE_CHALLENGE_SECRET is shorter than 32 characters');\n}\n\n// Read from the Webhook node by name: the Config node sits in between and\n// passes the request through, but the raw bytes are authoritative here.\nconst item = $('Webhook').first();\nconst json = item.json || {};\nconst headers = json.headers || {};\n\nfunction header(name) {\n    const value = headers[name] ?? headers[name.toLowerCase()];\n    return String(Array.isArray(value) ? value[0] : value ?? '');\n}\n\nfunction equal(left, right) {\n    const a = Buffer.from(String(left), 'utf8');\n    const b = Buffer.from(String(right), 'utf8');\n    return a.length === b.length && crypto.timingSafeEqual(a, b);\n}\n\n// The raw body. In n8n's default (memory) binary mode the Webhook node hands\n// it over base64-encoded under binary.data.data; the filesystem mode hands a\n// file id instead, which the helper below resolves when it exists (it reads\n// this node's input, so the Config node must keep \"Include Binary\" on).\nasync function rawBody() {\n    const helpers = typeof this === 'object' && this !== null ? this.helpers : null;\n    if (helpers && typeof helpers.getBinaryDataBuffer === 'function') {\n        try {\n            const buffer = await helpers.getBinaryDataBuffer(0, 'data');\n            if (buffer && buffer.length) return buffer.toString('utf8');\n        } catch (error) {\n            // fall through to the in-memory shape\n        }\n    }\n    const binary = item.binary && item.binary.data;\n    if (binary && binary.id) {\n        // Stored outside memory and the helper could not read it: the\n        // in-memory field holds a mode marker, not the bytes.\n        return null;\n    }\n    if (binary && typeof binary.data === 'string' && binary.data !== '') {\n        return Buffer.from(binary.data, 'base64').toString('utf8');\n    }\n    if (typeof json.rawBody === 'string') return json.rawBody;\n    return null;\n}\n\nconst raw = await rawBody.call(this);\nif (raw === null) {\n    throw new Error(\n        '[verify] the raw request body is unavailable - turn on \"Raw Body\" in the Webhook node options',\n    );\n}\n\nconst key = header('x-arabut-key');\nconst timestamp = header('x-arabut-timestamp');\nconst eventId = header('x-arabut-event');\nconst signature = header('x-arabut-signature');\n\nif (!equal(key, config.N8N_SOLVE_CHALLENGE_KEY)) {\n    throw new Error('[verify] X-ArabUT-Key does not match N8N_SOLVE_CHALLENGE_KEY');\n}\nif (!/^\\d{10}$/.test(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {\n    throw new Error('[verify] X-ArabUT-Timestamp is outside the five-minute window');\n}\nconst expected = crypto\n    .createHmac('sha256', config.N8N_SOLVE_CHALLENGE_SECRET)\n    .update(`${timestamp}\\n${eventId}\\n${raw}`)\n    .digest('hex');\nif (!equal(signature, expected)) {\n    throw new Error('[verify] X-ArabUT-Signature does not match the request body');\n}\n\nlet event;\ntry {\n    event = JSON.parse(raw);\n} catch (error) {\n    throw new Error('[verify] the request body is not JSON');\n}\n\nif (!event || event.eventType !== 'challenge.ready') {\n    throw new Error(`[verify] unexpected eventType ${event && event.eventType}`);\n}\nif (Number(event.schemaVersion) !== 1) {\n    throw new Error(`[verify] unexpected schemaVersion ${event && event.schemaVersion}; this workflow reads schema 1`);\n}\nif (event.eventId !== eventId) {\n    throw new Error('[verify] X-ArabUT-Event does not match the body eventId');\n}\nconst request = event.data;\nconst challenge = request && request.item;\nconst account = challenge && challenge.account;\nif (!request || typeof request.order_number !== 'string' || !challenge || typeof challenge.order_item_public_id !== 'string') {\n    throw new Error('[verify] the request names no order item');\n}\nif (challenge.service !== 'sbc' || !challenge.sbc || !(Number(challenge.sbc.set_id) > 0)) {\n    throw new Error(`[verify] order ${request.order_number}: the item is not a challenge with a set id`);\n}\nif (challenge.supplier_platform !== 'PS' && challenge.supplier_platform !== 'PC') {\n    throw new Error(`[verify] order ${request.order_number}: platform ${challenge.supplier_platform || '?'} has no solver`);\n}\nif (!account || typeof account.ea_email !== 'string' || account.ea_email === '' || !account.ea_password) {\n    throw new Error(`[verify] order ${request.order_number}: the item carries no EA account`);\n}\n\nreturn [{ json: { eventId, request, receivedAt: new Date().toISOString() } }];\n"
+      },
+      "id": "verify-request-solve-challenge-v1",
+      "name": "Verify Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        400
+      ],
+      "notes": "Source: nodes/verify-request.js"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://futtransfer.top/availableSBCsAPI",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "apiUser",
+              "value": "={{ $('Config').first().json.FFT_API_USER }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $('Config').first().json.FFT_API_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "available-sbcs-solve-challenge-v1",
+      "name": "SBC: Get Available SBCs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        840,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// solve-challenge v1 — the \"set exists and is priced\" half of v14's\n// \"SBC: Match & Validate\", run again before the solve.\n//\n// ship-coins already refused an unpriced challenge when it bought the coins;\n// it is checked again here because a set can expire between the two phases,\n// and v14 submitted nothing FFT would not price. The messages are v14's, so\n// the alert reads as it always did. The coin arithmetic is not here: the\n// coins are bought, and the solve is priced by FFT itself.\n\n// ── 1. إعادة بناء مصفوفة التحديات من كل عناصر الـ input ──\nconst allInputItems = $input.all();\nlet availableSBCs = null;\n\nif (allInputItems.length > 1) {\n  availableSBCs = allInputItems.map(item => item.json);\n}\nif (!availableSBCs && allInputItems.length === 1) {\n  const firstJson = allInputItems[0].json;\n  if (Array.isArray(firstJson)) availableSBCs = firstJson;\n  else if (firstJson.data && Array.isArray(firstJson.data)) availableSBCs = firstJson.data;\n  else if (firstJson.sbcs && Array.isArray(firstJson.sbcs)) availableSBCs = firstJson.sbcs;\n}\nif (!availableSBCs && allInputItems.length === 1) {\n  const firstJson = allInputItems[0].json;\n  if (firstJson.setID !== undefined) availableSBCs = [firstJson];\n}\n\nconst request = $('Verify Request').first().json.request;\nconst orderId = request.order_number;\nconst item = request.item;\n\nif (!availableSBCs || !Array.isArray(availableSBCs) || availableSBCs.length === 0) {\n  throw new Error(`[sbc] order ${orderId}: فشل قراءة قائمة التحديات. عدد العناصر المستقبلة: ${allInputItems.length}`);\n}\n\nconst platform = item.supplier_platform || 'PS';\nconst setID = Number(item.sbc.set_id);\nconst sbcMatch = availableSBCs.find(sbc => Number(sbc.setID) === setID);\nif (!sbcMatch) throw new Error(`[sbc] order ${orderId}: التحدي غير موجود: setID ${setID}`);\n\nconst coinPrice = platform === 'PC'\n  ? parseFloat(sbcMatch.pcPrice)\n  : parseFloat(sbcMatch.consolePrice);\n\nif (!coinPrice || coinPrice <= 0) {\n  const rawPrice = platform === 'PC' ? sbcMatch.pcPrice : sbcMatch.consolePrice;\n  throw new Error(`[sbc] order ${orderId}: FFT ما مسعّر هذا التحدي حالياً (السعر المستلم: ${rawPrice}) — غالباً غير قابل للحل الآلي: \"${sbcMatch.sbcName}\" [منصة ${platform}]. الطلب يحتاج حل يدوي.`);\n}\n\n// v14's \"SBC: Split SBC IDs\" item, for one set: what \"SBC: Submit Solve\" reads.\nreturn [{\n  json: {\n    orderId,\n    orderItemPublicId: item.order_item_public_id,\n    setID: sbcMatch.setID,\n    sbcName: sbcMatch.sbcName,\n    challengeAmount: sbcMatch.challengeAmount,\n    expiry: sbcMatch.expiry,\n    coinsPerSolveK: Math.ceil(coinPrice / 1000),\n    timesToSolve: Math.max(1, Number(item.sbc.times_to_solve) || 1),\n    platform,\n    eaEmail: item.account.ea_email,\n    customerName: request.customer_name || '',\n    funding: item.funding || null,\n    totalSBCsFound: availableSBCs.length,\n  },\n}];\n"
+      },
+      "id": "validate-set-solve-challenge-v1",
+      "name": "Validate Set",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        400
+      ],
+      "notes": "Source: nodes/validate-set.js"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://futtransfer.top/newSBCAPI",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"apiUser\": $('Config').first().json.FFT_API_USER,\n  \"apiKey\": $('Config').first().json.FFT_API_KEY,\n  \"setID\": $('Validate Set').first().json.setID,\n  \"account\": [$('Validate Set').first().json.eaEmail],\n  \"accountType\": \"customer\",\n  \"timesToSolve\": $('Validate Set').first().json.timesToSolve || 1,\n  \"fillSBC\": 0,\n  \"customName\": \"Order #\" + $('Validate Set').first().json.orderId + \" - \" + $('Validate Set').first().json.sbcName,\n  \"clubItemHandling\": \"exclude\",\n  \"consoleLock\": 1\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "submit-solve-solve-challenge-v1",
+      "name": "SBC: Submit Solve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// solve-challenge v1 — the solve ids FFT issued, as the placement report.\n//\n// v14's \"SBC: Solve Accepted?\" and the id-collecting half of\n// \"SBC Solve: Prepare Poll\" in one place. newSBCAPI answers a list (one entry\n// per solve), sometimes as a JSON string under `data`, each entry carrying\n// `status` and `sbcSolveID`. Anything but a first entry with status\n// \"processed\" is a rejection - v14's alert said the usual cause is that FFT\n// has no customer under that email, which the corrected-email path now\n// avoids - and it throws, so the ops alert names the order and the store\n// retries the item later.\n//\n// One report row, challenge phase: the first solve id is the reference and\n// every id is listed, the way the store's placement endpoint takes them.\n\nconst solve = $('Validate Set').first().json;\nconst orderId = solve.orderId;\n\nconst answer = $input.first().json || {};\nlet parsed;\ntry {\n  parsed = typeof answer.data === 'string' ? JSON.parse(answer.data) : (answer.data || answer);\n} catch (e) {\n  throw new Error(`[solve] order ${orderId}: FFT رجّع رد غير مقروء: ${String(answer.data).slice(0, 200)}`);\n}\nconst entries = Array.isArray(parsed) ? parsed : [parsed];\nconst first = entries[0];\n\nif (!first || first.status !== 'processed') {\n  const detail = (first && (first.error || first.message || first.status)) || (parsed && (parsed.error || parsed.message)) || JSON.stringify(parsed).slice(0, 300);\n  throw new Error(`[solve] order ${orderId}: FFT رفض تقديم التحدي \"${solve.sbcName}\": ${detail} — غالباً ما فيه عميل بهذا الإيميل عند FFT`);\n}\n\nconst ids = entries\n  .map((entry) => entry && entry.sbcSolveID)\n  .filter((id) => id !== undefined && id !== null && String(id) !== '')\n  .map((id) => String(id));\n\nif (ids.length === 0) {\n  throw new Error(`[solve] order ${orderId}: FFT قبل التحدي بدون رقم حل (sbcSolveID)`);\n}\n\nreturn [{\n  json: {\n    orderId,\n    order_item_public_id: solve.orderItemPublicId,\n    supplier: 'fft',\n    supplier_order_id: ids[0],\n    delivery_phase: 'challenge',\n    challenge_ids: ids,\n  },\n}];\n"
+      },
+      "id": "extract-solve-ids-solve-challenge-v1",
+      "name": "Extract Solve Ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        400
+      ],
+      "notes": "Source: nodes/extract-solve-ids.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// solve-challenge v1 — the signed placement report for the solve.\n//\n// The store verifies HMAC-SHA256 over `timestamp\\neventId\\nrawBody` with\n// N8N_FULFILLMENT_SECRET (VerifyN8nFulfillmentSignature). rawBody is the\n// exact byte sequence that is signed AND the exact byte sequence the HTTP\n// node sends raw, so the signature cannot drift from the payload. Same node\n// as ship-coins', plus the challenge ids the challenge phase requires.\n\nconst crypto = require('crypto');\nconst secret = $('Config').first().json.N8N_FULFILLMENT_SECRET;\nif (!secret || /^CONFIGURE_/.test(String(secret)) || String(secret).length < 32) {\n    throw new Error('[report] N8N_FULFILLMENT_SECRET is not set in the Config node or shorter than 32 characters');\n}\n\nconst ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';\nfunction ulid() {\n    let time = Date.now();\n    let timestamp = '';\n    for (let index = 0; index < 10; index += 1) {\n        timestamp = ALPHABET[time % 32] + timestamp;\n        time = Math.floor(time / 32);\n    }\n    let random = '';\n    for (let index = 0; index < 16; index += 1) {\n        random += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];\n    }\n    return timestamp + random;\n}\n\nreturn $input.all().map(({ json }) => {\n    const report = {\n        order_item_public_id: json.order_item_public_id,\n        supplier: json.supplier,\n        supplier_order_id: json.supplier_order_id,\n        delivery_phase: json.delivery_phase,\n        challenge_ids: json.challenge_ids,\n    };\n    const rawBody = JSON.stringify(report);\n    const timestamp = String(Math.floor(Date.now() / 1000));\n    const event = ulid();\n    const signature = crypto\n        .createHmac('sha256', secret)\n        .update(`${timestamp}\\n${event}\\n${rawBody}`)\n        .digest('hex');\n\n    return { json: { ...json, rawBody, timestamp, event, signature } };\n});\n"
+      },
+      "id": "sign-report-solve-challenge-v1",
+      "name": "Sign Placement Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        400
+      ],
+      "notes": "Source: nodes/sign-report.js"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ (($('Config').first().json.ARABUT_STORE_URL || '').startsWith('https://') ? $('Config').first().json.ARABUT_STORE_URL : 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "X-ArabUT-Key",
+              "value": "={{ $('Config').first().json.N8N_FULFILLMENT_KEY }}"
+            },
+            {
+              "name": "X-ArabUT-Timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "X-ArabUT-Event",
+              "value": "={{ $json.event }}"
+            },
+            {
+              "name": "X-ArabUT-Signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "report-placement-solve-challenge-v1",
+      "name": "Report Placement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1940,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "notes": "Runs once per challenge. Signed with N8N_FULFILLMENT_KEY / N8N_FULFILLMENT_SECRET from the Config node, the store-side credential of the placement endpoint (docs/api/n8n-fulfillment-v1.md)."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// solve-challenge v1 — the placement report must have landed, then the\n// answer for the store.\n//\n// The report HTTP node runs with neverError + fullResponse, so a refused\n// report reaches this node as data rather than as an unhandled node error.\n// Anything but 200 with acknowledged:true throws: the solve was submitted at\n// FFT and the store does not know - the exact case the ops alert is for, and\n// the case the store's retry then repairs, since the report endpoint is\n// idempotent and a second run reports the same solve ids again.\n\nconst solve = $('Validate Set').first().json;\nconst orderId = solve.orderId;\nconst responses = $input.all();\n\nif (responses.length !== 1) {\n    throw new Error(`[report] order ${orderId}: ${responses.length} report(s) answered for one challenge`);\n}\n\nfunction decode(body) {\n    if (body == null) return {};\n    if (typeof body === 'string') { try { return JSON.parse(body); } catch (e) { return { raw: body }; } }\n    return body;\n}\n\nconst { json } = responses[0];\nconst status = Number(json.statusCode || 0);\nconst body = decode(json.body);\nconst data = body && body.data;\n\nif (!(status === 200 && data && data.acknowledged === true)) {\n    const error = (body && body.error) || {};\n    throw new Error(`[report] order ${orderId}: the store refused the placement report (HTTP ${status} ${error.code || ''} ${error.message || body.message || ''})`.trim());\n}\n\nreturn [{\n    json: {\n        acknowledged: true,\n        placed: {\n            order_item_public_id: data.order_item_public_id,\n            supplier: data.supplier,\n            supplier_order_id: data.supplier_order_id,\n            job_public_id: data.job_public_id,\n        },\n        orderId,\n    },\n}];\n"
+      },
+      "id": "confirm-report-solve-challenge-v1",
+      "name": "Confirm Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        400
+      ],
+      "notes": "Source: nodes/confirm-report.js"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { acknowledged: $json.acknowledged, placed: $json.placed } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-solve-challenge-v1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2380,
+        400
+      ],
+      "notes": "A throw anywhere before this node answers 500, which the store treats as \"retry later\" on its backoff."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Verify Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Request": {
+      "main": [
+        [
+          {
+            "node": "SBC: Get Available SBCs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBC: Get Available SBCs": {
+      "main": [
+        [
+          {
+            "node": "Validate Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Set": {
+      "main": [
+        [
+          {
+            "node": "SBC: Submit Solve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SBC: Submit Solve": {
+      "main": [
+        [
+          {
+            "node": "Extract Solve Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Solve Ids": {
+      "main": [
+        [
+          {
+            "node": "Sign Placement Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Placement Report": {
+      "main": [
+        [
+          {
+            "node": "Report Placement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Placement": {
+      "main": [
+        [
+          {
+            "node": "Confirm Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Report": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "executionTimeout": 110,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "versionId": "SOLVE_CHALLENGE_V1_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
