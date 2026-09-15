@@ -7,10 +7,17 @@ export type PaylinkCheckoutSuccess = {
 };
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
-const ORDER_PATH_PATTERN = /^\/(?:en\/)?orders\/[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+// The order segment the server issues (App\Support\PublicHandle\OrderHandle):
+// the sequential number (AUT-1029), the older random number (AUT-7KX2RQ), an
+// imported Salla number (UT-277538068 or bare 277538068), or the legacy ULID
+// an old link may still carry. Anything else is not an order URL of ours.
+const ORDER_HANDLE =
+    '(?:AUT-[1-9][0-9]{3,}|AUT-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}|UT-[0-9]+|[0-9]+|[0-7][0-9A-HJKMNP-TV-Z]{25})';
+const ORDER_PATH_PATTERN = new RegExp(`^/(?:en/)?orders/${ORDER_HANDLE}$`);
 const CHECKOUT_PATH_PATTERN = /^\/(?:en\/)?checkout\/paylink$/;
-const PAYMENT_START_PATH_PATTERN =
-    /^\/(?:en\/)?orders\/[0-7][0-9A-HJKMNP-TV-Z]{25}\/payments\/paylink$/;
+const PAYMENT_START_PATH_PATTERN = new RegExp(
+    `^/(?:en/)?orders/${ORDER_HANDLE}/payments/paylink$`,
+);
 
 export type PaylinkRepricing = {
     couponRemoved: boolean;
