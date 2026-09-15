@@ -16282,21 +16282,30 @@ html.admin-document {
         0 0 0 3px rgb(255 180 169 / 18%);
 }
 
-/* Segmented tabs: a glass bar, and the selected tab is the bottom bar's lens. */
+/* Segmented tabs: one glass bar holds the pair, and the selected tab is the
+   bottom bar's lens sitting inside it (Mohamed, 2026-09-15: the two controls
+   read as separate buttons; a container makes them tabs). */
 .manual-service-tabs,
 .auth-login-method {
-    gap: 0.5rem;
+    gap: 0.3rem;
+    padding: 0.3rem;
+    border: 1px solid var(--btn-smoke-border);
+    border-radius: 1.1rem;
+    background: var(--btn-smoke);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
 }
 
 .manual-service-tabs__tab,
 .auth-login-method__tab {
     min-height: 2.75rem;
     border: 0;
-    border-radius: 0.875rem;
+    border-radius: 0.85rem;
     background: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    color: var(--arabut-muted);
+    /* Inside the bar the unselected tab reads a notch brighter than muted
+       copy, so both choices are legible without competing with the lens. */
+    color: rgb(237 228 208 / 78%);
     font-weight: 700;
     transition:
         color 160ms ease,
@@ -16373,17 +16382,6 @@ html.admin-document {
 
 .auth-shell .auth-login-method__tab {
     min-height: 3rem;
-}
-
-/* Without a tray the unselected tab needs its own quiet edge so the pair
-   reads as two pills, like a step's back / next row. */
-.auth-shell .auth-login-method__tab {
-    border: 1px solid var(--btn-smoke-border);
-    border-radius: 999px;
-}
-
-.auth-shell .auth-login-method__tab[aria-selected='true'] {
-    border: 0;
 }
 
 /* Catalog filter chips are a segmented selection like the tabs, so the picked
