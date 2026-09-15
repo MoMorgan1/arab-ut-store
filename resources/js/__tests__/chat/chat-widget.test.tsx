@@ -1392,9 +1392,10 @@ describe('ChatWidget Component', () => {
 
         expect(tokens).toContain('--chat-surface: #fbf8f2');
         expect(tokens).toContain('--chat-hero: var(--arabut-navy)');
-        expect(tokens).toContain(
-            '--chat-ease-out: cubic-bezier(0.16, 1, 0.3, 1)',
-        );
+        // The widget keeps its own token names but not its own values: the
+        // curve and the durations are the store's scale, defined once.
+        expect(tokens).toContain('--chat-ease-out: var(--motion-ease)');
+        expect(tokens).toContain('--chat-dur-base: var(--motion-fast)');
 
         const motionStart = appCss.indexOf('.chat-view-enter {');
         const reducedMotionStart = appCss.lastIndexOf(

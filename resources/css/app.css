@@ -15338,7 +15338,7 @@ html.admin-document {
     }
 
     .chat-bubble-enter {
-        animation: chat-bubble-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation: chat-bubble-in 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
         transform-origin: bottom left;
     }
 
@@ -15368,7 +15368,8 @@ html.admin-document {
     }
 
     .chat-stream-run {
-        animation: chat-stream-run-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation: chat-stream-run-in 380ms cubic-bezier(0.22, 1, 0.36, 1)
+            backwards;
     }
 
     @keyframes chat-stream-caret-blink {
@@ -15495,12 +15496,18 @@ html.admin-document {
     --chat-hero-ink: var(--arabut-ink);
     --chat-danger: #b42318;
     --chat-success: #22a06b;
-    --chat-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /* The widget keeps its own names — they are used throughout its rules —
+       but they are the store's scale now, not a second one beside it. The
+       values were 150/240/360 against the store's 150/250/350: near enough
+       that nobody could see the difference, far enough that the store had
+       two duration scales. `--chat-ease-in` has no counterpart: it is the
+       one curve only the widget needs, for a view leaving. */
+    --chat-ease-out: var(--motion-ease);
     --chat-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
-    --chat-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --chat-dur-fast: 150ms;
-    --chat-dur-base: 240ms;
-    --chat-dur-slow: 360ms;
+    --chat-ease-spring: var(--motion-ease-spring);
+    --chat-dur-fast: var(--motion-quick);
+    --chat-dur-base: var(--motion-fast);
+    --chat-dur-slow: var(--motion-medium);
 }
 
 .chat-widget-dialog .chat-stream-caret {
@@ -15558,23 +15565,26 @@ html.admin-document {
 
     /* Staggered entrances: set --i on each child. */
     .chat-stagger-in {
-        animation: chat-rise-in var(--chat-dur-slow) var(--chat-ease-out) both;
+        animation: chat-rise-in var(--chat-dur-slow) var(--chat-ease-out)
+            backwards;
         animation-delay: calc(var(--i, 0) * 50ms);
     }
 
     .chat-pop-in {
-        animation: chat-pop-in var(--chat-dur-base) var(--chat-ease-spring) both;
+        animation: chat-pop-in var(--chat-dur-base) var(--chat-ease-spring)
+            backwards;
     }
 
     .chat-drop-in {
-        animation: chat-drop-in var(--chat-dur-base) var(--chat-ease-out) both;
+        animation: chat-drop-in var(--chat-dur-base) var(--chat-ease-out)
+            backwards;
     }
 
     /* Home <-> Chat switch. The slide direction follows the reading
        direction: [dir=rtl] flips the sign. */
     .chat-view-enter {
         animation: chat-view-enter var(--chat-dur-base) var(--chat-ease-out)
-            both;
+            backwards;
     }
 
     .chat-view-exit {
@@ -15792,8 +15802,16 @@ html.admin-document {
     }
 
     .chat-greeting-bubble {
-        animation: chat-bubble-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: chat-bubble-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1)
+            backwards;
     }
+}
+
+/* Unconditional: the bubble sits centred on its anchor whether it animates
+   in or not. It used to get that from the entrance's held last frame, which
+   is why the reduced-motion rule below had to put the centring back. */
+.chat-greeting-bubble {
+    transform: translateY(-50%);
 }
 
 @media (prefers-reduced-motion: reduce) {
