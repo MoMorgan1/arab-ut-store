@@ -25,6 +25,42 @@
     --motion-ease-in-out: ease-in-out;
     --motion-ease-linear: linear;
     --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Liquid glass. The recipe the buttons established in #139/#144 and the
+       header chrome in #173, named once instead of hand-copied: a thin sheen
+       across the face, a bright specular top edge with warm and cool flanks,
+       and a backdrop that is blurred, saturated and lifted a little.
+
+       The three strengths are chosen by DISTANCE from the page, not by feel.
+       A control sits on the page, a surface is raised off it, a layer floats
+       over everything — the further from the page, the more of the page it
+       has to stop showing. Tint follows the same logic: a control needs none
+       because the page behind it is the point, a floating layer needs most
+       because what is under it is still being read. */
+    --glass-sheen: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 15%),
+        rgb(255 255 255 / 4%) 48%,
+        rgb(212 168 67 / 13%)
+    );
+    --glass-border: rgb(237 228 208 / 16%);
+    --glass-edge:
+        inset 0 1px 0 rgb(255 255 255 / 45%),
+        inset 0 -1px 0 rgb(212 168 67 / 26%),
+        inset 1px 0 0 rgb(255 214 170 / 11%),
+        inset -1px 0 0 rgb(170 214 255 / 9%);
+
+    --glass-control-filter: blur(14px) saturate(175%) brightness(1.12);
+    --glass-surface-filter: blur(20px) saturate(180%) brightness(1.08);
+    --glass-layer-filter: blur(28px) saturate(190%) brightness(1.06);
+
+    --glass-surface-tint: rgb(22 18 13 / 52%);
+    --glass-layer-tint: rgb(14 11 9 / 84%);
+
+    /* What each strength becomes where the blur cannot run, or where the
+       reader has asked for less transparency. Opaque, same hue, same weight. */
+    --glass-surface-solid: rgb(26 21 16 / 97%);
+    --glass-layer-solid: rgb(14 11 9 / 98%);
 }
 
 @theme {
