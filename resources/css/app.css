@@ -1771,7 +1771,7 @@ html.admin-document {
         );
         pointer-events: none;
         transform: translate3d(-120%, 0, 0) skewX(-14deg);
-        animation: store-hero-sweep 1100ms var(--motion-ease) 450ms both;
+        animation: store-hero-sweep 1100ms var(--motion-ease) 450msbackwards;
     }
 
     .store-hero__glow {
@@ -1787,7 +1787,7 @@ html.admin-document {
             transparent 70%
         );
         pointer-events: none;
-        animation: store-hero-glow 900ms var(--motion-ease) both;
+        animation: store-hero-glow 900ms var(--motion-ease) backwards;
     }
 
     .store-hero__content {
@@ -2000,7 +2000,7 @@ html.admin-document {
         min-width: 0;
         padding-inline: clamp(0.65rem, 2.5vw, 1.5rem);
         text-align: center;
-        animation: store-stat-reveal 560ms var(--motion-ease) both;
+        animation: store-stat-reveal 560ms var(--motion-ease) backwards;
     }
 
     .store-hero__stat:nth-child(2) {
@@ -2092,7 +2092,7 @@ html.admin-document {
         max-width: 42rem;
         margin-block-end: 2rem;
         text-align: start;
-        animation: store-section-reveal 700ms var(--motion-ease) 180ms both;
+        animation: store-section-reveal 700ms var(--motion-ease) 180msbackwards;
     }
 
     .store-section-heading > p {
@@ -3726,7 +3726,7 @@ html.admin-document {
         stroke-linejoin: round;
         transform-box: fill-box;
         transform-origin: center;
-        animation: store-cart-sheet-pop 160ms ease-out 300ms both;
+        animation: store-cart-sheet-pop 160ms ease-out 300msbackwards;
     }
 
     .store-cart-sheet--duplicate .store-cart-sheet__ring-glyph {
@@ -3828,7 +3828,7 @@ html.admin-document {
         width: 100%;
         height: 100%;
         object-fit: contain;
-        animation: store-cart-sheet-art 320ms var(--motion-ease) 40ms both;
+        animation: store-cart-sheet-art 320ms var(--motion-ease) 40msbackwards;
     }
 
     .store-cart-sheet__art--raised img {
@@ -4392,7 +4392,7 @@ html.admin-document {
         padding: clamp(1.15rem, 3vw, 1.75rem);
         box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 16%);
         animation: store-cart-line-arrive 240ms cubic-bezier(0.22, 1, 0.36, 1)
-            both;
+            backwards;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -4979,7 +4979,8 @@ html.admin-document {
     }
 
     .store-cart-credentials__content {
-        animation: store-cart-credentials-reveal 180ms var(--motion-ease) both;
+        animation: store-cart-credentials-reveal 180ms var(--motion-ease)
+            backwards;
     }
 
     .store-cart-credentials h3,
@@ -8658,7 +8659,7 @@ html.admin-document {
     -webkit-backdrop-filter: var(--manual-glass-blur);
     backdrop-filter: var(--manual-glass-blur);
     padding: clamp(1rem, 2.5vw, 1.5rem);
-    animation: manual-section-in 320ms var(--motion-ease) both;
+    animation: manual-section-in 320ms var(--motion-ease) backwards;
 }
 
 .service-reviews-section {
@@ -12544,7 +12545,10 @@ html.admin-document {
         transform 200ms var(--motion-ease),
         border-color 200ms ease,
         box-shadow 200ms ease;
-    animation: store-review-reveal 480ms var(--motion-ease) both;
+    /* `backwards`, not `both`: a finished animation whose fill holds a
+       transform outranks every other declaration for that property, so the
+       held translateY(0) was quietly cancelling the hover lift below. */
+    animation: store-review-reveal 480ms var(--motion-ease) backwards;
 }
 
 .store-review-card:hover {
