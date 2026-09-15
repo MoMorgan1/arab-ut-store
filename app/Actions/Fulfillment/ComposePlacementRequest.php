@@ -4,9 +4,11 @@ namespace App\Actions\Fulfillment;
 
 use App\Actions\Pricing\ReadSupplierCostTable;
 use App\Enums\DeliveryMode;
+use App\Enums\DeliveryPhase;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Exceptions\PlacementRequestIncomplete;
+use App\Models\FulfillmentPlacement;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemSecret;
@@ -42,6 +44,9 @@ final readonly class ComposePlacementRequest
 {
     public const string ACCESS_PURPOSE = 'fulfillment_placement';
 
+    /** The purpose logged when the account is read for the solve request. */
+    public const string CHALLENGE_ACCESS_PURPOSE = 'fulfillment_challenge';
+
     private const string SBC_EXTERNAL_ID_PREFIX = 'easysbc-sbc-';
 
     public function __construct(private ReadSupplierCostTable $readCostTable) {}
@@ -72,6 +77,52 @@ final readonly class ComposePlacementRequest
         }
 
         return $composed;
+    }
+
+    /**
+     * The item block of a solve request (`challenge.ready`): the set and how
+     * many times to solve it, the coins placement that funded it, and the EA
+     * account as it stands now. No budget - the coins are already bought, and
+     * FFT prices the solve itself.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws PlacementRequestIncomplete
+     */
+    public function challenge(OrderItem $item, CarbonInterface $now): array
+    {
+        if ($item->service_type !== ServiceType::Sbc) {
+            throw new PlacementRequestIncomplete('service_has_no_challenge', "Order item {$item->public_id} is not a challenge.");
+        }
+
+        $configuration = is_array($item->configuration) ? $item->configuration : [];
+        $funding = $item->fulfillmentJob?->placements()
+            ->where('delivery_phase', DeliveryPhase::Coins->value)
+            ->orderBy('id')
+            ->first();
+
+        if (! $funding instanceof FulfillmentPlacement) {
+            throw new PlacementRequestIncomplete('funding_missing', "Order item {$item->public_id} has no coins placement to solve against.");
+        }
+
+        $secret = $this->secret($item);
+
+        return [
+            'order_item_public_id' => (string) $item->public_id,
+            'service' => $item->service_type->value,
+            'platform' => $item->platform->value,
+            'supplier_platform' => $this->supplierPlatform($item),
+            'quantity' => (int) $item->quantity,
+            'sbc' => [
+                'set_id' => $this->challengeSetId($item),
+                'times_to_solve' => max(1, (int) ($configuration['completion_count'] ?? 1)) * max(1, (int) $item->quantity),
+            ],
+            'funding' => [
+                'supplier' => $funding->supplier->value,
+                'supplier_order_id' => (string) $funding->supplier_order_id,
+            ],
+            'account' => $this->account($item, $secret, $now, self::CHALLENGE_ACCESS_PURPOSE),
+        ];
     }
 
     /**
@@ -195,7 +246,7 @@ final readonly class ComposePlacementRequest
      *
      * @throws PlacementRequestIncomplete
      */
-    private function account(OrderItem $item, OrderItemSecret $secret, CarbonInterface $now): array
+    private function account(OrderItem $item, OrderItemSecret $secret, CarbonInterface $now, string $purpose = self::ACCESS_PURPOSE): array
     {
         $payload = is_array($secret->encrypted_payload) ? $secret->encrypted_payload : [];
         $email = $payload['ea_email'] ?? null;
@@ -215,7 +266,7 @@ final readonly class ComposePlacementRequest
         SecretAccessLog::query()->create([
             'order_item_secret_id' => $secret->id,
             'user_id' => null,
-            'purpose' => self::ACCESS_PURPOSE,
+            'purpose' => $purpose,
             'case_reference' => null,
             'ip_address' => null,
             'accessed_at' => $now,

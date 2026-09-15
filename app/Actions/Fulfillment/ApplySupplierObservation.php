@@ -28,6 +28,7 @@ final class ApplySupplierObservation
         private readonly AccrueOrderCashback $accrueOrderCashback,
         private readonly InviteOrderReview $inviteOrderReview,
         private readonly SupplierCostInHalalah $supplierCost,
+        private readonly EnqueueChallengeSolve $enqueueChallengeSolve,
     ) {}
 
     /**
@@ -221,6 +222,13 @@ final class ApplySupplierObservation
                 withheldDueToAdmin: $isAdminHold,
                 orderIsTerminal: false,
             );
+
+            // A challenge whose coins have just landed is handed to the solve
+            // workflow from inside this transaction, so the row commits with
+            // the completion. Under an admin hold nothing moves, this included.
+            if (! $isAdminHold) {
+                $this->enqueueChallengeSolve->execute($targetItem, $lockedJob);
+            }
         }, attempts: 3);
 
         $job->refresh();

@@ -11,19 +11,19 @@ final class RequeueFailedPaidEvent extends Command
     protected $signature = 'orders:requeue-paid-event
         {event_id : The event_id (ULID) from the retirement error log or the admin queue-health panel}';
 
-    protected $description = 'Requeue a failed paid-order event so the publisher delivers it again';
+    protected $description = 'Requeue a failed outbox event (order.paid or challenge.ready) so its publisher delivers it again';
 
     public function handle(): int
     {
         $eventId = (string) $this->argument('event_id');
 
         $event = IntegrationEvent::query()
-            ->where('event_type', 'order.paid')
+            ->whereIn('event_type', ['order.paid', 'challenge.ready'])
             ->where('event_id', $eventId)
             ->first();
 
         if ($event === null) {
-            $this->error(sprintf('No paid-order event exists with event id "%s".', $eventId));
+            $this->error(sprintf('No outbox event exists with event id "%s".', $eventId));
 
             return self::FAILURE;
         }
@@ -61,8 +61,9 @@ final class RequeueFailedPaidEvent extends Command
 
         $payload = json_decode((string) $event->getRawOriginal('payload'), true);
 
-        Log::info('Paid-order event requeued for delivery.', [
+        Log::info('Outbox event requeued for delivery.', [
             'event_id' => $event->event_id,
+            'event_type' => $event->event_type,
             'aggregate_type' => $event->aggregate_type,
             'aggregate_id' => $event->aggregate_id,
             'order_number' => is_array($payload) && is_string($payload['order_number'] ?? null)

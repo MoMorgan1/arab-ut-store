@@ -303,3 +303,99 @@ surfaces on the admin queue-health panel;
 - Save no execution data on this workflow or any sub-workflow it calls, in
   every mode (success, error, manual, progress), before a real order runs
   through it - the condition the ADR attaches to carrying the account here.
+
+## The solve request (`challenge.ready`, schema version 1)
+
+The third direction, added 2026-09-15. A challenge item is delivered in two
+phases: `ship-coins` buys the coins and reports a `coins` placement; when the
+store observes that shipment complete, it queues one `challenge.ready` event
+for the item and the scheduler posts it to `N8N_SOLVE_CHALLENGE_URL`
+(`orders:publish-challenge-events`, every minute). This is the request the
+`solve-challenge` workflow starts from. It replaces the `SBC: Split SBC IDs`
+→ `SBC: Submit Solve` half of `Fulfillment v14`, which submitted the solve
+with the email captured when the order arrived; here the account is read
+again when this request leaves (`docs/plans/2026-09-15-solve-challenge-workflow.md`).
+
+No event is queued for a coins item, for a challenge whose `challenge`
+placement already exists (staff pasted the reference), or while an admin hold
+sits on the item. A repeated "completed" reading of the same shipment queues
+nothing new.
+
+### Headers and signature
+
+Same convention, with the solve publisher's own key pair:
+
+```text
+X-ArabUT-Key: <N8N_SOLVE_CHALLENGE_KEY>
+X-ArabUT-Timestamp: <unix seconds>
+X-ArabUT-Event: <same value as eventId>
+X-ArabUT-Signature: hex HMAC-SHA256 of timestamp + "\n" + eventId + "\n" + raw body, keyed with N8N_SOLVE_CHALLENGE_SECRET
+```
+
+### Body
+
+```json
+{
+  "eventId": "01K5A2Q7M3R8X1YQ6H2Z7N9P3C5",
+  "eventType": "challenge.ready",
+  "schemaVersion": 1,
+  "occurredAt": "2026-09-15T13:02:11+00:00",
+  "data": {
+    "order_public_id": "01K52J0V3B7X2Y9Q5H8N1M4R6T",
+    "order_number": "AUT-7K2MQ4",
+    "order_item_public_id": "01K52J0V3B7X2Y9Q5H8N1M4R6V",
+    "customer_name": "فهد العتيبي",
+    "item": {
+      "order_item_public_id": "01K52J0V3B7X2Y9Q5H8N1M4R6V",
+      "service": "sbc",
+      "platform": "playstation",
+      "supplier_platform": "PS",
+      "quantity": 1,
+      "sbc": { "set_id": 412, "times_to_solve": 2 },
+      "funding": { "supplier": "utt", "supplier_order_id": "574339" },
+      "account": {
+        "ea_email": "player@example.com",
+        "ea_password": "…",
+        "backup_codes": ["11111111", "22222222"],
+        "current_balance": 350000,
+        "credential_version": 3
+      }
+    }
+  }
+}
+```
+
+- `sbc.set_id` is FFT's `setID` (the EasySBC id the catalogue keys the
+  product by); `times_to_solve` is the customer's completion count times the
+  quantity, as the placement request carried it.
+- `funding` names the coins placement the solve draws on, for the alert and
+  the log. Only FFT solves; the coins may have come from either supplier.
+- There is no `budget`: the coins are bought, and FFT prices the solve.
+- The account is read from `order_item_secrets` when the request leaves
+  (`secret_access_logs` purpose `fulfillment_challenge`), so a correction made
+  during the coins phase is what the solve is submitted with.
+
+### What the store guarantees about retries
+
+The same outbox: a request that cannot be composed goes back to pending with
+the reason as `last_error` - `credentials_missing`, `credentials_incomplete`,
+`credentials_purged`, `challenge_unknown`, `platform_unsupported`,
+`funding_missing`, `item_missing`, or `delivery_failed` - on the same
+one-to-sixty-minute backoff, is retired after ten attempts, and is sent again
+with `php artisan orders:requeue-paid-event <eventId>` (the command serves
+both outboxes). An event whose `challenge` placement appears meanwhile is
+finished without a request.
+
+### What n8n must do
+
+- Check the set is still offered and priced (`availableSBCsAPI`), submit it
+  once (`newSBCAPI` with `timesToSolve`), and report the solve through the
+  placement endpoint above with `delivery_phase: "challenge"`,
+  `supplier: "fft"`, the first `sbcSolveID` as `supplier_order_id` and every
+  `sbcSolveID` in `challenge_ids`; then answer `{"data":{"acknowledged":true}}`.
+- Anything else is a retry on the store's backoff. A set FFT no longer prices
+  is not going to fix itself: fail the run so the error workflow alerts, and
+  the owner solves by hand and pastes the reference through the admin.
+- The store polls the solve itself (`sbcStatusBulkAPI`) from the moment the
+  placement is reported; the workflow does not wait for it.
+- Save no execution data on this workflow, for the same reason as above.
