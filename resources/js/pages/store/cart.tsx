@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import { Disclosure } from '@/components/motion/disclosure';
 import { PanelReveal } from '@/components/motion/panel-reveal';
 import { PopNumber } from '@/components/motion/pop-number';
 import { SuccessCheck } from '@/components/motion/success-check';
@@ -1280,70 +1281,70 @@ function CouponField({
         );
     }
 
-    if (!open) {
-        return (
-            <div className="store-cart-coupon">
-                <button
-                    aria-expanded={false}
-                    className="store-cart-coupon__toggle"
-                    onClick={() => setOpen(true)}
-                    type="button"
-                >
-                    {translations.coupon_prompt}
-                </button>
-            </div>
-        );
-    }
-
     return (
         <div className="store-cart-coupon">
-            <Label
-                dir={locale === 'ar' ? 'rtl' : 'ltr'}
-                htmlFor="cart-coupon-code"
+            <button
+                aria-controls="cart-coupon-field"
+                aria-expanded={open}
+                className="store-cart-coupon__toggle"
+                onClick={() => setOpen((value) => !value)}
+                type="button"
             >
-                {translations.coupon_label}
-            </Label>
-            <div className="store-cart-coupon__row">
-                <input
-                    aria-label={translations.coupon_label}
-                    autoComplete="off"
-                    autoFocus
-                    dir="ltr"
-                    id="cart-coupon-code"
-                    maxLength={24}
-                    name="coupon_code"
-                    onChange={(event) =>
-                        setCode(event.currentTarget.value.toUpperCase())
-                    }
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                            event.preventDefault();
-                            void apply();
-                        }
-                    }}
-                    placeholder={translations.coupon_placeholder}
-                    spellCheck={false}
-                    type="text"
-                    value={code}
-                />
-                <button
-                    className="store-cart-coupon__apply"
-                    disabled={busy || code.trim() === ''}
-                    onClick={() => {
-                        void apply();
-                    }}
-                    type="button"
+                {translations.coupon_prompt}
+            </button>
+            <Disclosure
+                className="store-cart-coupon__field"
+                id="cart-coupon-field"
+                open={open}
+            >
+                <Label
+                    dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                    htmlFor="cart-coupon-code"
                 >
-                    {busy
-                        ? translations.coupon_applying
-                        : translations.coupon_apply}
-                </button>
-            </div>
-            {errorText !== null ? (
-                <p className="store-cart-checkout__error" role="alert">
-                    {errorText}
-                </p>
-            ) : null}
+                    {translations.coupon_label}
+                </Label>
+                <div className="store-cart-coupon__row">
+                    <input
+                        aria-label={translations.coupon_label}
+                        autoComplete="off"
+                        autoFocus
+                        dir="ltr"
+                        id="cart-coupon-code"
+                        maxLength={24}
+                        name="coupon_code"
+                        onChange={(event) =>
+                            setCode(event.currentTarget.value.toUpperCase())
+                        }
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                void apply();
+                            }
+                        }}
+                        placeholder={translations.coupon_placeholder}
+                        spellCheck={false}
+                        type="text"
+                        value={code}
+                    />
+                    <button
+                        className="store-cart-coupon__apply"
+                        disabled={busy || code.trim() === ''}
+                        onClick={() => {
+                            void apply();
+                        }}
+                        type="button"
+                    >
+                        {busy
+                            ? translations.coupon_applying
+                            : translations.coupon_apply}
+                    </button>
+                </div>
+                {errorText !== null ? (
+                    <p className="store-cart-checkout__error" role="alert">
+                        {errorText}
+                    </p>
+                ) : null}
+            </Disclosure>
         </div>
     );
 }

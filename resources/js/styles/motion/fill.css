@@ -4,6 +4,7 @@
 @media (prefers-reduced-motion: no-preference) {
     .t-fill {
         animation: t-fill var(--motion-emphasis) var(--motion-ease) backwards;
+        animation-delay: calc(var(--motion-stagger) * var(--i, 0));
     }
 
     @keyframes t-fill {

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 
 import { useBouncingHorizontalRail } from '@/hooks/use-bouncing-horizontal-rail';
@@ -304,7 +305,7 @@ export function ReviewSummary({
                     aria-label={translations.distribution_label}
                     className="store-reviews-summary__bars"
                 >
-                    {distribution.map((entry) => (
+                    {distribution.map((entry, index) => (
                         <li key={entry.rating}>
                             <span className="store-reviews-summary__bar-label">
                                 {entry.rating}
@@ -314,7 +315,15 @@ export function ReviewSummary({
                                 aria-hidden="true"
                                 className="store-reviews-summary__bar"
                             >
-                                <span style={{ width: `${entry.percent}%` }} />
+                                <span
+                                    className="t-fill"
+                                    style={
+                                        {
+                                            '--i': index,
+                                            width: `${entry.percent}%`,
+                                        } as CSSProperties
+                                    }
+                                />
                             </span>
                             <span className="store-reviews-summary__bar-value">
                                 {entry.percent.toLocaleString(numberLocale)}%
