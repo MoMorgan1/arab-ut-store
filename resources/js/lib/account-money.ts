@@ -1,4 +1,4 @@
-import { currencyLabel } from '@/lib/money';
+import { joinMoneyParts } from '@/lib/money';
 import type { AccountMoney } from '@/types/account';
 
 function localizedDigits(value: string, locale: string): string {
@@ -9,9 +9,15 @@ function localizedDigits(value: string, locale: string): string {
         .join('');
 }
 
+/**
+ * Formats an account amount the way the store does (see `joinMoneyParts`):
+ * Arabic reads «ر.س 129.99», English «SAR 129.99». A ledger sign travels
+ * inside the figure so it never ends up on the wrong side of the label.
+ */
 export function formatAccountMoney(
     money: AccountMoney,
     locale: 'ar' | 'en',
+    sign: '+' | '−' | '' = '',
 ): string {
     const currencyOptions = new Intl.NumberFormat(locale, {
         currency: money.currency,
@@ -30,47 +36,28 @@ export function formatAccountMoney(
         minimumFractionDigits: 0,
         style: 'currency',
     });
-    const parts = formatter
-        .formatToParts(wholeAmount)
-        .map((part) =>
-            part.type === 'currency'
-                ? { ...part, value: currencyLabel(money.currency, locale) }
-                : part,
+    const parts: Intl.NumberFormatPart[] = formatter.formatToParts(wholeAmount);
+
+    if (minorDigits > 0) {
+        const decimal =
+            new Intl.NumberFormat(locale, {
+                maximumFractionDigits: 1,
+                minimumFractionDigits: 1,
+                useGrouping: false,
+            })
+                .formatToParts(0.1)
+                .find((part) => part.type === 'decimal')?.value ?? '.';
+        const lastNumberPart = parts.findLastIndex(
+            (part) => part.type === 'integer' || part.type === 'group',
         );
 
-    if (minorDigits === 0) {
-        return parts.map(currencyWithoutStop).join('');
+        parts.splice(
+            lastNumberPart + 1,
+            0,
+            { type: 'decimal', value: decimal },
+            { type: 'fraction', value: localizedDigits(fraction, locale) },
+        );
     }
 
-    const decimal =
-        new Intl.NumberFormat(locale, {
-            maximumFractionDigits: 1,
-            minimumFractionDigits: 1,
-            useGrouping: false,
-        })
-            .formatToParts(0.1)
-            .find((part) => part.type === 'decimal')?.value ?? '.';
-    const lastNumberPart = parts.findLastIndex(
-        (part) => part.type === 'integer' || part.type === 'group',
-    );
-
-    parts.splice(
-        lastNumberPart + 1,
-        0,
-        { type: 'decimal', value: decimal },
-        { type: 'fraction', value: localizedDigits(fraction, locale) },
-    );
-
-    return parts.map(currencyWithoutStop).join('');
-}
-
-/**
- * ICU abbreviates the riyal in Arabic as "ر.س." with a closing full stop. The
- * riyal typeface turns "ر.س" into the currency symbol, which leaves that stop
- * standing alone after the symbol. Drop it; the English "SAR" has none.
- */
-function currencyWithoutStop(part: Intl.NumberFormatPart): string {
-    return part.type === 'currency'
-        ? part.value.replace(/\.$/, '')
-        : part.value;
+    return joinMoneyParts(parts, money.currency, locale, undefined, sign);
 }
