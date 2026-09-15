@@ -83,6 +83,20 @@ test('a failed event is never picked up again by the publisher', function (): vo
         ->and($event->attempts)->toBe(10);
 });
 
+test('a deferred delivery exits zero: the row carries the reason, the scheduler does not log a failure', function (): void {
+    $event = publisherEvent(['available_at' => now()->subMinute()]);
+    Http::fake(['https://n8n.example.test/*' => Http::response('', 503)]);
+
+    $this->artisan('orders:publish-paid-events')
+        ->expectsOutputToContain('Processed 1 paid-order event(s); 1 deferred.')
+        ->assertSuccessful();
+
+    $event->refresh();
+    expect($event->status)->toBe('pending')
+        ->and($event->last_error)->toBe('delivery_failed')
+        ->and($event->attempts)->toBe(1);
+});
+
 test('events below the ceiling are still delivered', function (): void {
     Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);
 
