@@ -410,6 +410,11 @@ final class UttClient implements SupplierClient
             '_supplier' => 'UTT',
             '_uttStatusOrder' => $statusOrder,
             '_uttIdOrder' => $order['idOrder'] ?? null,
+            // What UTT has charged us so far, in euros, the way v14 summed it
+            // (`moneySpent` + `privateMoneySpent`). Read by the observation
+            // writer to fill `actual_cost_halalah`; not in the allowlist, so it
+            // never reaches the stored observation.
+            '_costEur' => (float) ($order['moneySpent'] ?? 0) + (float) ($order['privateMoneySpent'] ?? 0),
         ];
     }
 

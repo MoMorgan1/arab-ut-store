@@ -727,6 +727,49 @@ it('stores only allowlisted supplier keys and masks addresses in the prose that 
         ->and($stored['accountCheckLong'])->toBe('login failed for f...@example.com');
 });
 
+it('records what the supplier charged, in halalah at the pricing run ratio, on the job and never in the observation', function (array $rawPayload, ?int $expectedHalalah): void {
+    appliedPricingRun(); // ratioEuroUsd 1.15
+    [$order, $item, $job] = createObservationContext(jobAttributes: ['actual_cost_halalah' => 777]);
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    app(ApplySupplierObservation::class)->execute(job: $job, state: $state, observedAt: now(), rawPayload: $rawPayload);
+
+    $fresh = $job->fresh();
+
+    expect($fresh->actual_cost_halalah)->toBe($expectedHalalah ?? 777)
+        ->and($fresh->observation)->not->toHaveKey('toPay')
+        ->not->toHaveKey('_costEur');
+})->with([
+    // 3.1008 EUR x 1.15 USD/EUR x 3.75 SAR/USD = 13.37 SAR
+    'FFT toPay' => [['status' => 'entered', 'toPay' => 3.1008, 'sellerReceives' => 2.79], 1337],
+    'UTT moneySpent summed by the client' => [['status' => 'entered', '_supplier' => 'UTT', '_costEur' => 32.5], 14016],
+    'nothing charged yet leaves the last figure alone' => [['status' => 'entered', '_supplier' => 'UTT', '_costEur' => 0.0], null],
+    'a UTT payload never reads FFT keys' => [['status' => 'entered', '_supplier' => 'UTT', 'toPay' => 3.1008], null],
+]);
+
+it('writes no cost when no applied pricing run gives a ratio to convert it with', function (): void {
+    [$order, $item, $job] = createObservationContext();
+
+    $state = new TranslatedState(
+        status: OrderStatus::InProgress,
+        holdReason: null,
+        allowedActions: [],
+        supported: true,
+        observedState: 'entered',
+    );
+
+    app(ApplySupplierObservation::class)->execute(job: $job, state: $state, observedAt: now(), rawPayload: ['status' => 'entered', 'toPay' => 3.1008]);
+
+    expect($job->fresh()->actual_cost_halalah)->toBeNull();
+});
+
 it('re-opens polling and resets job completion while preserving earlier coins progress counters when challenge observation arrives on completed coins job (Rule 8)', function (): void {
     $completedAt = CarbonImmutable::parse('2026-09-12 11:00:00');
 

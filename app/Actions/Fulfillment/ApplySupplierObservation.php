@@ -9,6 +9,7 @@ use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\SupplierAction;
+use App\Fulfillment\SupplierCostInHalalah;
 use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Models\FulfillmentJob;
 use App\Models\Order;
@@ -26,6 +27,7 @@ final class ApplySupplierObservation
     public function __construct(
         private readonly AccrueOrderCashback $accrueOrderCashback,
         private readonly InviteOrderReview $inviteOrderReview,
+        private readonly SupplierCostInHalalah $supplierCost,
     ) {}
 
     /**
@@ -286,6 +288,15 @@ final class ApplySupplierObservation
                     $job->status = FulfillmentStatus::InProgress;
                 }
             }
+        }
+
+        // What the supplier has charged us so far, read from the raw payload
+        // before the allowlist drops it, and kept on its own column: the
+        // stored observation never carries our cost (see the allowlist note).
+        $costHalalah = $this->supplierCost->fromObservation($rawPayload);
+
+        if ($costHalalah !== null) {
+            $job->actual_cost_halalah = $costHalalah;
         }
 
         // Rule 7: Mask sensitive customer data before storing in the JSON column
