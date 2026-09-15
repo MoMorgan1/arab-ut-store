@@ -19,4 +19,6 @@ it('keeps the exact fraction and Arabic currency label in RTL output', () => {
 
     expect(formatted).toContain('129.99');
     expect(formatted).toContain('ر.س');
+    // ICU's abbreviation stop ("ر.س.") would show after the riyal symbol.
+    expect(formatted).not.toContain('ر.س.');
 });

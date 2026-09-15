@@ -8120,11 +8120,27 @@ html.admin-document {
     white-space: nowrap;
 }
 
+/* The row's foot: the state at the start, the toggle at the end, one line. A
+   foot with no state (details of a finished order) keeps the toggle at the
+   end, where the hand already expects it. */
+.account-invoice__item-foot {
+    display: flex;
+    grid-column: 2 / -1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.account-invoice__item-foot > .account-invoice__item-more {
+    margin-inline-start: auto;
+}
+
 /* The state, on the row, before anything is opened: a dot in the tone of the
    state and the headline the tracking card would show. */
 .account-invoice__item-state {
     display: inline-flex;
-    grid-column: 2 / -1;
     align-items: center;
     gap: 0.4rem;
     min-width: 0;
@@ -8174,20 +8190,21 @@ html.admin-document {
     }
 }
 
+/* A control, not a link: smoked glass from the control language below, so it
+   reads as something to press. The material's shared rules set the capsule,
+   the blur and the floor height; only the label's own metrics live here. */
 .account-invoice__item-more {
     display: inline-flex;
-    grid-column: 2 / -1;
     width: fit-content;
-    min-height: 2.25rem;
     align-items: center;
     gap: 0.3rem;
-    border: 0;
-    background: none;
-    padding: 0;
-    color: var(--arabut-gold-bright);
+    padding: 0 0.85rem 0 0.7rem;
     font-size: 0.82rem;
-    font-weight: 800;
     cursor: pointer;
+}
+
+[dir='ltr'] .account-invoice__item-more {
+    padding: 0 0.7rem 0 0.85rem;
 }
 
 .account-invoice__item-more svg {
@@ -15958,6 +15975,7 @@ html.admin-document {
 .store-cart-credentials__actions button:last-child,
 .account-profile-btn--ghost,
 .account-profile-row__btn,
+.account-invoice__item-more,
 .auth-google-action {
     /* A capsule needs room around its label or it reads as a pill of text, and
        44px is the floor a finger needs. This is a floor, not a height: buttons
@@ -16104,6 +16122,7 @@ html.admin-document {
 .store-cart-credentials__actions button:last-child,
 .account-profile-btn--ghost,
 .account-profile-row__btn,
+.account-invoice__item-more,
 .auth-google-action {
     border: 1px solid var(--btn-smoke-border);
     background: var(--btn-band-quiet), var(--btn-smoke);
@@ -16123,6 +16142,7 @@ html.admin-document {
 .store-cart-credentials__actions button:last-child:hover,
 .account-profile-btn--ghost:hover,
 .account-profile-row__btn:hover,
+.account-invoice__item-more:hover,
 .auth-google-action:hover {
     border-color: rgb(237 228 208 / 30%);
     background: var(--btn-band-quiet), var(--btn-smoke-hover);
@@ -16142,6 +16162,7 @@ html.admin-document {
 .store-cart-credentials__actions button:last-child:active,
 .account-profile-btn--ghost:active,
 .account-profile-row__btn:active,
+.account-invoice__item-more:active,
 .auth-google-action:active {
     transform: translateY(1px);
 }
@@ -16523,6 +16544,7 @@ html.admin-document {
     .store-cart-credentials__actions button:last-child,
     .account-profile-btn--ghost,
     .account-profile-row__btn,
+    .account-invoice__item-more,
     .auth-google-action,
     .store-catalog-toolbar__filters button,
     .store-reviews__arrow {
@@ -16582,6 +16604,7 @@ html.admin-document {
     .store-cart-credentials__actions button:last-child,
     .account-profile-btn--ghost,
     .account-profile-row__btn,
+    .account-invoice__item-more,
     .auth-google-action {
         transition: none;
         transform: none;

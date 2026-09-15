@@ -32,7 +32,7 @@ export function formatAccountMoney(
     const parts = formatter.formatToParts(wholeAmount);
 
     if (minorDigits === 0) {
-        return parts.map((part) => part.value).join('');
+        return parts.map(currencyWithoutStop).join('');
     }
 
     const decimal =
@@ -54,5 +54,16 @@ export function formatAccountMoney(
         { type: 'fraction', value: localizedDigits(fraction, locale) },
     );
 
-    return parts.map((part) => part.value).join('');
+    return parts.map(currencyWithoutStop).join('');
+}
+
+/**
+ * ICU abbreviates the riyal in Arabic as "ر.س." with a closing full stop. The
+ * riyal typeface turns "ر.س" into the currency symbol, which leaves that stop
+ * standing alone after the symbol. Drop it; the English "SAR" has none.
+ */
+function currencyWithoutStop(part: Intl.NumberFormatPart): string {
+    return part.type === 'currency'
+        ? part.value.replace(/\.$/, '')
+        : part.value;
 }
