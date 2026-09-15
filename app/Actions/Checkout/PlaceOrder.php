@@ -4,6 +4,7 @@ namespace App\Actions\Checkout;
 
 use App\Actions\Cart\RepriceCart;
 use App\Actions\Fulfillment\EnqueueOrderPlacement;
+use App\Actions\Orders\AlertOwnerOfPaidOrder;
 use App\Checkout\AppliedCoupon;
 use App\Checkout\CheckoutResult;
 use App\Checkout\DiscountEngine;
@@ -66,6 +67,7 @@ final readonly class PlaceOrder
         private DiscountEngine $discountEngine,
         private WalletLedgerWriter $walletLedgerWriter,
         private EnqueueOrderPlacement $enqueueOrderPlacement,
+        private AlertOwnerOfPaidOrder $alertOwnerOfPaidOrder,
     ) {}
 
     /**
@@ -335,6 +337,7 @@ final readonly class PlaceOrder
             // receipt belongs here. Queued after commit: the mail server must
             // never be able to fail a checkout that already moved money.
             $user->notify(new OrderPaidNotification($order));
+            $this->alertOwnerOfPaidOrder->execute($order);
         } else {
             $payment = $order->payments()->create([
                 'provider' => 'paylink',

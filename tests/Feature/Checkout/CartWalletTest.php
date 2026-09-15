@@ -20,6 +20,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletAccount;
 use App\Models\WalletEntry;
+use App\Notifications\NewPaidOrderAlert;
 use App\Notifications\OrderPaidNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -221,6 +222,7 @@ test('place order with partial wallet debits ledger, sets order wallet_halalah a
 
 test('place order with full wallet payment settles order as received without paylink payment', function (): void {
     Notification::fake();
+    config()->set('store.order_alerts.email', 'owner@example.com');
     ['user' => $user, 'cart' => $cart] = createWalletCartFixture(unitPriceHalalah: 1250);
     $cart->update(['use_wallet' => true]);
     creditUserWallet($user, 2000);
@@ -232,6 +234,7 @@ test('place order with full wallet payment settles order as received without pay
         return $notification->order->id === $order->id;
     });
     Notification::assertSentTimes(OrderPaidNotification::class, 1);
+    Notification::assertSentOnDemand(NewPaidOrderAlert::class, fn (NewPaidOrderAlert $alert): bool => $alert->order->is($order));
 
     expect($result->replayed)->toBeFalse()
         ->and($order->subtotal_halalah)->toBe(1250)

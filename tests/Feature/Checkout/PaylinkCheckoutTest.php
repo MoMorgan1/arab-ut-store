@@ -19,6 +19,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WalletEntry;
+use App\Notifications\NewPaidOrderAlert;
 use App\Notifications\OrderPaidNotification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -335,6 +336,7 @@ test('a customer cannot reconcile another customer Paylink payment through the r
 
 test('the authenticated Paylink webhook verifies the invoice before acknowledging payment', function () {
     Notification::fake();
+    config()->set('store.order_alerts.email', 'owner@example.com');
     ['user' => $user] = paylinkCheckoutCart();
     fakePaylinkCheckout(getStatus: 'Paid');
     $webhookToken = str_repeat('w', 64);
@@ -362,6 +364,7 @@ test('the authenticated Paylink webhook verifies the invoice before acknowledgin
         return $notification->order->id === $order->id;
     });
     Notification::assertSentTimes(OrderPaidNotification::class, 1);
+    Notification::assertSentOnDemand(NewPaidOrderAlert::class, fn (NewPaidOrderAlert $alert): bool => $alert->order->is($order));
 
     expect(Order::sole()->status->value)->toBe('received')
         ->and(Payment::sole()->status->value)->toBe('paid')
@@ -378,7 +381,9 @@ test('the authenticated Paylink webhook verifies the invoice before acknowledgin
         'Authorization' => 'Bearer '.$webhookToken,
     ])->assertOk();
 
+    // A repeated webhook re-sends neither the receipt nor the owner's alert.
     Notification::assertSentTimes(OrderPaidNotification::class, 1);
+    Notification::assertSentTimes(NewPaidOrderAlert::class, 1);
 
     expect(Order::sole()->statusHistory()->where('status', 'received')->count())->toBe(1)
         ->and(IntegrationEvent::where('event_type', 'order.paid')->count())->toBe(1)
