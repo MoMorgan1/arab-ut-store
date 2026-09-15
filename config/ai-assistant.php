@@ -25,6 +25,15 @@ return [
     'retry_after_cap_ms' => env('AI_RETRY_AFTER_CAP_MS', 2000),
     'stale_turn_seconds' => env('AI_STALE_TURN_SECONDS', 60),
     'fake_delta_delay_ms' => env('AI_FAKE_DELTA_DELAY_MS', 350),
+
+    // The conversation title: one short extra call after the first reply.
+    // Off, and the widget keeps showing the customer's first message.
+    'subject' => [
+        'enabled' => env('AI_ASSISTANT_SUBJECT_ENABLED', true),
+        'prompt_version' => 'subject-v1',
+        'max_output_tokens' => env('AI_SUBJECT_MAX_OUTPUT_TOKENS', 60),
+        'timeout_seconds' => env('AI_SUBJECT_TIMEOUT_SECONDS', 8),
+    ],
     'pricing' => [
         'version' => 'openai-gpt-5.6-luna-2026-08-21',
         'input_per_million' => '0.20',

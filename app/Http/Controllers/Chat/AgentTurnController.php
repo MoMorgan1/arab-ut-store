@@ -222,6 +222,10 @@ class AgentTurnController extends Controller
                     ? $this->chatPresenter->message($event->message, $event->turn?->conversation?->public_id)
                     : null,
             ],
+            AppStreamEventType::Subject => [
+                'conversationPublicId' => (string) $event->conversationPublicId,
+                'subject' => (string) $event->subject,
+            ],
             AppStreamEventType::Failed => [
                 'turn' => $event->turn instanceof AgentTurn
                     ? $this->agentTurnPresenter->turn($event->turn)

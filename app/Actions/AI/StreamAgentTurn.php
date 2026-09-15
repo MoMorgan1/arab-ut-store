@@ -19,6 +19,8 @@ use App\ValueObjects\AI\AgentDeadline;
 use App\ValueObjects\AI\AppStreamEvent;
 use App\ValueObjects\Chat\ChatOwner;
 use Generator;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final readonly class StreamAgentTurn
 {
@@ -34,6 +36,7 @@ final readonly class StreamAgentTurn
         private PrepareAutomaticAgentRetry $prepareAutomaticAgentRetry,
         private AgentTurnRetryPolicy $retryPolicy,
         private AgentSleeper $sleeper,
+        private GenerateConversationSubject $generateConversationSubject,
     ) {}
 
     /**
@@ -129,7 +132,29 @@ final readonly class StreamAgentTurn
                             $providerEvent,
                             max(0, $this->clock->nowMilliseconds() - $startedAt),
                         );
-                        yield AppStreamEvent::completed($turn->fresh(), $message);
+                        $completedTurn = $turn->fresh();
+                        yield AppStreamEvent::completed($completedTurn, $message);
+
+                        // The title is a courtesy after the reply, never a
+                        // condition of it: the turn is already complete and
+                        // announced, so nothing here may fail it.
+                        try {
+                            $subject = $this->generateConversationSubject->execute($completedTurn, $message, $owner);
+                        } catch (Throwable $e) {
+                            Log::warning('chat.subject.failed', [
+                                'turn' => $completedTurn->public_id,
+                                'error' => $e::class,
+                            ]);
+                            $subject = null;
+                        }
+
+                        if ($subject !== null) {
+                            yield AppStreamEvent::subject(
+                                $completedTurn,
+                                (string) $completedTurn->conversation->public_id,
+                                $subject,
+                            );
+                        }
 
                         return;
                     }

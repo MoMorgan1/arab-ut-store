@@ -601,6 +601,15 @@ export function useChat(options: UseChatOptions = {}) {
                     );
 
                     handleTerminalTurnBacklog(turn, triggeredGeneration);
+                } else if (event.event === 'conversation.subject') {
+                    const { conversationPublicId: titled, subject } =
+                        event.data;
+
+                    setConversation((prev) =>
+                        prev !== null && prev.publicId === titled
+                            ? { ...prev, subject }
+                            : prev,
+                    );
                 } else if (event.event === 'response.failed') {
                     const { turn, message } = event.data;
                     streamingTurnIdRef.current = null;

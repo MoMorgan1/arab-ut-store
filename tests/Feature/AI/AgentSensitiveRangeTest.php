@@ -60,7 +60,8 @@ test('sensitive range blocks before lazy resolver and a later harmless turn succ
 
     $nextEvents = iterator_to_array(app(StreamAgentTurn::class)->execute($next->turn, $owner, 'SAR'));
 
-    expect($resolver->resolutionCalls)->toBe(1)
+    // The harmless reply and the title call that follows a first reply.
+    expect($resolver->resolutionCalls)->toBe(2)
         ->and($next->turn->fresh()->status)->toBe(AgentTurnStatus::Completed)
         ->and($next->turn->fresh()->assistant_message_id)->not->toBeNull();
 

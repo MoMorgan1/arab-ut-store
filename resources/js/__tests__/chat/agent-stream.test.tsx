@@ -82,6 +82,26 @@ describe('Agent Stream Parser and Transport', () => {
         ]);
     });
 
+    it('parses conversation.subject and rejects an empty title', () => {
+        expect(
+            parseAppStreamFrame(
+                'event: conversation.subject\ndata: {"conversationPublicId":"01K00000000000000000000000","subject":"سعر الكوينز اليوم"}',
+            ),
+        ).toEqual({
+            event: 'conversation.subject',
+            data: {
+                conversationPublicId: '01K00000000000000000000000',
+                subject: 'سعر الكوينز اليوم',
+            },
+        });
+
+        expect(() =>
+            parseAppStreamFrame(
+                'event: conversation.subject\ndata: {"conversationPublicId":"01K00000000000000000000000","subject":""}',
+            ),
+        ).toThrow(ChatApiError);
+    });
+
     it('throws invalid_stream on unknown event name', () => {
         const frame =
             'event: response.output_text.delta\ndata: {"text":"hello"}\n\n';

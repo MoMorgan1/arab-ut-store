@@ -17,6 +17,15 @@ final readonly class FakeAgentModel implements AgentModel
     /** @return Generator<int, AgentModelEvent, mixed, void> */
     public function stream(AgentModelRequest $request, AgentDeadline $deadline): Generator
     {
+        if (str_starts_with($request->instructions, '# Conversation title')) {
+            $deadline->throwIfExpired();
+            yield AgentModelEvent::delta($request->locale === 'en' ? 'Test conversation' : 'محادثة تجريبية');
+            $deadline->throwIfExpired();
+            yield AgentModelEvent::completed(new AgentUsage(0, 0, 0, 0, 0, 0), null);
+
+            return;
+        }
+
         $deltas = $request->locale === 'en'
             ? [
                 'I received your messages. ',
