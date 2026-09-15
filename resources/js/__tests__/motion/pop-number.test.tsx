@@ -28,12 +28,22 @@ describe('PopNumber', () => {
     });
 
     it('keeps the Arabic riyal letters in one span so the font can ligate them', () => {
-        const { container } = render(<PopNumber value="‏12.50 ر.س" />);
+        const { container } = render(
+            <PopNumber value={'\u2066ر.س\u00a012.50\u2069'} />,
+        );
         const spans = [...container.querySelectorAll('.t-digit')].map(
             (span) => span.textContent,
         );
 
-        expect(spans).toEqual(['‏', '1', '2', '.', '5', '0', ' ر.س']);
+        expect(spans).toEqual([
+            '\u2066ر.س\u00a0',
+            '1',
+            '2',
+            '.',
+            '5',
+            '0',
+            '\u2069',
+        ]);
     });
 
     it('nothing is data-changed on first render', () => {

@@ -42,13 +42,15 @@ export default function WalletLedger({
             <ol>
                 {entries.map((entry) => {
                     const Icon = icons[entry.type];
-                    const amount = formatAccountMoney(entry.amount, locale);
-                    const signedAmount =
+                    const signedAmount = formatAccountMoney(
+                        entry.amount,
+                        locale,
                         entry.effect === 'credit'
-                            ? `+${amount}`
+                            ? '+'
                             : entry.effect === 'debit'
-                              ? `−${amount}`
-                              : amount;
+                              ? '−'
+                              : '',
+                    );
 
                     return (
                         <li data-effect={entry.effect} key={entry.id}>
