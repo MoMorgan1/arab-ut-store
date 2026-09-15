@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-test('concurrent first additions create one active cart and two credential-bound lines', function () {
+test('concurrent additions of different variants create one cart and two credential-bound lines', function () {
     if (! supportsConcurrentCartLocking()) {
         $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
     }
@@ -23,8 +23,8 @@ test('concurrent first additions create one active cart and two credential-bound
     createConcurrentCatalog();
 
     $user = User::factory()->create();
-    $first = concurrentCartProcess($user->id, "concurrent-key-1-{$user->id}");
-    $second = concurrentCartProcess($user->id, "concurrent-key-2-{$user->id}");
+    $first = concurrentCartProcess($user->id, "concurrent-key-1-{$user->id}", 'playstation');
+    $second = concurrentCartProcess($user->id, "concurrent-key-2-{$user->id}", 'pc');
     $first->start();
     $second->start();
     $first->wait();
@@ -37,6 +37,42 @@ test('concurrent first additions create one active cart and two credential-bound
         ->and(Cart::where('user_id', $user->id)->count())->toBe(1)
         ->and($userCart->items()->count())->toBe(2)
         ->and($userCart->items()->whereHas('secret')->count())->toBe(2);
+});
+
+test('concurrent additions of the same variant keep one line and refuse the duplicate', function () {
+    if (! supportsConcurrentCartLocking()) {
+        $this->markTestSkipped('The concurrency contract requires MariaDB/MySQL row locking.');
+    }
+
+    expect(DB::transactionLevel())->toBe(0);
+    createConcurrentCatalog();
+
+    $user = User::factory()->create();
+    $first = concurrentCartProcess($user->id, "same-variant-key-1-{$user->id}");
+    $second = concurrentCartProcess($user->id, "same-variant-key-2-{$user->id}");
+    $first->start();
+    $second->start();
+    $first->wait();
+    $second->wait();
+    refreshConcurrentConnection();
+    $userCart = Cart::where('user_id', $user->id)->sole();
+
+    // Which of the two wins is the race's business; that exactly one wins is
+    // the contract. The loser is the 409 the controller turns into
+    // `already_in_cart`, not a second line at an untiered price.
+    $accepted = collect([$first, $second])->filter(
+        fn (Process $process): bool => $process->isSuccessful(),
+    );
+    $refused = collect([$first, $second])->reject(
+        fn (Process $process): bool => $process->isSuccessful(),
+    );
+
+    expect($accepted)->toHaveCount(1)
+        ->and($refused)->toHaveCount(1)
+        ->and($refused->first()?->getErrorOutput())->toContain('DuplicateCartItem')
+        ->and(Cart::where('user_id', $user->id)->count())->toBe(1)
+        ->and($userCart->items()->count())->toBe(1)
+        ->and($userCart->items()->whereHas('secret')->count())->toBe(1);
 });
 
 test('concurrent same-key additions replay one identical safe response', function () {
@@ -335,8 +371,11 @@ function refreshConcurrentConnection(): void
     DB::reconnect();
 }
 
-function concurrentCartProcess(int $userId, string $key): Process
-{
+function concurrentCartProcess(
+    int $userId,
+    string $key,
+    string $platform = 'playstation',
+): Process {
     return new Process([
         PHP_BINARY,
         '-d',
@@ -350,6 +389,7 @@ function concurrentCartProcess(int $userId, string $key): Process
         base_path('tests/Support/ConcurrentCoinsCartAdd.php'),
         (string) $userId,
         $key,
+        $platform,
     ], base_path(), concurrentDatabaseEnvironment(), timeout: 30);
 }
 
