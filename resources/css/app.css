@@ -1509,45 +1509,51 @@ html.admin-document {
         inset-block-start: calc(100% + 0.5rem);
         inset-inline-end: 0;
         z-index: 45;
+        display: grid;
+        gap: 0.85rem;
         width: min(23rem, calc(100vw - 1.25rem));
-        border: 1px solid var(--arabut-line);
-        border-radius: 1rem;
-        background:
-            radial-gradient(
-                circle at 20% 0%,
-                rgb(212 168 67 / 14%),
-                transparent 38%
-            ),
-            rgb(11 11 10 / 98%);
-        box-shadow: 0 1.25rem 3rem rgb(0 0 0 / 52%);
-        padding: 0.75rem;
-        backdrop-filter: blur(1.125rem);
+        border-radius: 1.25rem;
+        padding: 0.85rem;
     }
 
-    .store-preferences__language a {
-        display: flex;
-        min-height: 2.75rem;
-        align-items: center;
-        border: 1px solid var(--arabut-line);
-        border-radius: 0.65rem;
-        padding-inline: 0.75rem;
+    /* The panel names itself, then one labelled group per choice: the
+       language is a segmented pair like the store's other tabs, the currency
+       a grid of codes. Ten codes fill five columns exactly, so no row is left
+       holding one chip. */
+    .store-preferences__title {
+        margin: 0;
         color: var(--arabut-ink);
-        font-weight: 700;
+        font-size: 0.95rem;
+        font-weight: 900;
+    }
+
+    .store-preferences__group {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .store-preferences__label {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+
+    .store-preferences__segmented {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .store-preferences__segmented a {
+        display: grid;
+        place-items: center;
         text-decoration: none;
     }
 
-    .store-preferences__currencies > span {
-        display: block;
-        margin-block: 0.75rem 0.4rem;
-        color: var(--arabut-muted);
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
-    .store-preferences__currencies ul {
+    .store-preferences__currencies {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.5rem;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.35rem;
         margin: 0;
         padding: 0;
         list-style: none;
@@ -1557,42 +1563,31 @@ html.admin-document {
         display: grid;
         min-height: 2.75rem;
         place-items: center;
-        border: 1px solid var(--arabut-line);
-        border-radius: 0.65rem;
-        color: var(--arabut-ink);
+        border: 1px solid rgb(255 255 255 / 10%);
+        border-radius: 0.7rem;
+        background: rgb(255 255 255 / 3%);
+        color: rgb(237 228 208 / 82%);
+        font-size: 0.78rem;
         font-weight: 800;
         text-decoration: none;
         transition:
             border-color 180ms var(--motion-ease),
             background 180ms var(--motion-ease),
-            transform 180ms var(--motion-ease);
+            color 180ms var(--motion-ease);
     }
 
-    .store-preferences__language a:hover,
     .store-preferences__currencies a:hover {
-        border-color: var(--arabut-gold);
+        border-color: rgb(212 168 67 / 45%);
+        background: rgb(255 255 255 / 6%);
         color: var(--arabut-gold-bright);
-    }
-
-    .store-preferences__currencies a[aria-current='page'] {
-        background: var(--arabut-gold);
-        color: var(--arabut-navy-deep);
-        box-shadow: 0 0 1rem rgb(217 171 58 / 22%);
-    }
-
-    @media (hover: hover) and (pointer: fine) {
-        .store-preferences__currencies a:hover {
-            transform: translateY(-0.12rem);
-        }
     }
 
     .store-preferences__attribution {
         display: flex;
         min-height: 2.75rem;
-        margin-block-start: 0.75rem;
         align-items: center;
         justify-content: center;
-        border-block-start: 1px solid var(--arabut-line);
+        border-block-start: 1px solid rgb(255 255 255 / 10%);
         padding: 0.65rem 0.25rem 0;
         color: var(--arabut-muted);
         font-size: 0.75rem;
@@ -16269,7 +16264,8 @@ html.admin-document {
    bottom bar's lens sitting inside it (Mohamed, 2026-09-15: the two controls
    read as separate buttons; a container makes them tabs). */
 .manual-service-tabs,
-.auth-login-method {
+.auth-login-method,
+.store-preferences__segmented {
     gap: 0.3rem;
     padding: 0.3rem;
     border: 1px solid var(--btn-smoke-border);
@@ -16279,7 +16275,8 @@ html.admin-document {
 }
 
 .manual-service-tabs__tab,
-.auth-login-method__tab {
+.auth-login-method__tab,
+.store-preferences__segmented a {
     min-height: 2.75rem;
     border: 0;
     border-radius: 0.85rem;
@@ -16297,14 +16294,17 @@ html.admin-document {
 }
 
 .manual-service-tabs__tab:hover,
-.auth-login-method__tab:hover {
+.auth-login-method__tab:hover,
+.store-preferences__segmented a:hover {
     border: 0;
     background: rgb(255 255 255 / 4%);
     color: var(--arabut-ink);
 }
 
 .manual-service-tabs__tab[aria-selected='true'],
-.auth-login-method__tab[aria-selected='true'] {
+.auth-login-method__tab[aria-selected='true'],
+.store-preferences__segmented a[aria-current='page'],
+.store-preferences__currencies a[aria-current='page'] {
     border: 0;
     /* The bottom bar's lens sits over a photographed page and gets most of its
        brightness from the backdrop. A tab bar sits on near-black, where
@@ -16595,6 +16595,8 @@ html.admin-document {
 
     .manual-service-tabs__tab[aria-selected='true'],
     .auth-login-method__tab[aria-selected='true'],
+    .store-preferences__segmented a[aria-current='page'],
+    .store-preferences__currencies a[aria-current='page'],
     .store-catalog-toolbar__filters button[aria-pressed='true'] {
         background: rgb(36 30 24 / 98%);
     }
@@ -16812,6 +16814,122 @@ html.admin-document {
 @media (prefers-reduced-transparency: reduce) {
     .store-hero__badge {
         background: rgb(32 26 20 / 92%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+/* The store's chrome is glass: the three header controls, the chat launcher
+   and the preferences panel take the same lens as the bottom bar and the tab
+   bar — a translucent surface that lifts what is behind it, a bright top
+   edge and the warm/cool flanks a real lens shows. Apple's material is the
+   reference (Mohamed, 2026-09-15). Each has an opaque fallback where the
+   backdrop filter is missing or transparency is turned down. */
+.store-header__icon-link,
+.store-preferences__trigger,
+.chat-launcher-button {
+    border: 1px solid rgb(255 255 255 / 14%);
+    background: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 15%),
+        rgb(255 255 255 / 4%) 48%,
+        rgb(212 168 67 / 13%)
+    );
+    -webkit-backdrop-filter: blur(14px) saturate(175%) brightness(1.12);
+    backdrop-filter: blur(14px) saturate(175%) brightness(1.12);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 45%),
+        inset 0 -1px 0 rgb(212 168 67 / 22%),
+        inset 1px 0 0 rgb(255 214 170 / 11%),
+        inset -1px 0 0 rgb(170 214 255 / 9%),
+        0 6px 18px rgb(0 0 0 / 30%);
+}
+
+.store-header__icon-link,
+.store-preferences__trigger {
+    border-radius: 0.85rem;
+}
+
+/* The header controls sit on the near-black bar, so the lens alone reads as
+   dark glass. The launcher floats over the page, which can be bright
+   artwork, so it carries its own tint under the lens rather than turning
+   white over a coin. */
+.chat-launcher-button {
+    background:
+        linear-gradient(
+            158deg,
+            rgb(255 255 255 / 15%),
+            rgb(255 255 255 / 4%) 48%,
+            rgb(212 168 67 / 13%)
+        ),
+        rgb(20 17 13 / 66%);
+}
+
+.store-header__icon-link:hover,
+.store-preferences__trigger:hover,
+.store-preferences__trigger[aria-expanded='true'],
+.chat-launcher-button:hover {
+    border-color: rgb(212 168 67 / 55%);
+    background: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 22%),
+        rgb(255 255 255 / 7%) 48%,
+        rgb(212 168 67 / 22%)
+    );
+    color: var(--arabut-gold-bright);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 55%),
+        inset 0 -1px 0 rgb(212 168 67 / 30%),
+        inset 1px 0 0 rgb(255 214 170 / 12%),
+        inset -1px 0 0 rgb(170 214 255 / 10%),
+        0 8px 22px rgb(0 0 0 / 36%);
+}
+
+/* A panel floating over the page has the most to refract, so it takes the
+   deepest blur of the three. */
+.store-preferences__dialog {
+    border: 1px solid rgb(255 255 255 / 13%);
+    background:
+        linear-gradient(
+            158deg,
+            rgb(255 255 255 / 13%),
+            rgb(255 255 255 / 4%) 46%,
+            rgb(212 168 67 / 11%)
+        ),
+        rgb(14 11 9 / 88%);
+    -webkit-backdrop-filter: blur(28px) saturate(185%) brightness(1.08);
+    backdrop-filter: blur(28px) saturate(185%) brightness(1.08);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 40%),
+        inset 0 -1px 0 rgb(212 168 67 / 20%),
+        0 1.5rem 3.5rem rgb(0 0 0 / 55%);
+}
+
+@supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+    .store-header__icon-link,
+    .store-preferences__trigger,
+    .chat-launcher-button {
+        background: rgb(32 26 20 / 96%);
+    }
+
+    .store-preferences__dialog {
+        background: rgb(14 12 10 / 98%);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .store-header__icon-link,
+    .store-preferences__trigger,
+    .chat-launcher-button {
+        background: rgb(32 26 20 / 96%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .store-preferences__dialog {
+        background: rgb(14 12 10 / 98%);
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
     }

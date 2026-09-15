@@ -255,6 +255,8 @@ function categoryProps() {
         ui: {
             brand: 'Arab UT',
             language: 'Arabic',
+            language_label: 'Language',
+            currency: 'Currency',
             currency_selector: 'Currency',
             home_title: 'Home',
             skip_to_content: 'Skip',

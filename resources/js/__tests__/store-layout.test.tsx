@@ -53,6 +53,7 @@ const mockPage = vi.hoisted(() => ({
             currency_selector: 'Choose display currency',
             home_title: 'Home',
             language: 'العربية',
+            language_label: 'Language',
             service_notice: 'Trusted FC 27 services for players worldwide',
             skip_to_content: 'Skip to content',
             store_tools: 'Store tools',
@@ -104,6 +105,7 @@ const arabicUi = {
     currency: 'العملة',
     currency_selector: 'اختر عملة العرض',
     language: 'English',
+    language_label: 'اللغة',
     skip_to_content: 'انتقل إلى المحتوى',
     store_tools: 'أدوات المتجر',
 };

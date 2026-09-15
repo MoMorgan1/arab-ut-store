@@ -56,6 +56,13 @@ function PreferencesIcon() {
     );
 }
 
+/** Both options are shown, each in its own language. */
+const STORE_LOCALES: StoreLocale[] = ['ar', 'en'];
+const LANGUAGE_NAMES: Record<StoreLocale, string> = {
+    ar: 'العربية',
+    en: 'English',
+};
+
 export function StorePreferences({
     currentUrl,
     displayCurrencies,
@@ -66,7 +73,6 @@ export function StorePreferences({
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
-    const targetLocale: StoreLocale = locale === 'ar' ? 'en' : 'ar';
     useEffect(() => {
         if (!isOpen) {
             return;
@@ -122,21 +128,52 @@ export function StorePreferences({
             >
                 {() => (
                     <>
-                        <div className="store-preferences__language">
-                            <a
-                                dir={targetLocale === 'ar' ? 'rtl' : 'ltr'}
-                                href={localizedStoreHref(
-                                    currentUrl,
-                                    targetLocale,
-                                )}
-                                lang={targetLocale}
+                        <p className="store-preferences__title">
+                            {translations.header.preferences}
+                        </p>
+                        <section className="store-preferences__group">
+                            <h2
+                                className="store-preferences__label"
+                                id="store-preferences-language"
                             >
-                                {translations.language}
-                            </a>
-                        </div>
-                        <div className="store-preferences__currencies">
-                            <span>{translations.currency_selector}</span>
-                            <ul>
+                                {translations.language_label}
+                            </h2>
+                            <div
+                                aria-labelledby="store-preferences-language"
+                                className="store-preferences__segmented"
+                                role="group"
+                            >
+                                {STORE_LOCALES.map((code) => (
+                                    <a
+                                        aria-current={
+                                            code === locale ? 'page' : undefined
+                                        }
+                                        dir={code === 'ar' ? 'rtl' : 'ltr'}
+                                        href={localizedStoreHref(
+                                            currentUrl,
+                                            code,
+                                        )}
+                                        key={code}
+                                        lang={code}
+                                        onClick={(event) => {
+                                            if (code === locale) {
+                                                event.preventDefault();
+                                            }
+                                        }}
+                                    >
+                                        {LANGUAGE_NAMES[code]}
+                                    </a>
+                                ))}
+                            </div>
+                        </section>
+                        <section className="store-preferences__group">
+                            <h2 className="store-preferences__label">
+                                {translations.currency}
+                            </h2>
+                            <ul
+                                aria-label={translations.currency_selector}
+                                className="store-preferences__currencies"
+                            >
                                 {displayCurrencies.map((currency) => (
                                     <li key={currency}>
                                         <a
@@ -177,7 +214,7 @@ export function StorePreferences({
                                     </li>
                                 ))}
                             </ul>
-                        </div>
+                        </section>
                         <a
                             className="store-preferences__attribution"
                             dir="ltr"

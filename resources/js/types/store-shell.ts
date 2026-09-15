@@ -43,6 +43,8 @@ export type StoreShellTranslations = {
         open_cart: string;
     };
     language: string;
+    language_label: string;
+    currency: string;
     currency_selector: string;
     home_title: string;
     skip_to_content: string;

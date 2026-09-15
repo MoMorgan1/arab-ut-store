@@ -631,6 +631,8 @@ function sbcProductProps() {
                 open_cart: 'Open cart',
             },
             language: 'Arabic',
+            language_label: 'Language',
+            currency: 'Currency',
             currency_selector: 'Currency',
             home_title: 'Home',
             skip_to_content: 'Skip',

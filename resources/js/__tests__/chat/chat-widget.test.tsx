@@ -68,8 +68,11 @@ describe('ChatWidget Component', () => {
     });
 
     // Regression: owner mobile acceptance on 2026-08-20 found the gold orb
-    // visually excessive after the first launcher polish.
-    it('uses the approved quiet launcher geometry', () => {
+    // visually excessive after the first launcher polish, so the size and the
+    // plain icon are fixed. The surface moved to the store's glass on
+    // 2026-09-15 at the owner's request, so it comes from app.css by class
+    // rather than from utilities here.
+    it('uses the approved launcher geometry and takes its surface from the store glass', () => {
         render(<ChatWidget initialView="chat" enabled={true} locale="ar" />);
 
         const launcherButton = screen.getByRole('button', {
@@ -82,10 +85,8 @@ describe('ChatWidget Component', () => {
             'sm:h-[60px]',
             'sm:w-[60px]',
         );
-        expect(launcherButton.className).toContain(
-            'bg-[color:color-mix(in_srgb,var(--arabut-navy-raised)_88%,transparent)]',
-        );
-        expect(launcherButton).toHaveClass('backdrop-blur-md');
+        expect(launcherButton).toHaveClass('chat-launcher-button');
+        expect(launcherButton.className).not.toContain('bg-[');
         expect(launcherButton.className).not.toContain('linear-gradient');
         expect(launcherButton.querySelector('.lucide-sparkles')).toBeNull();
     });
