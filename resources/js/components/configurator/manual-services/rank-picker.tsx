@@ -1,3 +1,4 @@
+import { SwapText } from '@/components/motion/swap-text';
 import { formatInteger, formatMinorUnits } from '@/lib/money';
 import type {
     FutServiceTranslations,
@@ -64,6 +65,7 @@ export function RankPicker({
     const stopLabels = pricing.rankOptions.map((entry) =>
         formatInteger(entry.rank, locale),
     );
+    const eta = urgent ? service.urgent_eta : service.standard_eta;
 
     return (
         <div className="manual-rank-picker">
@@ -101,7 +103,7 @@ export function RankPicker({
                     </span>
                 </div>
                 <p className="manual-toggle-row__eta">
-                    {urgent ? service.urgent_eta : service.standard_eta}
+                    <SwapText value={eta} />
                 </p>
             </label>
 

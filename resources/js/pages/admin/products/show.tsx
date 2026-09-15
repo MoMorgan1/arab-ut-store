@@ -27,6 +27,7 @@ import AdminProductEditDialog from '@/components/admin/products/admin-product-ed
 import AdminProductVisibilityDialog from '@/components/admin/products/admin-product-visibility-dialog';
 import AdminVariantPriceDialog from '@/components/admin/products/admin-variant-price-dialog';
 import AdminVariantRevertDialog from '@/components/admin/products/admin-variant-revert-dialog';
+import { IconSwap } from '@/components/motion/icon-swap';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DATE_LOCALE } from '@/lib/date-locale';
@@ -318,23 +319,26 @@ export default function AdminProductDetailPage() {
                                 type="button"
                                 variant="outline"
                             >
-                                {product.adminHidden ? (
-                                    <>
+                                <IconSwap
+                                    state={product.adminHidden ? 'a' : 'b'}
+                                    a={
                                         <Eye
                                             aria-hidden="true"
                                             className="size-3.5"
                                         />
-                                        <span>{copy.restoreToStore}</span>
-                                    </>
-                                ) : (
-                                    <>
+                                    }
+                                    b={
                                         <EyeOff
                                             aria-hidden="true"
                                             className="size-3.5"
                                         />
-                                        <span>{copy.hideFromStore}</span>
-                                    </>
-                                )}
+                                    }
+                                />
+                                <span>
+                                    {product.adminHidden
+                                        ? copy.restoreToStore
+                                        : copy.hideFromStore}
+                                </span>
                             </Button>
                         ) : null}
 

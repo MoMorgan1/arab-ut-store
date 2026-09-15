@@ -2,6 +2,7 @@ import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 
 import InputError from '@/components/input-error';
+import { IconSwap } from '@/components/motion/icon-swap';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
@@ -196,7 +197,15 @@ export default function Register({ authRoutes, authUi, passwordRules }: Props) {
                                                 key={check.id}
                                             >
                                                 <span aria-hidden="true">
-                                                    {check.met ? '✓' : '•'}
+                                                    <IconSwap
+                                                        state={
+                                                            check.met
+                                                                ? 'b'
+                                                                : 'a'
+                                                        }
+                                                        a="•"
+                                                        b="✓"
+                                                    />
                                                 </span>
                                                 {check.label}
                                             </li>

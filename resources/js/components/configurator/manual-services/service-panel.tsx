@@ -2,6 +2,8 @@ import { Clock, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
+import { useErrorShake } from '@/components/motion/error-shake';
+import { SwapText } from '@/components/motion/swap-text';
 import { formatMinorUnits } from '@/lib/money';
 import type {
     ManualServiceCommonTranslations,
@@ -114,7 +116,11 @@ export function ManualServicePanel({
     trustLabel?: string;
 }) {
     const barRef = useRef<HTMLDivElement>(null);
+    const alertRef = useRef<HTMLParagraphElement | null>(null);
     const dockVisible = useDockVisibility(barRef);
+    const errorMessage =
+        status === 'error' ? translations.add_error : undefined;
+    useErrorShake(alertRef, errorMessage);
     const formattedPrice =
         price === null
             ? '—'
@@ -202,7 +208,7 @@ export function ManualServicePanel({
                     }
                     type={showInCart ? 'button' : 'submit'}
                 >
-                    {label}
+                    <SwapText value={label} />
                 </button>
                 {showInCart && openCartLabel !== undefined ? (
                     <a
@@ -219,7 +225,11 @@ export function ManualServicePanel({
                     </p>
                 ) : null}
                 {status === 'error' ? (
-                    <p className="manual-service-panel__alert" role="alert">
+                    <p
+                        ref={alertRef}
+                        className="t-shakeable manual-service-panel__alert"
+                        role="alert"
+                    >
                         {translations.add_error}
                     </p>
                 ) : null}
@@ -266,7 +276,7 @@ export function ManualServicePanel({
                     tabIndex={dockVisible ? undefined : -1}
                     type={showInCart ? 'button' : 'submit'}
                 >
-                    {label}
+                    <SwapText value={label} />
                 </button>
                 {showInCart && openCartLabel !== undefined ? (
                     <a

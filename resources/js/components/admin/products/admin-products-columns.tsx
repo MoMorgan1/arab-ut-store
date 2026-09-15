@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import AdminBadge from '@/components/admin/admin-badge';
+import { IconSwap } from '@/components/motion/icon-swap';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DATE_LOCALE } from '@/lib/date-locale';
 import type { AdminProductRow, AdminTranslations } from '@/types/admin';
@@ -87,17 +88,21 @@ export function getAdminProductColumns({
             >
                 <span>{label}</span>
                 {isSorted ? (
-                    currentDirection === 'asc' ? (
-                        <ArrowUp
-                            aria-hidden="true"
-                            className="size-3.5 text-primary"
-                        />
-                    ) : (
-                        <ArrowDown
-                            aria-hidden="true"
-                            className="size-3.5 text-primary"
-                        />
-                    )
+                    <IconSwap
+                        state={currentDirection === 'asc' ? 'a' : 'b'}
+                        a={
+                            <ArrowUp
+                                aria-hidden="true"
+                                className="size-3.5 text-primary"
+                            />
+                        }
+                        b={
+                            <ArrowDown
+                                aria-hidden="true"
+                                className="size-3.5 text-primary"
+                            />
+                        }
+                    />
                 ) : (
                     <ArrowUpDown
                         aria-hidden="true"

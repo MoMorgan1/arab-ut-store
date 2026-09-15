@@ -1,0 +1,15 @@
+/* Error state shake — a message fades in and the offending element shakes once. */
+:root {
+    --shake-dur-a: var(--motion-micro); /* big swing legs, 80ms each   */
+    --shake-dur-b: calc(
+        var(--motion-micro) * 0.75
+    ); /* recovery legs, 60ms each    */
+    --shake-distance: 8px;
+    --shake-overshoot: 6px;
+    --shake-ease: var(--motion-ease-in-out);
+    --error-reveal-dur: var(--motion-quick);
+}
+
+.t-shakeable {
+    will-change: transform;
+}
