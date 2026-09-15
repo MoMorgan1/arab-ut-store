@@ -609,37 +609,41 @@ function InvoiceItem({
             <strong className="account-invoice__item-total">
                 {formatAccountMoney(item.total, locale)}
             </strong>
-            {/* Collapsed, the row still says where the order is: the customer
-                should not have to open anything to learn that much. */}
-            {item.tracking !== null && !expanded ? (
-                <span className="account-invoice__item-state">
-                    <span
-                        aria-hidden="true"
-                        className="account-invoice__item-state-dot"
-                        data-tone={item.tracking.holdTone ?? 'none'}
-                    />
-                    {item.tracking.headline}
-                    {trackingPercent !== null ? (
-                        <bdi dir="ltr">{` · ${trackingPercent}%`}</bdi>
-                    ) : null}
-                </span>
-            ) : null}
-            <button
-                aria-controls={contentId}
-                aria-expanded={expanded}
-                className="account-invoice__item-more"
-                onClick={() => setExpanded((value) => !value)}
-                type="button"
-            >
-                {item.tracking !== null
-                    ? expanded
-                        ? translations.tracking.hide_status
-                        : translations.tracking.show_status
-                    : expanded
-                      ? translations.hide_details
-                      : translations.details}
-                <ChevronDown aria-hidden="true" />
-            </button>
+            {/* One line: where the order is at the start, the control that
+                opens the card at the end. Collapsed, the row still says where
+                the order is - the customer should not have to open anything to
+                learn that much. */}
+            <div className="account-invoice__item-foot">
+                {item.tracking !== null && !expanded ? (
+                    <span className="account-invoice__item-state">
+                        <span
+                            aria-hidden="true"
+                            className="account-invoice__item-state-dot"
+                            data-tone={item.tracking.holdTone ?? 'none'}
+                        />
+                        {item.tracking.headline}
+                        {trackingPercent !== null ? (
+                            <bdi dir="ltr">{` · ${trackingPercent}%`}</bdi>
+                        ) : null}
+                    </span>
+                ) : null}
+                <button
+                    aria-controls={contentId}
+                    aria-expanded={expanded}
+                    className="account-invoice__item-more"
+                    onClick={() => setExpanded((value) => !value)}
+                    type="button"
+                >
+                    {item.tracking !== null
+                        ? expanded
+                            ? translations.tracking.hide_status
+                            : translations.tracking.show_status
+                        : expanded
+                          ? translations.hide_details
+                          : translations.details}
+                    <ChevronDown aria-hidden="true" />
+                </button>
+            </div>
             {expanded ? (
                 <div
                     className={cn(

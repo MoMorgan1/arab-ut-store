@@ -278,7 +278,7 @@ function Ring({
                 ) : icon === 'info' ? (
                     <Info aria-hidden="true" />
                 ) : (
-                    <Loader2 aria-hidden="true" />
+                    <Loader2 aria-hidden="true" className="track-spin" />
                 )}
             </div>
         </div>
