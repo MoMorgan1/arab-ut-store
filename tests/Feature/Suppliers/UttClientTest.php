@@ -37,6 +37,8 @@ test('observe reads the order and maps it into the fft payload shape', function 
             'amountTotal' => 2500,
             'platform' => 'ps5',
             'endCoins' => 100,
+            'moneySpent' => '31.20',
+            'privateMoneySpent' => '1.30',
         ]]),
     ]);
 
@@ -51,7 +53,8 @@ test('observe reads the order and maps it into the fft payload shape', function 
         ->and($observation->payload['coinsCustomerAccount'])->toBe(100)
         ->and($observation->payload['_supplier'])->toBe('UTT')
         ->and($observation->payload['_uttStatusOrder'])->toBe('COMPLETED')
-        ->and($observation->payload['_uttIdOrder'])->toBe('utt-42');
+        ->and($observation->payload['_uttIdOrder'])->toBe('utt-42')
+        ->and($observation->payload['_costEur'])->toBe(32.5);
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://utt.example.test/api/getOrder'
         && $request->data()['apiKey'] === 'utt-key'

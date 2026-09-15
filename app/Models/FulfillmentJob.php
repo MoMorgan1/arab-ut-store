@@ -38,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $squads_total
  * @property int|null $solves_done
  * @property int|null $solves_total
+ * @property int|null $actual_cost_halalah
  * @property int $poll_failure_count
  */
 class FulfillmentJob extends DomainModel
