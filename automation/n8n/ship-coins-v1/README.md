@@ -81,7 +81,7 @@ after import and never committed.
 | `N8N_FULFILLMENT_SECRET` | HMAC secret for the placement report (32+ characters) - the same value as the store's `N8N_FULFILLMENT_SECRET` |
 | `FFT_API_USER`, `FFT_API_KEY` | FuTTransfer, as in every other workflow |
 | `UTT_API_KEY` | UT Auto Transfer |
-| `ARABUT_STORE_URL` | optional; leave the placeholder to use `https://store.arab-ut.com` |
+| `ARABUT_STORE_URL` | ships filled in as `https://store.arab-ut.com`; change only for a staging store. Anything not starting with `https://` is ignored and the real store is used |
 
 `Verify Request` fails the run at the first node while any of the first seven
 is empty or still reads `CONFIGURE_…`. The Telegram chat for failure alerts is
