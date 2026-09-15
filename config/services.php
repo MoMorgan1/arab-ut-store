@@ -50,11 +50,15 @@ return [
         'sbc_pricing_read_secret' => env('N8N_SBC_PRICING_READ_SECRET'),
         'fulfillment_key' => env('N8N_FULFILLMENT_KEY'),
         'fulfillment_secret' => env('N8N_FULFILLMENT_SECRET'),
+        'solve_challenge_url' => env('N8N_SOLVE_CHALLENGE_URL'),
+        'solve_challenge_key' => env('N8N_SOLVE_CHALLENGE_KEY'),
+        'solve_challenge_secret' => env('N8N_SOLVE_CHALLENGE_SECRET'),
         // After this many failed delivery attempts an order-paid event is
         // retired as failed for manual requeue instead of being retried
         // forever. A literal rather than an env entry, so .env.example keeps
         // its one-to-one parity with this file.
         'order_paid_max_attempts' => 10,
+        'challenge_ready_max_attempts' => 10,
         'catalog_media_hosts' => array_values(array_filter(array_map(
             static fn (string $host): string => strtolower(trim($host)),
             explode(',', (string) env('N8N_CATALOG_MEDIA_HOSTS', '')),
