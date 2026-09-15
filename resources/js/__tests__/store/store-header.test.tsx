@@ -455,7 +455,10 @@ describe('StoreHeader', () => {
         expect(trigger).toHaveAttribute('aria-expanded', 'true');
         fireEvent.keyDown(document, { key: 'Escape' });
 
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        // The panel stays mounted so it can fade back; closed means inert.
+        const closed = screen.getByRole('dialog', { hidden: true });
+        expect(closed).toHaveAttribute('data-state', 'closed');
+        expect(closed).toHaveAttribute('inert');
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
         expect(trigger).toHaveFocus();
     });
@@ -469,7 +472,10 @@ describe('StoreHeader', () => {
         fireEvent.click(trigger);
         fireEvent.pointerDown(document.body);
 
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        // The panel stays mounted so it can fade back; closed means inert.
+        const closed = screen.getByRole('dialog', { hidden: true });
+        expect(closed).toHaveAttribute('data-state', 'closed');
+        expect(closed).toHaveAttribute('inert');
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
     });
 

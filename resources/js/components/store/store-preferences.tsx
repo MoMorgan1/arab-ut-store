@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import { Disclosure } from '@/components/motion/disclosure';
 
 import type { StoreLocale, StoreShellTranslations } from '@/types/store-shell';
 
@@ -112,74 +113,83 @@ export function StorePreferences({
             >
                 <PreferencesIcon />
             </button>
-            {isOpen ? (
-                <div
-                    aria-label={translations.header.preferences}
-                    className="store-preferences__dialog"
-                    role="dialog"
-                >
-                    <div className="store-preferences__language">
-                        <a
-                            dir={targetLocale === 'ar' ? 'rtl' : 'ltr'}
-                            href={localizedStoreHref(currentUrl, targetLocale)}
-                            lang={targetLocale}
-                        >
-                            {translations.language}
-                        </a>
-                    </div>
-                    <div className="store-preferences__currencies">
-                        <span>{translations.currency_selector}</span>
-                        <ul>
-                            {displayCurrencies.map((currency) => (
-                                <li key={currency}>
-                                    <a
-                                        aria-current={
-                                            currency === displayCurrency
-                                                ? 'page'
-                                                : undefined
-                                        }
-                                        href={currencyHref(
-                                            currentUrl,
-                                            currency,
-                                        )}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-
-                                            if (currency === displayCurrency) {
-                                                return;
+            <Disclosure
+                anchored
+                aria-label={translations.header.preferences}
+                className="store-preferences__dialog"
+                open={isOpen}
+                role="dialog"
+            >
+                {() => (
+                    <>
+                        <div className="store-preferences__language">
+                            <a
+                                dir={targetLocale === 'ar' ? 'rtl' : 'ltr'}
+                                href={localizedStoreHref(
+                                    currentUrl,
+                                    targetLocale,
+                                )}
+                                lang={targetLocale}
+                            >
+                                {translations.language}
+                            </a>
+                        </div>
+                        <div className="store-preferences__currencies">
+                            <span>{translations.currency_selector}</span>
+                            <ul>
+                                {displayCurrencies.map((currency) => (
+                                    <li key={currency}>
+                                        <a
+                                            aria-current={
+                                                currency === displayCurrency
+                                                    ? 'page'
+                                                    : undefined
                                             }
+                                            href={currencyHref(
+                                                currentUrl,
+                                                currency,
+                                            )}
+                                            onClick={(event) => {
+                                                event.preventDefault();
 
-                                            setIsOpen(false);
-                                            router.visit(
-                                                currencyHref(
-                                                    currentUrl,
-                                                    currency,
-                                                ),
-                                                {
-                                                    preserveScroll: true,
-                                                    preserveState: true,
-                                                    replace: true,
-                                                },
-                                            );
-                                        }}
-                                    >
-                                        {currency}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <a
-                        className="store-preferences__attribution"
-                        dir="ltr"
-                        href="https://www.exchangerate-api.com"
-                        rel="noopener noreferrer"
-                        target="_blank"
-                    >
-                        {translations.preferences.exchange_rate_attribution}
-                    </a>
-                </div>
-            ) : null}
+                                                if (
+                                                    currency === displayCurrency
+                                                ) {
+                                                    return;
+                                                }
+
+                                                setIsOpen(false);
+                                                router.visit(
+                                                    currencyHref(
+                                                        currentUrl,
+                                                        currency,
+                                                    ),
+                                                    {
+                                                        preserveScroll: true,
+                                                        preserveState: true,
+                                                        replace: true,
+                                                    },
+                                                );
+                                            }}
+                                        >
+                                            {currency}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <a
+                            className="store-preferences__attribution"
+                            dir="ltr"
+                            href="https://www.exchangerate-api.com"
+                            rel="noopener noreferrer"
+                            target="_blank"
+                        >
+                            {translations.preferences.exchange_rate_attribution}
+                        </a>
+                    </>
+                )}
+            </Disclosure>
         </div>
     );
 }
