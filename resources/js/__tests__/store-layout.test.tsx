@@ -6,7 +6,7 @@ import {
     screen,
     within,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import StoreLayout from '@/layouts/store-layout';
 import StoreHome from '@/pages/store/home';
@@ -53,6 +53,7 @@ const mockPage = vi.hoisted(() => ({
             currency_selector: 'Choose display currency',
             home_title: 'Home',
             language: 'العربية',
+            language_label: 'Language',
             service_notice: 'Trusted FC 27 services for players worldwide',
             skip_to_content: 'Skip to content',
             store_tools: 'Store tools',
@@ -92,10 +93,31 @@ const mockPage = vi.hoisted(() => ({
 
 const storeShell = mockPage.props.storeShell;
 
+const inertia = vi.hoisted(() => ({ visit: vi.fn() }));
+
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    router: { visit: inertia.visit },
     usePage: () => mockPage,
 }));
+
+/**
+ * The locale lives in the path, so switching language is a document
+ * navigation rather than an Inertia visit. jsdom will not navigate, so the
+ * call is captured instead.
+ */
+function captureNavigation() {
+    const assign = vi.fn();
+
+    Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...window.location, assign },
+    });
+
+    return assign;
+}
+
+beforeEach(() => inertia.visit.mockReset());
 
 const englishUi = mockPage.props.ui;
 const arabicUi = {
@@ -104,6 +126,7 @@ const arabicUi = {
     currency: 'العملة',
     currency_selector: 'اختر عملة العرض',
     language: 'English',
+    language_label: 'اللغة',
     skip_to_content: 'انتقل إلى المحتوى',
     store_tools: 'أدوات المتجر',
 };
@@ -139,20 +162,24 @@ describe('StoreLayout', () => {
             screen.getByRole('link', { name: 'عرب التيميت' }),
         ).toHaveTextContent('عرب التيميت');
 
+        const assign = captureNavigation();
+
         fireEvent.click(
             screen.getByRole('button', { name: 'Display preferences' }),
         );
-        expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
-            'href',
-            '/en?campaign=spring&currency=EUR#offers',
-        );
-        expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
+
+        const language = screen.getByLabelText('اللغة');
+
+        expect(language).toHaveValue('ar');
+        expect(language.querySelector('option[value="en"]')).toHaveAttribute(
             'lang',
             'en',
         );
-        expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute(
-            'dir',
-            'ltr',
+
+        fireEvent.change(language, { target: { value: 'en' } });
+
+        expect(assign).toHaveBeenCalledWith(
+            '/en?campaign=spring&currency=EUR#offers',
         );
     });
 
@@ -172,10 +199,12 @@ describe('StoreLayout', () => {
             </StoreLayout>,
         );
 
+        const assign = captureNavigation();
+
         fireEvent.click(
             screen.getByRole('button', { name: 'Display preferences' }),
         );
-        const languageLink = screen.getByRole('link', { name: 'العربية' });
+        const language = screen.getByLabelText('Language');
 
         const wordmark = screen.getByRole('link', { name: 'Arab UT' });
 
@@ -187,12 +216,16 @@ describe('StoreLayout', () => {
             'store-wordmark__accent',
         );
 
-        expect(languageLink).toHaveAttribute(
-            'href',
+        expect(language.querySelector('option[value="ar"]')).toHaveAttribute(
+            'lang',
+            'ar',
+        );
+
+        fireEvent.change(language, { target: { value: 'ar' } });
+
+        expect(assign).toHaveBeenCalledWith(
             '/?campaign=spring&currency=USD#offers',
         );
-        expect(languageLink).toHaveAttribute('lang', 'ar');
-        expect(languageLink).toHaveAttribute('dir', 'rtl');
     });
 
     it('renders only supplied currencies while preserving unrelated URL state', () => {
@@ -223,29 +256,23 @@ describe('StoreLayout', () => {
             name: 'Display preferences',
         });
 
-        for (const currency of ['USD', 'CAD']) {
-            const currencyLink = within(selector).getByRole('link', {
-                name: currency,
-            });
-
-            expect(currencyLink).toHaveAttribute(
-                'href',
-                `/en?campaign=spring&coupon=SAVE&currency=${currency}#offers`,
-            );
-
-            if (currency === 'USD') {
-                expect(currencyLink).toHaveAttribute('aria-current', 'page');
-            } else {
-                expect(currencyLink).not.toHaveAttribute('aria-current');
-            }
-        }
+        const currency = within(selector).getByLabelText(
+            'Choose display currency',
+        );
 
         expect(
-            within(selector).queryByRole('link', { name: 'SAR' }),
-        ).not.toBeInTheDocument();
-        expect(
-            within(selector).queryByRole('link', { name: 'EUR' }),
-        ).not.toBeInTheDocument();
+            [...currency.querySelectorAll('option')].map(
+                (option) => option.value,
+            ),
+        ).toEqual(['USD', 'CAD']);
+        expect(currency).toHaveValue('USD');
+
+        fireEvent.change(currency, { target: { value: 'CAD' } });
+
+        expect(inertia.visit).toHaveBeenCalledWith(
+            '/en?campaign=spring&coupon=SAVE&currency=CAD#offers',
+            expect.objectContaining({ preserveScroll: true }),
+        );
     });
 
     it('uses a page-specific title without rendering a dead-end service CTA', () => {

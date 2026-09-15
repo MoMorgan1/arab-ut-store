@@ -192,6 +192,8 @@ const mockPage = vi.hoisted(() => ({
             },
             currency_selector: 'اختر العملة',
             language: 'English',
+            language_label: 'اللغة',
+            currency: 'العملة',
             skip_to_content: 'تخطي إلى المحتوى',
             store_tools: 'أدوات المتجر',
             header: {

@@ -56,6 +56,33 @@ function PreferencesIcon() {
     );
 }
 
+function ChevronIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            fill="none"
+            height="16"
+            viewBox="0 0 24 24"
+            width="16"
+        >
+            <path
+                d="m6 9 6 6 6-6"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+            />
+        </svg>
+    );
+}
+
+/** Both options are shown, each in its own language. */
+const STORE_LOCALES: StoreLocale[] = ['ar', 'en'];
+const LANGUAGE_NAMES: Record<StoreLocale, string> = {
+    ar: 'العربية',
+    en: 'English',
+};
+
 export function StorePreferences({
     currentUrl,
     displayCurrencies,
@@ -66,7 +93,6 @@ export function StorePreferences({
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
-    const targetLocale: StoreLocale = locale === 'ar' ? 'en' : 'ar';
     useEffect(() => {
         if (!isOpen) {
             return;
@@ -122,61 +148,90 @@ export function StorePreferences({
             >
                 {() => (
                     <>
-                        <div className="store-preferences__language">
-                            <a
-                                dir={targetLocale === 'ar' ? 'rtl' : 'ltr'}
-                                href={localizedStoreHref(
-                                    currentUrl,
-                                    targetLocale,
-                                )}
-                                lang={targetLocale}
+                        <p className="store-preferences__title">
+                            {translations.header.preferences}
+                        </p>
+                        <div className="store-preferences__group">
+                            <label
+                                className="store-preferences__label"
+                                htmlFor="store-preferences-language"
                             >
-                                {translations.language}
-                            </a>
-                        </div>
-                        <div className="store-preferences__currencies">
-                            <span>{translations.currency_selector}</span>
-                            <ul>
-                                {displayCurrencies.map((currency) => (
-                                    <li key={currency}>
-                                        <a
-                                            aria-current={
-                                                currency === displayCurrency
-                                                    ? 'page'
-                                                    : undefined
-                                            }
-                                            href={currencyHref(
+                                {translations.language_label}
+                            </label>
+                            <span className="store-preferences__select">
+                                <select
+                                    id="store-preferences-language"
+                                    onChange={(event) => {
+                                        const next = event.target
+                                            .value as StoreLocale;
+
+                                        if (next === locale) {
+                                            return;
+                                        }
+
+                                        // The locale lives in the path, so
+                                        // this is a document navigation, not
+                                        // an Inertia visit.
+                                        window.location.assign(
+                                            localizedStoreHref(
                                                 currentUrl,
-                                                currency,
-                                            )}
-                                            onClick={(event) => {
-                                                event.preventDefault();
-
-                                                if (
-                                                    currency === displayCurrency
-                                                ) {
-                                                    return;
-                                                }
-
-                                                setIsOpen(false);
-                                                router.visit(
-                                                    currencyHref(
-                                                        currentUrl,
-                                                        currency,
-                                                    ),
-                                                    {
-                                                        preserveScroll: true,
-                                                        preserveState: true,
-                                                        replace: true,
-                                                    },
-                                                );
-                                            }}
+                                                next,
+                                            ),
+                                        );
+                                    }}
+                                    value={locale}
+                                >
+                                    {STORE_LOCALES.map((code) => (
+                                        <option
+                                            key={code}
+                                            lang={code}
+                                            value={code}
                                         >
+                                            {LANGUAGE_NAMES[code]}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronIcon />
+                            </span>
+                        </div>
+                        <div className="store-preferences__group">
+                            <label
+                                className="store-preferences__label"
+                                htmlFor="store-preferences-currency"
+                            >
+                                {translations.currency}
+                            </label>
+                            <span className="store-preferences__select">
+                                <select
+                                    aria-label={translations.currency_selector}
+                                    id="store-preferences-currency"
+                                    onChange={(event) => {
+                                        const next = event.target.value;
+
+                                        if (next === displayCurrency) {
+                                            return;
+                                        }
+
+                                        setIsOpen(false);
+                                        router.visit(
+                                            currencyHref(currentUrl, next),
+                                            {
+                                                preserveScroll: true,
+                                                preserveState: true,
+                                                replace: true,
+                                            },
+                                        );
+                                    }}
+                                    value={displayCurrency}
+                                >
+                                    {displayCurrencies.map((currency) => (
+                                        <option key={currency} value={currency}>
                                             {currency}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronIcon />
+                            </span>
                         </div>
                         <a
                             className="store-preferences__attribution"

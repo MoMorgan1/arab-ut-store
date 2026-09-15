@@ -25,6 +25,22 @@ vi.mock('@inertiajs/react', () => ({
 
 beforeEach(() => inertia.visit.mockReset());
 
+/**
+ * The locale lives in the path, so switching language is a document
+ * navigation rather than an Inertia visit. jsdom will not navigate, so the
+ * call is captured instead.
+ */
+function captureNavigation() {
+    const assign = vi.fn();
+
+    Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...window.location, assign },
+    });
+
+    return assign;
+}
+
 const shell: StoreShellConfig = {
     homeUrl: '/en',
     coinsUrl: '/en#coins',
@@ -60,6 +76,8 @@ const translations = {
         open_cart: 'Open cart',
     },
     language: 'العربية',
+    language_label: 'Language',
+    currency: 'Currency',
     currency_selector: 'Display currency',
     home_title: 'Home',
     skip_to_content: 'Skip to content',
@@ -222,23 +240,16 @@ describe('StoreHeader', () => {
 
         fireEvent.click(trigger);
 
-        expect(
-            within(
-                screen.getByRole('dialog', {
-                    name: 'Display preferences',
-                }),
-            ).getByRole('link', { name: 'USD' }),
-        ).toHaveAttribute('aria-current', 'page');
+        const dialog = screen.getByRole('dialog', {
+            name: 'Display preferences',
+        });
+        const currency = within(dialog).getByLabelText('Display currency');
 
+        expect(currency).toHaveValue('USD');
         expect(
-            within(
-                screen.getByRole('dialog', {
-                    name: 'Display preferences',
-                }),
-            )
-                .getAllByRole('link')
-                .filter((link) => /^[A-Z]{3}$/.test(link.textContent ?? ''))
-                .map((link) => link.textContent),
+            [...currency.querySelectorAll('option')].map(
+                (option) => option.textContent,
+            ),
         ).toEqual([
             'SAR',
             'AED',
@@ -251,6 +262,15 @@ describe('StoreHeader', () => {
             'GBP',
             'EGP',
         ]);
+
+        const language = within(dialog).getByLabelText('Language');
+
+        expect(language).toHaveValue('en');
+        expect(
+            [...language.querySelectorAll('option')].map(
+                (option) => option.textContent,
+            ),
+        ).toEqual(['العربية', 'English']);
 
         const attribution = within(
             screen.getByRole('dialog', { name: 'Display preferences' }),
@@ -403,29 +423,21 @@ describe('StoreHeader', () => {
         ).not.toHaveAttribute('aria-current');
     });
 
-    it('preserves the current route in currency and language links', () => {
-        renderHeader('/en/privacy?campaign=spring&currency=USD#details');
+    it('keeps the current route when the language dropdown changes', () => {
+        const assign = captureNavigation();
 
+        renderHeader('/en/privacy?campaign=spring&currency=USD#details');
         fireEvent.click(
             screen.getByRole('button', { name: 'Display preferences' }),
         );
-
-        const dialog = screen.getByRole('dialog', {
-            name: 'Display preferences',
+        fireEvent.change(screen.getByLabelText('Language'), {
+            target: { value: 'ar' },
         });
 
-        expect(
-            within(dialog).getByRole('link', { name: 'SAR' }),
-        ).toHaveAttribute(
-            'href',
-            '/en/privacy?campaign=spring&currency=SAR#details',
-        );
-        expect(
-            within(dialog).getByRole('link', { name: 'العربية' }),
-        ).toHaveAttribute(
-            'href',
+        expect(assign).toHaveBeenCalledWith(
             '/privacy?campaign=spring&currency=USD#details',
         );
+        expect(inertia.visit).not.toHaveBeenCalled();
     });
 
     it('changes currency with Inertia while preserving page state and scroll', () => {
@@ -433,7 +445,9 @@ describe('StoreHeader', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Display preferences' }),
         );
-        fireEvent.click(screen.getByRole('link', { name: 'SAR' }));
+        fireEvent.change(screen.getByLabelText('Display currency'), {
+            target: { value: 'SAR' },
+        });
 
         expect(inertia.visit).toHaveBeenCalledWith(
             '/en/privacy?campaign=spring&currency=SAR#details',

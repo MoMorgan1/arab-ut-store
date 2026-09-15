@@ -127,17 +127,13 @@ export const ChatLauncher = React.forwardRef<
             aria-expanded={isOpen}
             aria-haspopup="dialog"
             aria-label={label}
-            className={`group relative flex h-14 w-14 cursor-pointer items-center justify-center overflow-visible rounded-full border border-[var(--arabut-gold)]/45 bg-[color:color-mix(in_srgb,var(--arabut-navy-raised)_88%,transparent)] text-[var(--arabut-gold-bright)] shadow-[0_8px_24px_rgba(0,0,0,0.32)] backdrop-blur-md transition-[transform,background-color,border-color,box-shadow,width,padding] duration-200 [transition-timing-function:cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-0.5 hover:border-[var(--arabut-gold)]/70 hover:bg-[color:color-mix(in_srgb,var(--arabut-navy-active)_92%,transparent)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arabut-focus)] active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none sm:h-[60px] sm:w-[60px] ${
+            /* The surface, its edge and its shadow are the store's glass, in
+               app.css; the utilities here carry only size and behaviour. */
+            className={`chat-launcher-button group relative flex h-14 w-14 cursor-pointer items-center justify-center overflow-visible rounded-full text-[var(--arabut-gold-bright)] transition-[transform,background-color,border-color,box-shadow,width,padding] duration-200 [transition-timing-function:cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arabut-focus)] active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none sm:h-[60px] sm:w-[60px] ${
                 !isOpen ? 'sm:hover:w-auto sm:hover:px-4.5' : ''
             } ${isOpen ? 'chat-launcher-open' : ''}`}
         >
             <span className="sr-only">{label}</span>
-
-            {/* Subtle gold glow ring inside button */}
-            <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_12px_rgba(212,168,67,0.18)]"
-            />
 
             {/* Main Icon (cross-fades between MessageSquare and X) */}
             <span

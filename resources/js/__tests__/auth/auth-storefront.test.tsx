@@ -99,6 +99,8 @@ const storeShell = {
 const storeUi = {
     brand: 'عرب التيميت',
     language: 'English',
+    language_label: 'اللغة',
+    currency: 'العملة',
     currency_selector: 'اختر عملة العرض',
     home_title: 'الرئيسية',
     skip_to_content: 'انتقل إلى المحتوى',
@@ -389,6 +391,8 @@ function setPage(
                   ...storeUi,
                   brand: 'Arab UT',
                   language: 'العربية',
+                  language_label: 'Language',
+                  currency: 'Currency',
                   skip_to_content: 'Skip to content',
                   header: {
                       ...storeUi.header,

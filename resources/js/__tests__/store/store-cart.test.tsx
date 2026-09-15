@@ -293,6 +293,7 @@ const mockPage = vi.hoisted(() => ({
             currency_selector: 'Currency',
             home_title: 'Home',
             language: 'العربية',
+            language_label: 'Language',
             skip_to_content: 'Skip',
             store_tools: 'Tools',
             header: {

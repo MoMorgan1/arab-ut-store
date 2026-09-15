@@ -110,6 +110,8 @@ const mockPage = vi.hoisted(() => ({
             brand: 'Arab UT',
             currency_selector: 'Choose display currency',
             language: 'العربية',
+            language_label: 'Language',
+            currency: 'Currency',
             skip_to_content: 'Skip to content',
             store_tools: 'Store tools',
             header: {

@@ -336,6 +336,8 @@ function pageProps() {
             currency_selector: 'Choose display currency',
             home_title: 'Home',
             language: 'العربية',
+            language_label: 'Language',
+            currency: 'Currency',
             skip_to_content: 'Skip to content',
             store_tools: 'Store tools',
             header: {

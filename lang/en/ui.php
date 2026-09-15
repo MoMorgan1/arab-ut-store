@@ -14,6 +14,7 @@ return [
         'open_cart' => 'Open cart',
     ],
     'language' => 'العربية',
+    'language_label' => 'Language',
     'currency' => 'Currency',
     'currency_selector' => 'Choose display currency',
     'home_title' => 'Home',

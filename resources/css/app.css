@@ -1509,90 +1509,91 @@ html.admin-document {
         inset-block-start: calc(100% + 0.5rem);
         inset-inline-end: 0;
         z-index: 45;
+        display: grid;
+        gap: 0.85rem;
         width: min(23rem, calc(100vw - 1.25rem));
-        border: 1px solid var(--arabut-line);
-        border-radius: 1rem;
-        background:
-            radial-gradient(
-                circle at 20% 0%,
-                rgb(212 168 67 / 14%),
-                transparent 38%
-            ),
-            rgb(11 11 10 / 98%);
-        box-shadow: 0 1.25rem 3rem rgb(0 0 0 / 52%);
-        padding: 0.75rem;
-        backdrop-filter: blur(1.125rem);
+        border-radius: 1.25rem;
+        padding: 0.85rem;
     }
 
-    .store-preferences__language a {
-        display: flex;
-        min-height: 2.75rem;
-        align-items: center;
-        border: 1px solid var(--arabut-line);
-        border-radius: 0.65rem;
-        padding-inline: 0.75rem;
-        color: var(--arabut-ink);
-        font-weight: 700;
-        text-decoration: none;
-    }
-
-    .store-preferences__currencies > span {
-        display: block;
-        margin-block: 0.75rem 0.4rem;
-        color: var(--arabut-muted);
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
-    .store-preferences__currencies ul {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.5rem;
+    /* The panel names itself, then one labelled dropdown per choice. */
+    .store-preferences__title {
         margin: 0;
-        padding: 0;
-        list-style: none;
+        color: var(--arabut-ink);
+        font-size: 0.95rem;
+        font-weight: 900;
     }
 
-    .store-preferences__currencies a {
+    .store-preferences__group {
         display: grid;
-        min-height: 2.75rem;
-        place-items: center;
-        border: 1px solid var(--arabut-line);
-        border-radius: 0.65rem;
-        color: var(--arabut-ink);
+        gap: 0.45rem;
+    }
+
+    .store-preferences__label {
+        margin: 0;
+        color: var(--arabut-muted);
+        font-size: 0.72rem;
         font-weight: 800;
-        text-decoration: none;
+    }
+
+    /* A dropdown over glass: the wrapper draws the surface and the chevron,
+       the native control fills it, so the list itself stays the platform's
+       own (the page is color-scheme: dark, so it opens dark to match). */
+    .store-preferences__select {
+        position: relative;
+        display: grid;
+        align-items: center;
+        border: 1px solid rgb(255 255 255 / 12%);
+        border-radius: 0.8rem;
+        background: rgb(255 255 255 / 5%);
+        color: var(--arabut-ink);
         transition:
             border-color 180ms var(--motion-ease),
-            background 180ms var(--motion-ease),
-            transform 180ms var(--motion-ease);
+            background 180ms var(--motion-ease);
     }
 
-    .store-preferences__language a:hover,
-    .store-preferences__currencies a:hover {
-        border-color: var(--arabut-gold);
-        color: var(--arabut-gold-bright);
+    .store-preferences__select:hover {
+        border-color: rgb(212 168 67 / 45%);
+        background: rgb(255 255 255 / 8%);
     }
 
-    .store-preferences__currencies a[aria-current='page'] {
-        background: var(--arabut-gold);
-        color: var(--arabut-navy-deep);
-        box-shadow: 0 0 1rem rgb(217 171 58 / 22%);
+    .store-preferences__select:has(select:focus-visible) {
+        border-color: var(--arabut-gold-bright);
+        background: rgb(212 168 67 / 12%);
     }
 
-    @media (hover: hover) and (pointer: fine) {
-        .store-preferences__currencies a:hover {
-            transform: translateY(-0.12rem);
-        }
+    .store-preferences__select select {
+        min-height: 2.75rem;
+        width: 100%;
+        border: 0;
+        background: none;
+        padding-inline: 0.85rem 2.35rem;
+        color: inherit;
+        font: inherit;
+        font-weight: 800;
+        appearance: none;
+        cursor: pointer;
+    }
+
+    .store-preferences__select select:focus-visible {
+        outline: none;
+    }
+
+    .store-preferences__select > svg {
+        position: absolute;
+        inset-inline-end: 0.8rem;
+        width: 1rem;
+        height: 1rem;
+        color: var(--arabut-muted);
+        pointer-events: none;
     }
 
     .store-preferences__attribution {
         display: flex;
         min-height: 2.75rem;
-        margin-block-start: 0.75rem;
         align-items: center;
         justify-content: center;
-        border-block-start: 1px solid var(--arabut-line);
+        border-block-start: 1px solid rgb(255 255 255 / 10%);
         padding: 0.65rem 0.25rem 0;
         color: var(--arabut-muted);
         font-size: 0.75rem;
@@ -1643,29 +1644,9 @@ html.admin-document {
         transition: color var(--motion-quick) var(--motion-ease);
     }
 
-    .store-primary-nav a::after {
-        content: '';
-        position: absolute;
-        inset-inline: 0.875rem;
-        inset-block-end: 0;
-        height: 2px;
-        border-radius: 2px 2px 0 0;
-        background: var(--arabut-gold);
-        transform: scaleX(0);
-        transition: transform 180ms var(--motion-ease);
-    }
-
     .store-primary-nav a:hover,
     .store-primary-nav a[aria-current] {
         color: var(--arabut-gold-bright);
-    }
-
-    .store-primary-nav a:hover::after {
-        transform: scaleX(0.5);
-    }
-
-    .store-primary-nav a[aria-current]::after {
-        transform: scaleX(1);
     }
 
     .store-primary-nav img {
@@ -6681,25 +6662,15 @@ html.admin-document {
         white-space: nowrap;
     }
 
-    .store-primary-nav a::after {
-        display: block;
-        inset-inline: 0.75rem;
-        inset-block-end: 0;
-        height: 2px;
-    }
-
     .store-primary-nav a:hover,
     .store-primary-nav a[aria-current] {
         border-color: transparent;
         background: transparent;
     }
 
-    .store-primary-nav a:hover::after {
-        transform: scaleX(0.5);
-    }
-
-    .store-primary-nav a[aria-current]::after {
-        transform: scaleX(1);
+    /* The row is shorter here, so the capsule sits tighter inside it. */
+    .store-primary-nav a::before {
+        inset: 0.25rem 0.15rem;
     }
 
     .store-primary-nav a.store-primary-nav__whatsapp-target {
@@ -16812,6 +16783,235 @@ html.admin-document {
 @media (prefers-reduced-transparency: reduce) {
     .store-hero__badge {
         background: rgb(32 26 20 / 92%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+/* The store's chrome is glass: the three header controls, the chat launcher
+   and the preferences panel take the same lens as the bottom bar and the tab
+   bar — a translucent surface that lifts what is behind it, a bright top
+   edge and the warm/cool flanks a real lens shows. Apple's material is the
+   reference (Mohamed, 2026-09-15). Each has an opaque fallback where the
+   backdrop filter is missing or transparency is turned down. */
+.store-header__icon-link,
+.store-preferences__trigger,
+.chat-launcher-button {
+    border: 1px solid rgb(255 255 255 / 14%);
+    background: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 15%),
+        rgb(255 255 255 / 4%) 48%,
+        rgb(212 168 67 / 13%)
+    );
+    -webkit-backdrop-filter: blur(14px) saturate(175%) brightness(1.12);
+    backdrop-filter: blur(14px) saturate(175%) brightness(1.12);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 45%),
+        inset 0 -1px 0 rgb(212 168 67 / 22%),
+        inset 1px 0 0 rgb(255 214 170 / 11%),
+        inset -1px 0 0 rgb(170 214 255 / 9%),
+        0 6px 18px rgb(0 0 0 / 30%);
+}
+
+.store-header__icon-link,
+.store-preferences__trigger {
+    border-radius: 0.85rem;
+}
+
+/* The header controls sit on the near-black bar, so the lens alone reads as
+   dark glass. The launcher floats over the page, which can be bright
+   artwork, so it carries its own tint under the lens rather than turning
+   white over a coin. */
+.chat-launcher-button {
+    background:
+        linear-gradient(
+            158deg,
+            rgb(255 255 255 / 15%),
+            rgb(255 255 255 / 4%) 48%,
+            rgb(212 168 67 / 13%)
+        ),
+        rgb(20 17 13 / 66%);
+}
+
+.store-header__icon-link:hover,
+.store-preferences__trigger:hover,
+.store-preferences__trigger[aria-expanded='true'],
+.chat-launcher-button:hover {
+    border-color: rgb(212 168 67 / 55%);
+    background: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 22%),
+        rgb(255 255 255 / 7%) 48%,
+        rgb(212 168 67 / 22%)
+    );
+    color: var(--arabut-gold-bright);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 55%),
+        inset 0 -1px 0 rgb(212 168 67 / 30%),
+        inset 1px 0 0 rgb(255 214 170 / 12%),
+        inset -1px 0 0 rgb(170 214 255 / 10%),
+        0 8px 22px rgb(0 0 0 / 36%);
+}
+
+/* A panel floating over the page has the most to refract, so it takes the
+   deepest blur of the three. */
+.store-preferences__dialog {
+    border: 1px solid rgb(255 255 255 / 13%);
+    background:
+        linear-gradient(
+            158deg,
+            rgb(255 255 255 / 13%),
+            rgb(255 255 255 / 4%) 46%,
+            rgb(212 168 67 / 11%)
+        ),
+        rgb(14 11 9 / 88%);
+    -webkit-backdrop-filter: blur(28px) saturate(185%) brightness(1.08);
+    backdrop-filter: blur(28px) saturate(185%) brightness(1.08);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 40%),
+        inset 0 -1px 0 rgb(212 168 67 / 20%),
+        0 1.5rem 3.5rem rgb(0 0 0 / 55%);
+}
+
+@supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+    .store-header__icon-link,
+    .store-preferences__trigger,
+    .chat-launcher-button {
+        background: rgb(32 26 20 / 96%);
+    }
+
+    .store-preferences__dialog {
+        background: rgb(14 12 10 / 98%);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .store-header__icon-link,
+    .store-preferences__trigger,
+    .chat-launcher-button {
+        background: rgb(32 26 20 / 96%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .store-preferences__dialog {
+        background: rgb(14 12 10 / 98%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+/* The navigation bar is glass over the page it scrolls above, and the current
+   section sits in a capsule of the same lens rather than under a hairline.
+   The capsule is a pseudo-element inside each item's own stacking context, so
+   it lies under the label and above the bar. */
+.store-primary-nav {
+    background:
+        linear-gradient(180deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%)),
+        rgb(13 11 8 / 64%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%) brightness(1.06);
+    backdrop-filter: blur(18px) saturate(180%) brightness(1.06);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 12%),
+        inset 0 -1px 0 rgb(212 168 67 / 14%);
+}
+
+.store-primary-nav a {
+    isolation: isolate;
+    transition:
+        color var(--motion-quick) var(--motion-ease),
+        scale var(--motion-quick) var(--motion-ease);
+}
+
+.store-primary-nav a::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0.3rem 0.2rem;
+    border-radius: 999px;
+    background: transparent;
+    transition:
+        background var(--motion-fast) var(--motion-ease),
+        box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.store-primary-nav a:hover::before {
+    background: rgb(255 255 255 / 7%);
+}
+
+.store-primary-nav a[aria-current]::before {
+    background: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 20%),
+        rgb(255 255 255 / 6%) 48%,
+        rgb(212 168 67 / 18%)
+    );
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 45%),
+        inset 0 -1px 0 rgb(212 168 67 / 26%),
+        inset 1px 0 0 rgb(255 214 170 / 11%),
+        inset -1px 0 0 rgb(170 214 255 / 9%),
+        0 4px 14px rgb(0 0 0 / 26%);
+}
+
+.store-primary-nav a:active {
+    scale: 0.97;
+}
+
+.store-primary-nav img,
+.store-primary-nav svg {
+    transition: translate var(--motion-quick) var(--motion-ease);
+}
+
+.store-primary-nav a:hover img,
+.store-primary-nav a:hover svg {
+    translate: 0 -1px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    /* A visit remounts the bar, so the capsule settles onto the section the
+       customer just opened instead of appearing already there. */
+    .store-primary-nav a[aria-current]::before {
+        animation: store-nav-capsule var(--motion-fast) var(--motion-ease)
+            backwards;
+    }
+
+    @keyframes store-nav-capsule {
+        from {
+            opacity: 0;
+            scale: 0.9;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .store-primary-nav a,
+    .store-primary-nav a::before,
+    .store-primary-nav img,
+    .store-primary-nav svg {
+        transition: none;
+        animation: none;
+    }
+
+    .store-primary-nav a:active {
+        scale: 1;
+    }
+}
+
+@supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+    .store-primary-nav {
+        background: rgb(15 13 10 / 98%);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .store-primary-nav {
+        background: rgb(15 13 10 / 98%);
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
     }

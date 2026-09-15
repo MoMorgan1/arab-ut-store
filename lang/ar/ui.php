@@ -14,6 +14,7 @@ return [
         'open_cart' => 'افتح السلة',
     ],
     'language' => 'English',
+    'language_label' => 'اللغة',
     'currency' => 'العملة',
     'currency_selector' => 'اختر عملة العرض',
     'home_title' => 'الرئيسية',
