@@ -569,15 +569,13 @@ test('mobile login keeps credential controls touch sized', async ({ page }) => {
     );
     expect(forgotPasswordHeight).toBeGreaterThanOrEqual(44);
 
-    // The remember-me box stays checkbox-sized; the row it sits in is what the
-    // finger actually hits.
-    const rememberRowHeight = await page
-        .locator('[data-slot="checkbox"]')
-        .evaluate(
-            (element) =>
-                element.parentElement?.getBoundingClientRect().height ?? 0,
-        );
-    expect(rememberRowHeight).toBeGreaterThanOrEqual(44);
+    // Remember-me is gone since 2026-09-15 (the session is always kept); the
+    // method tabs are the other tap targets on the card and stand alone now.
+    await expect(page.locator('[data-slot="checkbox"]')).toHaveCount(0);
+    const phoneTabHeight = await page
+        .getByRole('tab', { name: 'الهاتف' })
+        .evaluate((element) => element.getBoundingClientRect().height);
+    expect(phoneTabHeight).toBeGreaterThanOrEqual(44);
 });
 
 test('mobile home opens and closes chat without overflow', async ({ page }) => {
