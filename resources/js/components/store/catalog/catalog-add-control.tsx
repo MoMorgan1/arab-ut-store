@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { PanelReveal } from '@/components/motion/panel-reveal';
 import { SuccessCheck } from '@/components/motion/success-check';
 import { newAttemptKey } from '@/lib/attempt-key';
 import {
@@ -55,6 +56,9 @@ export function CatalogAddControl({
     const statusRef = useRef<HTMLParagraphElement>(null);
     const pageProps = usePage<StoreBasePageProps>().props;
     const cartVariantIds = pageProps.cartVariantIds ?? [];
+    const [initialInCart] = useState(() =>
+        (pageProps.cartVariantIds ?? []).includes(variantId),
+    );
     const cartUrl = pageProps.storeShell.cartUrl;
     const [addedVariantIds, setAddedVariantIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -80,6 +84,7 @@ export function CatalogAddControl({
     const inCart =
         cartVariantIds.includes(variantId) ||
         addedVariantIds.includes(variantId);
+    const justAdded = !initialInCart && inCart;
 
     const add = async (button: HTMLButtonElement) => {
         setLoading(true);
@@ -154,7 +159,14 @@ export function CatalogAddControl({
     };
 
     if (inCart && !loading && !success) {
-        return (
+        return justAdded ? (
+            <PanelReveal className="store-catalog-add store-catalog-add--in-cart">
+                <button data-state="in-cart" disabled type="button">
+                    {inCartLabel}
+                </button>
+                <a href={cartUrl}>{openCartLabel}</a>
+            </PanelReveal>
+        ) : (
             <div className="store-catalog-add store-catalog-add--in-cart">
                 <button data-state="in-cart" disabled type="button">
                     {inCartLabel}

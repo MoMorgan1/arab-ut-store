@@ -2,6 +2,7 @@ import { Form, Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 import InputError from '@/components/input-error';
+import { PanelReveal } from '@/components/motion/panel-reveal';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PasswordInput from '@/components/password-input';
 import PhoneNumberField from '@/components/phone-number-field';
@@ -294,7 +295,7 @@ export default function Login({
                                     </p>
 
                                     {phoneCodeSent ? (
-                                        <>
+                                        <PanelReveal className="auth-whatsapp-login__code-step">
                                             <p role="status">
                                                 {renderWithNumber(
                                                     authUi.login
@@ -376,7 +377,7 @@ export default function Login({
                                             >
                                                 {authUi.login.phone_change}
                                             </button>
-                                        </>
+                                        </PanelReveal>
                                     ) : (
                                         <Button
                                             type="button"

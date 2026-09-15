@@ -1,5 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 
+import { PanelReveal } from '@/components/motion/panel-reveal';
+
 export default function AccountSectionError({
     actionLabel,
     description,
@@ -12,7 +14,11 @@ export default function AccountSectionError({
     title: string;
 }) {
     return (
-        <section className="account-section-error" role="status">
+        <PanelReveal
+            as="section"
+            className="account-section-error"
+            role="status"
+        >
             <span aria-hidden="true">
                 <AlertTriangle />
             </span>
@@ -23,6 +29,6 @@ export default function AccountSectionError({
                     {actionLabel}
                 </button>
             ) : null}
-        </section>
+        </PanelReveal>
     );
 }

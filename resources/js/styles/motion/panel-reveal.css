@@ -1,0 +1,49 @@
+/* Panel reveal — a conditional block grows into place; what sits below slides, never jumps. */
+:root {
+    --panel-dur: var(--motion-slow);
+    --panel-blur: 2px;
+    --panel-ease: var(--motion-ease);
+}
+
+/* The resting state is unconditional; the entrance is opt-in. */
+.t-panel {
+    display: grid;
+    grid-template-rows: 1fr;
+}
+
+.t-panel > * {
+    min-height: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .t-panel[data-state='in'] {
+        animation: t-panel-grow var(--panel-dur) var(--panel-ease) both;
+    }
+
+    .t-panel[data-state='in'] > * {
+        overflow: hidden;
+        animation: t-panel-rise var(--panel-dur) var(--panel-ease) both;
+    }
+
+    @keyframes t-panel-grow {
+        from {
+            grid-template-rows: 0fr;
+        }
+        to {
+            grid-template-rows: 1fr;
+        }
+    }
+
+    @keyframes t-panel-rise {
+        from {
+            opacity: 0;
+            translate: 0 -50%;
+            filter: blur(var(--panel-blur));
+        }
+        to {
+            opacity: 1;
+            translate: 0 0;
+            filter: blur(0);
+        }
+    }
+}
