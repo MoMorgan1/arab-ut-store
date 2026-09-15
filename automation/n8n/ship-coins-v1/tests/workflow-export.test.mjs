@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-import { CONFIG_KEYS } from '../scripts/build-workflow.mjs';
+import { CONFIG_DEFAULTS, CONFIG_KEYS } from '../scripts/build-workflow.mjs';
 
 const root = new URL('../', import.meta.url);
 
@@ -42,8 +42,11 @@ test('the Config node holds every key as a placeholder and passes the webhook it
     assert.equal(config.type, 'n8n-nodes-base.set');
     assert.deepEqual(
         config.parameters.assignments.assignments.map(({ name, value, type }) => [name, value, type]),
-        CONFIG_KEYS.map(([name]) => [name, `CONFIGURE_${name}`, 'string']),
+        CONFIG_KEYS.map(([name]) => [name, CONFIG_DEFAULTS[name] ?? `CONFIGURE_${name}`, 'string']),
     );
+    // Only the store origin ships filled in; a secret never does.
+    assert.deepEqual(Object.keys(CONFIG_DEFAULTS), ['ARABUT_STORE_URL']);
+    assert.equal(CONFIG_DEFAULTS.ARABUT_STORE_URL, 'https://store.arab-ut.com');
     assert.equal(config.parameters.includeOtherFields, true, 'the webhook headers must reach Verify Request');
     assert.equal(config.parameters.options.includeBinary, true, 'the raw body must reach Verify Request');
     assert.deepEqual(exported.connections.Webhook.main, [[{ node: 'Config', type: 'main', index: 0 }]]);
@@ -151,6 +154,10 @@ test('the placement report goes to the store signed, raw, and never as an unhand
     const headers = Object.fromEntries(report.parameters.headerParameters.parameters.map(({ name, value }) => [name, value]));
 
     assert.match(report.parameters.url, /\/api\/automation\/v1\/fulfillment\/placements'/);
+    // A placeholder left in the Config node must fall back to the real store,
+    // never be used as an origin (2026-09-15: a placed shipment went unreported).
+    assert.match(report.parameters.url, /startsWith\('https:\/\/'\)/);
+    assert.doesNotMatch(report.parameters.url, /ARABUT_STORE_URL \|\| 'https/);
     assert.equal(report.parameters.contentType, 'raw');
     assert.equal(report.parameters.body, '={{ $json.rawBody }}');
     assert.equal(headers['X-ArabUT-Key'], "={{ $('Config').first().json.N8N_FULFILLMENT_KEY }}");

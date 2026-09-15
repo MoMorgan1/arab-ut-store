@@ -99,8 +99,14 @@ export const CONFIG_KEYS = [
     ['FFT_API_USER', 'FuTTransfer API user'],
     ['FFT_API_KEY', 'FuTTransfer API key'],
     ['UTT_API_KEY', 'UT Auto Transfer API key'],
-    ['ARABUT_STORE_URL', 'optional - leave the placeholder to use https://store.arab-ut.com'],
+    ['ARABUT_STORE_URL', 'the store origin - ships filled in, change only for a staging store'],
 ];
+
+// A value that ships filled in. Everything else is a CONFIGURE_ placeholder,
+// and a placeholder is never a value: on 2026-09-15 the placeholder store URL
+// was read as a real origin, the report went to CONFIGURE_ARABUT_STORE_URL,
+// and a shipment already placed at the supplier went unreported.
+export const CONFIG_DEFAULTS = { ARABUT_STORE_URL: 'https://store.arab-ut.com' };
 
 function configNode(position) {
     return {
@@ -109,7 +115,7 @@ function configNode(position) {
                 assignments: CONFIG_KEYS.map(([name]) => ({
                     id: `config-${name.toLowerCase().replace(/_/g, '-')}`,
                     name,
-                    value: `CONFIGURE_${name}`,
+                    value: CONFIG_DEFAULTS[name] ?? `CONFIGURE_${name}`,
                     type: 'string',
                 })),
             },
@@ -303,7 +309,7 @@ const nodes = [
     {
         parameters: {
             method: 'POST',
-            url: `={{ (${C}.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}`,
+            url: `={{ ((${C}.ARABUT_STORE_URL || '').startsWith('https://') ? ${C}.ARABUT_STORE_URL : 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}`,
             sendHeaders: true,
             headerParameters: {
                 parameters: [

@@ -70,7 +70,7 @@
             {
               "id": "config-arabut-store-url",
               "name": "ARABUT_STORE_URL",
-              "value": "CONFIGURE_ARABUT_STORE_URL",
+              "value": "https://store.arab-ut.com",
               "type": "string"
             }
           ]
@@ -88,7 +88,7 @@
         400,
         400
       ],
-      "notes": "Paste the real values here after import - N8N_ORDER_PAID_KEY: the store's publisher identity, compared with X-ArabUT-Key; N8N_ORDER_PAID_SECRET: HMAC secret of the incoming request, 32+ characters, same value as on the store; N8N_FULFILLMENT_KEY: X-ArabUT-Key the store expects on the placement report; N8N_FULFILLMENT_SECRET: HMAC secret of the placement report, 32+ characters, same value as on the store; FFT_API_USER: FuTTransfer API user; FFT_API_KEY: FuTTransfer API key; UTT_API_KEY: UT Auto Transfer API key; ARABUT_STORE_URL: optional - leave the placeholder to use https://store.arab-ut.com. Keep \"Include Other Input Fields\" and \"Include Binary\" on."
+      "notes": "Paste the real values here after import - N8N_ORDER_PAID_KEY: the store's publisher identity, compared with X-ArabUT-Key; N8N_ORDER_PAID_SECRET: HMAC secret of the incoming request, 32+ characters, same value as on the store; N8N_FULFILLMENT_KEY: X-ArabUT-Key the store expects on the placement report; N8N_FULFILLMENT_SECRET: HMAC secret of the placement report, 32+ characters, same value as on the store; FFT_API_USER: FuTTransfer API user; FFT_API_KEY: FuTTransfer API key; UTT_API_KEY: UT Auto Transfer API key; ARABUT_STORE_URL: the store origin - ships filled in, change only for a staging store. Keep \"Include Other Input Fields\" and \"Include Binary\" on."
     },
     {
       "parameters": {
@@ -633,7 +633,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($('Config').first().json.ARABUT_STORE_URL || 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
+        "url": "={{ (($('Config').first().json.ARABUT_STORE_URL || '').startsWith('https://') ? $('Config').first().json.ARABUT_STORE_URL : 'https://store.arab-ut.com') + '/api/automation/v1/fulfillment/placements' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
