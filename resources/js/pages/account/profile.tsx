@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 
 import AppIcon from '@/components/account/app-icon';
 import InputError from '@/components/input-error';
+import { SuccessCheck } from '@/components/motion/success-check';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
 import { useResendCountdown } from '@/hooks/use-resend-countdown';
@@ -834,6 +835,7 @@ export default function AccountProfile() {
                                     className="account-profile-success"
                                     role="status"
                                 >
+                                    <SuccessCheck variant="circle" />
                                     {props.accountUi.security.password_changed}
                                 </p>
                             ) : null}
@@ -976,6 +978,7 @@ export default function AccountProfile() {
                                 className="account-profile-success account-profile-success--inset"
                                 role="status"
                             >
+                                <SuccessCheck variant="circle" />
                                 {props.accountUi.security.reset_link_sent}
                             </p>
                         ) : null}

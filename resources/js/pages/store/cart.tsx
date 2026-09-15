@@ -1,7 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import {
     ArrowUpRight,
-    CheckCircle2,
     ChevronDown,
     CreditCard,
     Pencil,
@@ -12,6 +11,8 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import { PopNumber } from '@/components/motion/pop-number';
+import { SuccessCheck } from '@/components/motion/success-check';
 import { SwapText } from '@/components/motion/swap-text';
 import OneTimeCodeField from '@/components/one-time-code-field';
 import PhoneNumberField from '@/components/phone-number-field';
@@ -655,7 +656,9 @@ function CheckoutSummary({
             <div className="store-cart-checkout__total">
                 <span>{translations.order_total}</span>
                 <strong>
-                    {formatMinorUnits(payableHalalah, 'SAR', locale)}
+                    <PopNumber
+                        value={formatMinorUnits(payableHalalah, 'SAR', locale)}
+                    />
                 </strong>
             </div>
             <p className="store-cart-checkout__policies">
@@ -716,11 +719,13 @@ function CheckoutSummary({
                                 </del>
                                 <span>{translations.confirm_order_new}</span>
                                 <strong>
-                                    {formatMinorUnits(
-                                        repricing.orderTotalHalalah,
-                                        'SAR',
-                                        locale,
-                                    )}
+                                    <PopNumber
+                                        value={formatMinorUnits(
+                                            repricing.orderTotalHalalah,
+                                            'SAR',
+                                            locale,
+                                        )}
+                                    />
                                 </strong>
                             </>
                         ) : null}
@@ -734,11 +739,13 @@ function CheckoutSummary({
                         </del>
                         <span>{translations.confirm_total_new}</span>
                         <strong>
-                            {formatMinorUnits(
-                                repricing.payableHalalah,
-                                'SAR',
-                                locale,
-                            )}
+                            <PopNumber
+                                value={formatMinorUnits(
+                                    repricing.payableHalalah,
+                                    'SAR',
+                                    locale,
+                                )}
+                            />
                         </strong>
                     </div>
                     {repricing.couponRemoved ? (
@@ -831,7 +838,9 @@ function CartDock({
                     {translations.order_total}
                 </span>
                 <strong className="store-cart-dock__amount">
-                    {formatMinorUnits(payableHalalah, 'SAR', locale)}
+                    <PopNumber
+                        value={formatMinorUnits(payableHalalah, 'SAR', locale)}
+                    />
                 </strong>
             </div>
             {!authenticated ? (
@@ -1249,7 +1258,7 @@ function CouponField({
         return (
             <div className="store-cart-coupon store-cart-coupon--applied">
                 <p className="store-cart-coupon__status" role="status">
-                    <CheckCircle2 aria-hidden="true" />
+                    <SuccessCheck variant="circle" />
                     <span>
                         {translations.coupon_applied}
                         {' — '}
@@ -1979,7 +1988,10 @@ function ManualCredentialState({
                     </>
                 )}
                 {saveState === 'saved' ? (
-                    <p role="status">{translations.details_saved}</p>
+                    <p role="status">
+                        <SuccessCheck variant="circle" />
+                        {translations.details_saved}
+                    </p>
                 ) : null}
                 {saveState === 'failed' ? (
                     <p role="alert">{translations.details_save_error}</p>
@@ -2755,7 +2767,10 @@ function CredentialState({
                     </>
                 )}
                 {saveState === 'saved' ? (
-                    <p role="status">{translations.credentials_saved}</p>
+                    <p role="status">
+                        <SuccessCheck variant="circle" />
+                        {translations.credentials_saved}
+                    </p>
                 ) : null}
                 {saveState === 'failed' ? (
                     <p role="alert">{translations.credentials_save_error}</p>

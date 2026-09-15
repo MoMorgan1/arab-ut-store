@@ -9,6 +9,7 @@ import { ManualSection } from '@/components/configurator/manual-services/section
 import { SelectionCard } from '@/components/configurator/manual-services/selection-card';
 import { ManualServicePanel } from '@/components/configurator/manual-services/service-panel';
 import { ServiceSlider } from '@/components/configurator/manual-services/service-slider';
+import { PopNumber } from '@/components/motion/pop-number';
 import { newAttemptKey } from '@/lib/attempt-key';
 import {
     announceCartAddition,
@@ -545,7 +546,7 @@ export function SbcProductConfigurator({
                                     >
                                         <span>{optionName}</span>
                                         <span className="sbc-platform-price">
-                                            {priceText}
+                                            <PopNumber value={priceText} />
                                         </span>
                                     </SelectionCard>
                                 );

@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 
+import { PopNumber } from '@/components/motion/pop-number';
 import { SwapText } from '@/components/motion/swap-text';
 
 export function ServiceSlider({
@@ -45,9 +46,8 @@ export function ServiceSlider({
                             <strong
                                 aria-live="polite"
                                 className="manual-service-slider__price manual-service-slider__value"
-                                key={`price-${selectedValue}-${price}`}
                             >
-                                {price}
+                                <PopNumber value={price} />
                             </strong>
                         )}
                     </div>

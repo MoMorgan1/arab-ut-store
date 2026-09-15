@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
 import { useErrorShake } from '@/components/motion/error-shake';
+import { PopNumber } from '@/components/motion/pop-number';
+import { SuccessCheck } from '@/components/motion/success-check';
 import { SwapText } from '@/components/motion/swap-text';
 import { formatMinorUnits } from '@/lib/money';
 import type {
@@ -187,7 +189,7 @@ export function ManualServicePanel({
                         aria-live="polite"
                         className="manual-service-panel__total-amount"
                     >
-                        {formattedPrice}
+                        <PopNumber as="span" value={formattedPrice} />
                     </strong>
                 </div>
 
@@ -208,6 +210,7 @@ export function ManualServicePanel({
                     }
                     type={showInCart ? 'button' : 'submit'}
                 >
+                    {status === 'success' ? <SuccessCheck /> : null}
                     <SwapText value={label} />
                 </button>
                 {showInCart && openCartLabel !== undefined ? (
@@ -255,7 +258,7 @@ export function ManualServicePanel({
                         {translations.review_total}
                     </span>
                     <strong className="manual-service-dock__amount">
-                        {formattedPrice}
+                        <PopNumber as="span" value={formattedPrice} />
                     </strong>
                 </div>
                 <button
@@ -276,6 +279,7 @@ export function ManualServicePanel({
                     tabIndex={dockVisible ? undefined : -1}
                     type={showInCart ? 'button' : 'submit'}
                 >
+                    {status === 'success' ? <SuccessCheck /> : null}
                     <SwapText value={label} />
                 </button>
                 {showInCart && openCartLabel !== undefined ? (

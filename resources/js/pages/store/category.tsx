@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { PopNumber } from '@/components/motion/pop-number';
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { CatalogSkeletonGrid } from '@/components/store/catalog/catalog-skeleton-grid';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
@@ -19,11 +20,77 @@ import type {
     StoreCategoryPageProps,
 } from '@/types/store-content';
 
+function parseDurationMs(val: string): number {
+    const trimmed = val.trim();
+
+    if (!trimmed) {
+        return 0;
+    }
+
+    if (trimmed.endsWith('ms')) {
+        const ms = Number.parseFloat(trimmed);
+
+        return Number.isFinite(ms) ? ms : 0;
+    }
+
+    if (trimmed.endsWith('s')) {
+        const s = Number.parseFloat(trimmed);
+
+        return Number.isFinite(s) ? s * 1000 : 0;
+    }
+
+    const num = Number.parseFloat(trimmed);
+
+    return Number.isFinite(num) ? num : 0;
+}
+
+function getCssDurationMs(prop: string): number {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return 0;
+    }
+
+    const rootStyle = window.getComputedStyle(document.documentElement);
+    let val = rootStyle.getPropertyValue(prop).trim();
+
+    while (val.startsWith('var(') && val.endsWith(')')) {
+        const inner = val.slice(4, -1).split(',')[0].trim();
+        val = rootStyle.getPropertyValue(inner).trim();
+    }
+
+    return parseDurationMs(val);
+}
+
+// A filter, sort or page visit remounts this page (the visits do not preserve
+// state), so the fact that a skeleton was on screen has to outlive the
+// instance that showed it. The timer that puts the skeleton up sets the first
+// flag; whichever instance renders the cards next consumes it, and a finish on
+// the old instance hands the reveal to the next mount through the second.
+let skeletonShown = false;
+let revealAfterMount = false;
+
+function motionAllowed(): boolean {
+    return !(
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+}
+
+function takeRevealOnMount(): boolean {
+    const reveal = skeletonShown || revealAfterMount;
+
+    skeletonShown = false;
+    revealAfterMount = false;
+
+    return reveal && motionAllowed();
+}
+
 export default function StoreCategory() {
     const page = usePage<StoreCategoryPageProps>();
     const props = page.props;
     const [query, setQuery] = useState(props.catalog.query);
     const [pending, setPending] = useState(false);
+    const [revealing, setRevealing] = useState(takeRevealOnMount);
     const pendingTimer = useRef<number | null>(null);
     const isSbc = props.catalog.service === 'sbc';
 
@@ -37,6 +104,58 @@ export default function StoreCategory() {
         [],
     );
 
+    useEffect(() => {
+        if (!revealing) {
+            return;
+        }
+
+        const grid = document.getElementById('store-catalog-products');
+        const cards = grid
+            ? grid.querySelectorAll<HTMLElement>('.t-reveal-item')
+            : [];
+        const lastCard = cards.length > 0 ? cards[cards.length - 1] : null;
+
+        let timeoutId: number | null = null;
+
+        const stopRevealing = () => {
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+
+            revealAfterMount = false;
+            setRevealing(false);
+        };
+
+        if (lastCard) {
+            lastCard.addEventListener('animationend', stopRevealing, {
+                once: true,
+            });
+        }
+
+        const durMs =
+            getCssDurationMs('--reveal-dur') ||
+            getCssDurationMs('--motion-slow');
+        const staggerMs =
+            getCssDurationMs('--reveal-stagger') ||
+            getCssDurationMs('--motion-stagger');
+        const lastIndex = Math.min(Math.max(0, cards.length - 1), 7);
+        const totalMs = durMs + staggerMs * lastIndex;
+
+        timeoutId = window.setTimeout(stopRevealing, totalMs);
+
+        return () => {
+            if (lastCard) {
+                lastCard.removeEventListener('animationend', stopRevealing);
+            }
+
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+        };
+    }, [revealing]);
+
     // The skeleton appears only when the reload is slow enough to notice:
     // fast responses never flicker.
     const trackPending = () => ({
@@ -47,6 +166,7 @@ export default function StoreCategory() {
 
             pendingTimer.current = window.setTimeout(() => {
                 pendingTimer.current = null;
+                skeletonShown = true;
                 setPending(true);
             }, 150);
         },
@@ -57,6 +177,15 @@ export default function StoreCategory() {
             }
 
             setPending(false);
+
+            // The reveal only follows a skeleton the customer actually saw.
+            if (skeletonShown && motionAllowed()) {
+                skeletonShown = false;
+                revealAfterMount = true;
+                setRevealing(true);
+            }
+
+            skeletonShown = false;
         },
     });
     const pageTitle =
@@ -253,13 +382,15 @@ export default function StoreCategory() {
                         {pending ? (
                             <CatalogSkeletonGrid count={skeletonCount} />
                         ) : (
-                            props.catalog.products.map((product) => (
+                            props.catalog.products.map((product, index) => (
                                 <CatalogCard
                                     addUrl={props.catalogCartUrl}
                                     isSbc={isSbc}
                                     key={product.id}
                                     locale={props.locale}
                                     product={product}
+                                    revealIndex={Math.min(index, 7)}
+                                    revealing={revealing}
                                     translations={props.catalogPage}
                                 />
                             ))
@@ -281,17 +412,21 @@ export default function StoreCategory() {
     );
 }
 
-function CatalogCard({
+export function CatalogCard({
     addUrl,
     isSbc,
     locale,
     product,
+    revealIndex,
+    revealing,
     translations,
 }: {
     addUrl: string;
     isSbc: boolean;
     locale: 'ar' | 'en';
     product: CatalogProduct;
+    revealIndex?: number;
+    revealing?: boolean;
     translations: StoreCategoryPageProps['catalogPage'];
 }) {
     const [variantId, setVariantId] = useState(product.variants[0]?.id ?? '');
@@ -299,8 +434,15 @@ function CatalogCard({
         (variant) => variant.id === variantId,
     );
 
+    const cappedIndex =
+        revealing && revealIndex !== undefined
+            ? Math.min(Math.max(0, revealIndex), 7)
+            : undefined;
+
     if (isSbc) {
         return (
+            // The SBC card already fades in with a staggered wave on mount
+            // (`store-sbc-card-reveal` in app.css), so it needs no reveal props.
             <SbcCatalogCard
                 locale={locale}
                 product={product}
@@ -333,7 +475,17 @@ function CatalogCard({
     );
 
     return (
-        <li className={['store-catalog-card'].filter(Boolean).join(' ')}>
+        <li
+            className={['store-catalog-card', 't-reveal-item']
+                .filter(Boolean)
+                .join(' ')}
+            data-revealing={revealing ? 'true' : undefined}
+            style={
+                cappedIndex !== undefined
+                    ? ({ '--reveal-index': cappedIndex } as React.CSSProperties)
+                    : undefined
+            }
+        >
             {productArtwork}
             <div className="store-catalog-card__body">
                 <h2>{product.name}</h2>
@@ -344,13 +496,18 @@ function CatalogCard({
                     </span>
                 ) : null}
                 <strong>
-                    {selected?.price === null || selected?.price === undefined
-                        ? translations.unavailable_price
-                        : formatMinorUnits(
-                              selected.price.amountMinor,
-                              selected.price.currency,
-                              locale,
-                          )}
+                    <PopNumber
+                        value={
+                            selected?.price === null ||
+                            selected?.price === undefined
+                                ? translations.unavailable_price
+                                : formatMinorUnits(
+                                      selected.price.amountMinor,
+                                      selected.price.currency,
+                                      locale,
+                                  )
+                        }
+                    />
                 </strong>
                 {selected?.compareAtPrice ? (
                     <del className="store-price-compare">

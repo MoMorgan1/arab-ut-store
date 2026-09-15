@@ -12,6 +12,24 @@ import { sliderStops } from '@/lib/coins-quantity';
 
 import StoreHome from '@/pages/store/home';
 
+function matchesText(pattern: string) {
+    return (_content: string, element: Element | null) => {
+        if (!element) {
+            return false;
+        }
+
+        const text = (element.textContent ?? '').replace(/\u00a0/g, ' ');
+        const has = text.includes(pattern);
+
+        return (
+            has &&
+            !Array.from(element.children).some((c) =>
+                (c.textContent ?? '').replace(/\u00a0/g, ' ').includes(pattern),
+            )
+        );
+    };
+}
+
 const mockPage = vi.hoisted(() => ({
     props: {} as Record<string, unknown>,
     url: '/en',
@@ -381,15 +399,11 @@ describe('Coins homepage', () => {
         render(<StoreHome />);
         selectPlatform('PC');
 
-        expect(
-            screen.getByText((text) => text.includes('500.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('500.00'))).toBeVisible();
 
         fireEvent.click(screen.getByRole('button', { name: '500K' }));
 
-        expect(
-            screen.getByText((text) => text.includes('5,000.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('5,000.00'))).toBeVisible();
         expect(
             screen.queryByText(store.quote.refreshing),
         ).not.toBeInTheDocument();
@@ -654,9 +668,7 @@ describe('Coins homepage', () => {
 
         expect(screen.getByText('Enter the amount you want.')).toBeVisible();
 
-        expect(
-            screen.getByText((text) => text.includes('2,500.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('2,500.00'))).toBeVisible();
         const quoteResult = document.querySelector(
             '.coins-quote-panel__result',
         );
@@ -1076,9 +1088,7 @@ describe('Coins homepage', () => {
             target: { value: sliderValue(1000000) },
         });
 
-        expect(
-            screen.getByText((text) => text.includes('10,000.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('10,000.00'))).toBeVisible();
         expect(fetchMock).not.toHaveBeenCalled();
         expect(
             screen.queryByText(store.quote.refreshing),
@@ -1240,12 +1250,10 @@ describe('Coins homepage', () => {
         render(<StoreHome />);
         selectPlatform('PC');
 
-        expect(
-            screen.getByText((text) => text.includes('500.00')),
-        ).toHaveTextContent('EUR');
-        expect(
-            screen.queryByText((text) => text.includes('SAR')),
-        ).not.toBeInTheDocument();
+        expect(screen.getByText(matchesText('500.00'))).toHaveTextContent(
+            'EUR',
+        );
+        expect(screen.queryByText(matchesText('SAR'))).not.toBeInTheDocument();
     });
 
     it('offers Fast for normal delivery at 1.5M and returns to delivery with Fast selected', () => {
@@ -1362,11 +1370,9 @@ describe('Coins homepage', () => {
                 fireEvent.click(screen.getByRole('button', { name: '+50K' }));
             }
 
+            expect(screen.getByText(matchesText('1,000.00'))).toBeVisible();
             expect(
-                screen.getByText((text) => text.includes('1,000.00')),
-            ).toBeVisible();
-            expect(
-                screen.queryByText((text) => text.includes('500.00')),
+                screen.queryByText(matchesText('500.00')),
             ).not.toBeInTheDocument();
             expect(
                 screen.queryByText(store.quote.refreshing),
@@ -1385,9 +1391,7 @@ describe('Coins homepage', () => {
         fireEvent.focus(amountInput);
         fireEvent.change(amountInput, { target: { value: '55555' } });
 
-        expect(
-            screen.getByText((text) => text.includes('500.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('500.00'))).toBeVisible();
         // The continue button stays rendered but disabled until the edited
         // amount lands back on a priced stop.
         expect(
@@ -1401,7 +1405,7 @@ describe('Coins homepage', () => {
         // the stale total has to go rather than be shown against a new amount.
         expect(amountInput).toHaveValue('55,000');
         expect(
-            screen.queryByText((text) => text.includes('600.00')),
+            screen.queryByText(matchesText('600.00')),
         ).not.toBeInTheDocument();
     });
 
@@ -1415,9 +1419,7 @@ describe('Coins homepage', () => {
         };
         render(<StoreHome />);
         selectPlatform('PC');
-        expect(
-            screen.getByText((text) => text.includes('500.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('500.00'))).toBeVisible();
 
         fireEvent.click(
             screen.getByRole('button', { name: store.actions.back }),
@@ -1432,7 +1434,7 @@ describe('Coins homepage', () => {
             store.quote.unavailable,
         );
         expect(
-            screen.queryByText((text) => text.includes('500.00')),
+            screen.queryByText(matchesText('500.00')),
         ).not.toBeInTheDocument();
     });
 
@@ -1481,9 +1483,7 @@ describe('Coins homepage', () => {
             screen.getByRole('button', { name: store.actions.continue }),
         );
 
-        expect(
-            screen.getByText((text) => text.includes('1,500.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('1,500.00'))).toBeVisible();
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -1506,9 +1506,7 @@ describe('Coins homepage', () => {
             }),
         ).toHaveAttribute('max', '2000000');
 
-        expect(
-            screen.getByText((text) => text.includes('500.00')),
-        ).toBeVisible();
+        expect(screen.getByText(matchesText('500.00'))).toBeVisible();
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -1626,7 +1624,7 @@ describe('Coins homepage', () => {
             store.quote.unavailable,
         );
         expect(
-            screen.queryByText((text) => text.includes('500.00')),
+            screen.queryByText(matchesText('500.00')),
         ).not.toBeInTheDocument();
     });
 });
