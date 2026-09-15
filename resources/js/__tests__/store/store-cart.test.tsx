@@ -706,6 +706,50 @@ it('opens the existing order when an idempotent checkout retry is already paid',
     expect(navigateToHostedPayment).not.toHaveBeenCalled();
 });
 
+it('opens the new order when a coupon leaves nothing to pay', async () => {
+    mockPage.props.auth.user = { id: 1, name: 'Buyer' };
+    mockPage.props.cart.canCheckout = true;
+    mockPage.props.cartPage.checkout.phoneVerified = true;
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL) => {
+            if (String(input).endsWith('/credentials')) {
+                return Promise.resolve(new Response('{}', { status: 404 }));
+            }
+
+            // What the server answers for a first, zero-payable checkout: a
+            // fresh order (201) addressed by its number, already paid.
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        data: {
+                            orderUrl: '/en/orders/AUT-1029',
+                            paymentUrl: null,
+                            status: 'paid',
+                        },
+                    }),
+                    { status: 201 },
+                ),
+            );
+        }),
+    );
+
+    render(<StoreCart />);
+    fireEvent.click(
+        screen.getByRole('button', {
+            name: 'Continue to secure payment',
+        }),
+    );
+
+    await waitFor(() =>
+        expect(navigateToOrder).toHaveBeenCalledWith('/en/orders/AUT-1029'),
+    );
+    expect(navigateToHostedPayment).not.toHaveBeenCalled();
+    expect(
+        screen.queryByText('Payment could not be opened.'),
+    ).not.toBeInTheDocument();
+});
+
 it('verifies an authenticated checkout phone through Whapi before enabling payment', async () => {
     mockPage.props.auth.user = { id: 1, name: 'Buyer' };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {

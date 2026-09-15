@@ -85,6 +85,96 @@ it('accepts an idempotent paid retry and directs the customer to the safe order 
     });
 });
 
+it('lands a zero-payable checkout on the order page it was given, addressed by order number', async () => {
+    // Production 2026-09-15: a 100% coupon left nothing to pay, the server
+    // placed AUT-1029 and answered 201 with no payment URL, and the client
+    // refused the order URL because it only knew the internal ULID shape.
+    for (const orderUrl of [
+        '/orders/AUT-1029',
+        '/en/orders/AUT-1029',
+        '/orders/AUT-7KX2RQ',
+        '/orders/UT-277538068',
+        '/orders/277538068',
+    ]) {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        data: { orderUrl, paymentUrl: null, status: 'paid' },
+                    }),
+                    {
+                        status: 201,
+                        headers: { 'Content-Type': 'application/json' },
+                    },
+                ),
+            ),
+        );
+
+        await expect(
+            startPaylinkCheckout(
+                '/checkout/paylink',
+                'checkout-browser-key',
+                0,
+                12_500,
+            ),
+        ).resolves.toEqual({ orderUrl, paymentUrl: null, status: 'paid' });
+    }
+
+    // A segment the store never issues is still not an order URL of ours.
+    vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    data: {
+                        orderUrl: '/orders/AUT-1029/../../admin',
+                        paymentUrl: null,
+                        status: 'paid',
+                    },
+                }),
+                { status: 201 },
+            ),
+        ),
+    );
+    await expect(
+        startPaylinkCheckout(
+            '/checkout/paylink',
+            'checkout-browser-key',
+            0,
+            12_500,
+        ),
+    ).rejects.toMatchObject({ code: 'unsafe_response', conclusive: true });
+});
+
+it('resumes a pending order addressed by its order number', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+            JSON.stringify({
+                data: {
+                    orderUrl: '/orders/AUT-1029',
+                    paymentUrl:
+                        'https://payment.paylink.sa/pay/info/1710000000099',
+                    status: 'pending',
+                },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+        resumePaylinkCheckout('/orders/AUT-1029/payments/paylink'),
+    ).resolves.toMatchObject({
+        orderUrl: '/orders/AUT-1029',
+        status: 'pending',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+        new URL('/orders/AUT-1029/payments/paylink', window.location.origin),
+        expect.anything(),
+    );
+});
+
 it('resumes a pending order without inventing a new idempotency key', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
         new Response(
