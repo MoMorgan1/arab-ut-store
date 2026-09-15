@@ -512,8 +512,8 @@ html.admin-document {
             rgb(255 255 255 / 4%) 46%,
             rgb(var(--bar-rim) / 10%)
         );
-        -webkit-backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
-        backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+        -webkit-backdrop-filter: var(--glass-lens-filter);
+        backdrop-filter: var(--glass-lens-filter);
         box-shadow:
             inset 0 1px 0 rgb(255 255 255 / 42%),
             inset 0 -1px 0 rgb(var(--bar-rim) / 20%),
@@ -1416,7 +1416,7 @@ html.admin-document {
         border-block-end: 1px solid var(--arabut-line);
         background: rgb(13 11 8 / 96%);
         box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 22%);
-        backdrop-filter: blur(1rem);
+        backdrop-filter: var(--glass-layer-filter);
     }
 
     .store-header__top {
@@ -1965,7 +1965,7 @@ html.admin-document {
     .store-hero__cta--secondary {
         background: rgb(23 18 11 / 78%);
         color: var(--arabut-ink);
-        backdrop-filter: blur(0.5rem);
+        backdrop-filter: var(--glass-control-filter);
     }
 
     .store-hero__cta:hover {
@@ -2145,7 +2145,7 @@ html.admin-document {
         box-shadow:
             0 1.5rem 4.5rem rgb(0 0 0 / 38%),
             inset 0 1px 0 rgb(255 255 255 / 7%);
-        backdrop-filter: blur(1rem) saturate(1.1);
+        backdrop-filter: var(--glass-surface-filter);
     }
 
     .coins-progress {
@@ -3182,6 +3182,8 @@ html.admin-document {
         justify-content: center;
         padding: 1rem;
         background: rgb(0 0 0 / 75%);
+        /* A scrim, not glass: it dims the page so a modal reads, and it has
+           no material of its own to put on the scale. */
         backdrop-filter: blur(4px);
         overscroll-behavior: contain;
     }
@@ -3621,8 +3623,8 @@ html.admin-document {
                 transparent 46%
             ),
             linear-gradient(180deg, rgb(24 21 16 / 98%), rgb(12 11 9 / 98%));
-        -webkit-backdrop-filter: blur(0.75rem);
-        backdrop-filter: blur(0.75rem);
+        -webkit-backdrop-filter: var(--glass-layer-filter);
+        backdrop-filter: var(--glass-layer-filter);
         padding: 0.9rem 0.9rem 1rem;
         box-shadow:
             0 1.5rem 4.5rem rgb(0 0 0 / 55%),
@@ -4643,8 +4645,8 @@ html.admin-document {
         box-shadow:
             0 12px 36px rgb(0 0 0 / 55%),
             inset 0 1px 0 rgb(255 255 255 / 6%);
-        -webkit-backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: var(--glass-layer-filter);
+        backdrop-filter: var(--glass-layer-filter);
         padding: 0.65rem 0.65rem 0.85rem;
         padding-inline-start: 1rem;
     }
@@ -8397,8 +8399,8 @@ html.admin-document {
         border: 1px solid rgb(212 168 67 / 18%);
         border-radius: 1rem;
         background: rgb(20 17 14 / 88%);
-        -webkit-backdrop-filter: blur(18px);
-        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: var(--glass-layer-filter);
+        backdrop-filter: var(--glass-layer-filter);
         padding: 0.6rem;
         /* The chat launcher is fixed to the physical right in both
            directions, so the gap is a physical one too. */
@@ -9870,8 +9872,8 @@ html.admin-document {
         box-shadow:
             0 12px 36px rgb(0 0 0 / 55%),
             var(--manual-glass-highlight);
-        -webkit-backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: var(--glass-layer-filter);
+        backdrop-filter: var(--glass-layer-filter);
         transform: translateY(calc(100% + 1.5rem));
         opacity: 0;
         visibility: hidden;
@@ -10577,7 +10579,7 @@ html.admin-document {
     box-shadow:
         inset 0 1px 0 rgb(255 255 255 / 6%),
         0 1rem 2.6rem rgb(0 0 0 / 18%);
-    backdrop-filter: blur(18px) saturate(155%);
+    backdrop-filter: var(--glass-surface-filter);
 }
 
 .store-catalog-toolbar--compact .store-catalog-toolbar__filters {
@@ -10650,7 +10652,7 @@ html.admin-document {
     box-shadow:
         0 1rem 2.5rem rgb(0 0 0 / 20%),
         inset 0 1px 0 rgb(255 255 255 / 7%);
-    backdrop-filter: blur(1rem) saturate(1.15);
+    backdrop-filter: var(--glass-surface-filter);
 }
 
 .store-catalog-toolbar--premium .store-catalog-toolbar__heading-row {
@@ -13338,8 +13340,8 @@ html.admin-document {
     box-shadow:
         0 12px 32px rgb(0 0 0 / 30%),
         0 1px 0 rgb(255 255 255 / 6%) inset;
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: var(--glass-surface-filter);
+    backdrop-filter: var(--glass-surface-filter);
 }
 
 .account-navigation {
@@ -16157,8 +16159,8 @@ html.admin-document {
     opacity: 1;
     cursor: not-allowed;
     transform: none;
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: var(--glass-control-filter);
+    backdrop-filter: var(--glass-control-filter);
 }
 
 /* Success keeps the green check treatment, and drops the band: the state is
@@ -16356,8 +16358,8 @@ html.admin-document {
         rgb(255 255 255 / 9%) 46%,
         rgb(212 168 67 / 24%)
     );
-    -webkit-backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
-    backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+    -webkit-backdrop-filter: var(--glass-lens-filter);
+    backdrop-filter: var(--glass-lens-filter);
     color: #fdf3dc;
     /* The warm and cool flanks are the dispersion a real lens edge shows, at
        the same strengths the bottom bar's lens uses. */
@@ -16446,8 +16448,8 @@ html.admin-document {
         rgb(255 255 255 / 9%) 46%,
         rgb(212 168 67 / 24%)
     );
-    -webkit-backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
-    backdrop-filter: blur(1px) saturate(190%) brightness(1.35);
+    -webkit-backdrop-filter: var(--glass-lens-filter);
+    backdrop-filter: var(--glass-lens-filter);
     color: #fdf3dc;
     box-shadow:
         inset 0 1px 0 rgb(255 255 255 / 55%),
@@ -16472,8 +16474,8 @@ html.admin-document {
     position: relative;
     border: 1px solid rgb(176 132 36 / 55%);
     border-radius: 999px;
-    -webkit-backdrop-filter: blur(14px) saturate(150%);
-    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: var(--glass-control-filter);
+    backdrop-filter: var(--glass-control-filter);
     transition:
         transform 180ms var(--chat-ease-out),
         box-shadow 180ms var(--chat-ease-out),
@@ -16828,8 +16830,8 @@ html.admin-document {
         rgb(255 255 255 / 7%) 48%,
         rgb(212 168 67 / 18%)
     );
-    -webkit-backdrop-filter: blur(16px) saturate(185%) brightness(1.18);
-    backdrop-filter: blur(16px) saturate(185%) brightness(1.18);
+    -webkit-backdrop-filter: var(--glass-control-filter);
+    backdrop-filter: var(--glass-control-filter);
     color: #fdf3dc;
     /* The warm and cool flanks are the dispersion a real lens edge shows, at
        the same strengths the bottom bar and the tab lens use. */
@@ -17038,8 +17040,8 @@ html.admin-document {
         0 4px 14px rgb(0 0 0 / 26%);
     /* What is behind the lens is lifted and warmed, the way looking through
        one changes what you see rather than covering it. */
-    -webkit-backdrop-filter: blur(0.5px) saturate(200%) brightness(1.3);
-    backdrop-filter: blur(0.5px) saturate(200%) brightness(1.3);
+    -webkit-backdrop-filter: var(--glass-lens-filter);
+    backdrop-filter: var(--glass-lens-filter);
     pointer-events: none;
     transform: translateX(var(--lens-x, 0)) scaleX(var(--lens-sx, 1))
         scaleY(var(--lens-sy, 1));
