@@ -10,10 +10,14 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 $user = User::findOrFail((int) $argv[1]);
+// The platform picks the variant, so a caller that wants two distinct lines
+// passes two platforms. Defaults to the same-variant case. PC carries no
+// delivery mode: the quote rejects a platform and a delivery that disagree.
+$platform = $argv[3] ?? 'playstation';
 try {
     $result = $app->make(AddCoinsToCart::class)->execute(CartOwner::user((int) $user->id), [
-        'platform' => 'playstation',
-        'delivery' => 'normal',
+        'platform' => $platform,
+        ...($platform === 'pc' ? [] : ['delivery' => 'normal']),
         'quantity' => 100_000,
         'credentials' => [
             'ea_email' => 'concurrency-sentinel@example.test',
