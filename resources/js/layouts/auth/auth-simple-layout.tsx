@@ -35,7 +35,7 @@ export default function AuthSimpleLayout({
                             >
                                 {title}
                             </h1>
-                            <p>{description}</p>
+                            {description && <p>{description}</p>}
                         </div>
                         {children}
                     </article>

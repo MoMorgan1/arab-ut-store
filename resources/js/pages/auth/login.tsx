@@ -7,7 +7,6 @@ import PasswordInput from '@/components/password-input';
 import PhoneNumberField from '@/components/phone-number-field';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -214,24 +213,9 @@ export default function Login({
                                     </div>
 
                                     <div className="auth-form__field grid gap-2">
-                                        <div className="auth-form__field-heading flex items-center">
-                                            <Label htmlFor="password">
-                                                {authUi.fields.password}
-                                            </Label>
-                                            {canResetPassword && (
-                                                <TextLink
-                                                    href={
-                                                        authRoutes.forgotPasswordUrl
-                                                    }
-                                                    className="auth-inline-link auth-form__field-action ms-auto"
-                                                >
-                                                    {
-                                                        authUi.login
-                                                            .forgot_password
-                                                    }
-                                                </TextLink>
-                                            )}
-                                        </div>
+                                        <Label htmlFor="password">
+                                            {authUi.fields.password}
+                                        </Label>
                                         <PasswordInput
                                             id="password"
                                             name="password"
@@ -261,18 +245,13 @@ export default function Login({
                                         />
                                     </div>
 
-                                    <div className="flex min-h-10 items-center gap-3">
-                                        <Checkbox
-                                            id="remember"
-                                            name="remember"
-                                        />
-                                        <Label
-                                            className="flex min-h-10 flex-1 cursor-pointer items-center"
-                                            htmlFor="remember"
-                                        >
-                                            {authUi.fields.remember}
-                                        </Label>
-                                    </div>
+                                    {/* Email sign-in keeps the session like the Google
+                                        and WhatsApp paths do; the customer never chooses. */}
+                                    <input
+                                        type="hidden"
+                                        name="remember"
+                                        value="1"
+                                    />
 
                                     <Button
                                         type="submit"
@@ -283,6 +262,15 @@ export default function Login({
                                         {processing && <Spinner />}
                                         {authUi.login.submit}
                                     </Button>
+
+                                    {canResetPassword && (
+                                        <TextLink
+                                            href={authRoutes.forgotPasswordUrl}
+                                            className="auth-inline-link auth-form__after-action"
+                                        >
+                                            {authUi.login.forgot_password}
+                                        </TextLink>
+                                    )}
                                 </>
                             ) : (
                                 <div className="auth-whatsapp-login">
@@ -418,16 +406,6 @@ export default function Login({
                             )}
                         </div>
 
-                        <div className="auth-form__switch">
-                            {authUi.login.registration_prompt}{' '}
-                            <TextLink
-                                className="auth-inline-link"
-                                href={authRoutes.registerUrl}
-                            >
-                                {authUi.login.registration_link}
-                            </TextLink>
-                        </div>
-
                         {authRoutes.googleLoginUrl && (
                             <div className="auth-social-login">
                                 <div className="auth-social-login__divider">
@@ -459,6 +437,16 @@ export default function Login({
                                 </a>
                             </div>
                         )}
+
+                        <div className="auth-form__switch">
+                            {authUi.login.registration_prompt}{' '}
+                            <TextLink
+                                className="auth-inline-link"
+                                href={authRoutes.registerUrl}
+                            >
+                                {authUi.login.registration_link}
+                            </TextLink>
+                        </div>
 
                         <p className="auth-terms">
                             {authUi.login.terms_prefix}{' '}
