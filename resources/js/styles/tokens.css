@@ -50,6 +50,12 @@
         inset 1px 0 0 rgb(255 214 170 / 11%),
         inset -1px 0 0 rgb(170 214 255 / 9%);
 
+    /* The fourth optic, and not a weaker pane. A lens blurs by a pixel: it
+       magnifies and warms what is behind it instead of hiding it, which is
+       why a pane's fourteen would destroy the effect. Used by the travelling
+       lens on both bars and by the controls that sit inside one. */
+    --glass-lens-filter: blur(1px) saturate(190%) brightness(1.35);
+
     --glass-control-filter: blur(14px) saturate(175%) brightness(1.12);
     --glass-surface-filter: blur(20px) saturate(180%) brightness(1.08);
     --glass-layer-filter: blur(28px) saturate(190%) brightness(1.06);
