@@ -1385,7 +1385,9 @@ html.admin-document {
     .store-shell {
         --store-header-height: 7rem;
         overflow-x: clip;
-        background: var(--arabut-navy);
+        /* The ground is painted once behind the whole document; a shell that
+           paints its own would cover it. */
+        background: transparent;
         color: var(--arabut-ink);
     }
 
@@ -13218,13 +13220,12 @@ html.admin-document {
     position: relative;
     min-width: 0;
     overflow: clip;
-    background:
-        radial-gradient(
-            circle at 84% 0%,
-            rgb(212 168 67 / 8%),
-            transparent 28rem
-        ),
-        var(--arabut-navy);
+    /* Its own warm corner stays; the ground underneath is the document's. */
+    background: radial-gradient(
+        circle at 84% 0%,
+        rgb(212 168 67 / 8%),
+        transparent 28rem
+    );
 }
 
 .account-shell__container {
@@ -17104,5 +17105,79 @@ html.admin-document {
 
     .store-primary-nav__lens::after {
         opacity: 0.35;
+    }
+}
+
+/* The ground of every store page.
+
+   Flat black gives glass nothing to lift, so the page sits on a field
+   instead: three very wide, very quiet glows and a fine grain that keeps the
+   gradients from banding on a phone. It is one fixed layer behind the whole
+   document — no blur, no repaint as the page scrolls — and the shells above
+   it no longer paint a ground of their own. Mohamed approved it from the
+   canvas on 2026-09-15. */
+html.store-document body::before,
+html.store-document body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+html.store-document body::before {
+    background:
+        radial-gradient(
+            40% 32% at 18% 4%,
+            rgb(212 168 67 / 15%),
+            transparent 72%
+        ),
+        radial-gradient(
+            46% 38% at 92% 32%,
+            rgb(146 104 32 / 14%),
+            transparent 74%
+        ),
+        radial-gradient(
+            58% 44% at 44% 94%,
+            rgb(64 84 58 / 12%),
+            transparent 72%
+        );
+}
+
+html.store-document body::after {
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Everything the page renders stands above the field. */
+html.store-document body > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* The full-width bands let the field run under them. The auth card keeps its
+   stadium art: that one has its own ground already. */
+.store-footer {
+    background: rgb(8 7 5 / 72%);
+}
+
+.store-reviews,
+.store-faq {
+    background: rgb(13 11 8 / 62%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    html.store-document body::before,
+    html.store-document body::after {
+        display: none;
+    }
+
+    .store-footer {
+        background: var(--arabut-navy-deep);
+    }
+
+    .store-reviews,
+    .store-faq {
+        background: var(--arabut-navy);
     }
 }
