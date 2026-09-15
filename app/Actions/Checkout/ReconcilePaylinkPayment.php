@@ -3,6 +3,7 @@
 namespace App\Actions\Checkout;
 
 use App\Actions\Fulfillment\EnqueueOrderPlacement;
+use App\Actions\Orders\AlertOwnerOfPaidOrder;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
@@ -23,6 +24,7 @@ final readonly class ReconcilePaylinkPayment
         private PaymentManager $payments,
         private EnqueueOrderPlacement $enqueueOrderPlacement,
         private ReleaseOrderWalletFunds $releaseOrderWalletFunds,
+        private AlertOwnerOfPaidOrder $alertOwnerOfPaidOrder,
     ) {}
 
     public function execute(Payment $payment): Payment
@@ -83,6 +85,8 @@ final readonly class ReconcilePaylinkPayment
                     if ($customer instanceof User) {
                         $customer->notify(new OrderPaidNotification($order));
                     }
+
+                    $this->alertOwnerOfPaidOrder->execute($order);
                 } elseif (! $wasPaid) {
                     Log::warning("Paylink payment [{$locked->provider_payment_id}] reconciled as paid for order [{$order->order_number}] with status [{$order->status->value}].", [
                         'order_public_id' => (string) $order->public_id,

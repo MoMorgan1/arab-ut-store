@@ -30,6 +30,10 @@ return [
         'whatsapp_url' => 'https://wa.me/966537998099',
         'email' => 'info@arab-ut.com',
     ],
+    'order_alerts' => [
+        // Where the owner hears about a paid order. Empty means no alert.
+        'email' => env('ORDER_ALERT_EMAIL'),
+    ],
     'seo' => [
         // The image WhatsApp, X, and Facebook show when the store is shared.
         // It must be at least 300x200 or scrapers fall back to a tiny icon;
