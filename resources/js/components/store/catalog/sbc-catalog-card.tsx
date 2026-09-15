@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { ArtworkImage } from '@/components/store/catalog/artwork-image';
 
 import { catalogPlatformName } from '@/lib/catalog-platform-name';
 import { formatMinorUnits } from '@/lib/money';
@@ -109,7 +110,7 @@ export function SbcCatalogCard({
                         className="store-catalog-card__artwork-glow"
                     />
                     <span className="store-catalog-card__image">
-                        <img
+                        <ArtworkImage
                             // Decorative: the artwork repeats the product name
                             // that already sits in the heading below it inside
                             // the same link, so describing it here announced

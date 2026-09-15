@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { PopNumber } from '@/components/motion/pop-number';
+import { ArtworkImage } from '@/components/store/catalog/artwork-image';
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { CatalogSkeletonGrid } from '@/components/store/catalog/catalog-skeleton-grid';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
@@ -457,7 +458,7 @@ export function CatalogCard({
             className="store-catalog-card__image"
             href={product.url ?? undefined}
         >
-            <img
+            <ArtworkImage
                 alt={
                     product.image === null
                         ? ''
