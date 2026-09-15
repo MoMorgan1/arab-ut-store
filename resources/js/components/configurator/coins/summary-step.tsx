@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
 import { useState } from 'react';
 
+import { PanelReveal } from '@/components/motion/panel-reveal';
 import { SuccessCheck } from '@/components/motion/success-check';
 import { formatCoins, formatMinorUnits } from '@/lib/money';
 import type {
@@ -132,11 +133,19 @@ export function SummaryStep(props: SummaryStepProps) {
                 )}
             </div>
             {inCart ? (
-                <p className="coins-in-cart-note">
-                    <a className="coins-policy-link" href={cartUrl}>
-                        {translations.summary.open_cart}
-                    </a>
-                </p>
+                justAdded ? (
+                    <PanelReveal as="p" className="coins-in-cart-note">
+                        <a className="coins-policy-link" href={cartUrl}>
+                            {translations.summary.open_cart}
+                        </a>
+                    </PanelReveal>
+                ) : (
+                    <p className="coins-in-cart-note">
+                        <a className="coins-policy-link" href={cartUrl}>
+                            {translations.summary.open_cart}
+                        </a>
+                    </p>
+                )
             ) : null}
             <button
                 className="coins-clear-action"

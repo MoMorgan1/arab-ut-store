@@ -9,6 +9,7 @@
 @import '../js/styles/motion/skeleton-reveal.css';
 @import '../js/styles/motion/success-check.css';
 @import '../js/styles/motion/number-pop.css';
+@import '../js/styles/motion/panel-reveal.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -1076,7 +1077,15 @@ html.admin-document {
         gap: 0.85rem;
     }
 
-    .auth-whatsapp-login > p[role='status'] {
+    /* The code step arrives as one revealed group (WP8), so it repeats the
+       column's rhythm and the status rule reaches the paragraph inside it. */
+    .auth-whatsapp-login__code-step {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .auth-whatsapp-login > p[role='status'],
+    .auth-whatsapp-login__code-step > p[role='status'] {
         margin: 0;
         color: var(--arabut-muted);
         line-height: 1.65;

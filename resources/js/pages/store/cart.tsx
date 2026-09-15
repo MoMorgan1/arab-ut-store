@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { interpolate } from '@/components/configurator/coins/configurator-copy';
+import { PanelReveal } from '@/components/motion/panel-reveal';
 import { PopNumber } from '@/components/motion/pop-number';
 import { SuccessCheck } from '@/components/motion/success-check';
 import { SwapText } from '@/components/motion/swap-text';
@@ -686,7 +687,7 @@ function CheckoutSummary({
                 </div>
             ) : null}
             {state === 'confirming' && repricing !== null ? (
-                <div
+                <PanelReveal
                     className="store-cart-confirm"
                     id="store-cart-confirm"
                     role="alert"
@@ -764,7 +765,7 @@ function CheckoutSummary({
                             {translations.confirm_cancel}
                         </button>
                     </div>
-                </div>
+                </PanelReveal>
             ) : null}
             {authenticated && checkout.phoneVerified ? (
                 <>

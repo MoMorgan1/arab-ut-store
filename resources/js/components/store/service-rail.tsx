@@ -1,5 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { PanelReveal } from '@/components/motion/panel-reveal';
+
 import { useBouncingHorizontalRail } from '@/hooks/use-bouncing-horizontal-rail';
 import type {
     HomeServiceCard,
@@ -66,7 +68,7 @@ export function ServiceRail({
                     </ul>
 
                     {overflows ? (
-                        <div className="store-services-rail__controls">
+                        <PanelReveal className="store-services-rail__controls">
                             <button
                                 aria-label={
                                     direction === 'rtl' ? 'التالي' : 'Previous'
@@ -85,7 +87,7 @@ export function ServiceRail({
                             >
                                 <ChevronRight aria-hidden="true" />
                             </button>
-                        </div>
+                        </PanelReveal>
                     ) : null}
                 </div>
             </div>

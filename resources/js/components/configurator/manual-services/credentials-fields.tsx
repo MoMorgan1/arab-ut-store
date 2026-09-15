@@ -1,7 +1,9 @@
 import { ExternalLink, Eye, EyeOff } from 'lucide-react';
+import type { ElementType } from 'react';
 import { useState } from 'react';
 
 import { IconSwap } from '@/components/motion/icon-swap';
+import { PanelReveal } from '@/components/motion/panel-reveal';
 import { focusSiblingCodeField } from '@/lib/code-field-focus';
 import type {
     ManualCredentialsDraft,
@@ -35,6 +37,12 @@ export function CredentialsFields({
     tutorials: { ea: string; playstation: string };
 }) {
     const [visible, setVisible] = useState<Record<string, boolean>>({});
+    // The credential set that was there on load stays put; a set that
+    // replaces it after a platform switch grows in. Keying by platform
+    // remounts the grid, which is what makes the entrance play again.
+    const [initialPlatform] = useState(platform);
+    const Grid: ElementType =
+        platform === initialPlatform ? 'div' : PanelReveal;
     const update = <Key extends keyof ManualCredentialsDraft>(
         key: Key,
         value: ManualCredentialsDraft[Key],
@@ -42,7 +50,7 @@ export function CredentialsFields({
 
     return (
         <div className="coins-credentials-form manual-credentials-form">
-            <div className="manual-credentials__grid">
+            <Grid key={platform} className="manual-credentials__grid">
                 {platform === 'playstation' ? (
                     <>
                         <div className="coins-credential-field">
@@ -377,7 +385,7 @@ export function CredentialsFields({
                         </div>
                     </>
                 ) : null}
-            </div>
+            </Grid>
 
             <CodeFields
                 codes={credentials.eaCodes}
