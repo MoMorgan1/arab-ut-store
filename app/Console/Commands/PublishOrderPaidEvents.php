@@ -51,7 +51,13 @@ final class PublishOrderPaidEvents extends Command
 
         $this->info(sprintf('Processed %d paid-order event(s); %d deferred.', $events->count(), $failed));
 
-        return $failed === 0 ? self::SUCCESS : self::FAILURE;
+        // A deferral is the outbox working as designed - n8n not answering,
+        // or a request the store cannot compose yet - and the row already
+        // carries the reason and its backoff. Exiting non-zero for it made
+        // the scheduler log "failed with exit code [1]" every minute an order
+        // waited, on top of the warning the publisher had already written,
+        // and buried the one line that matters: the retirement error above.
+        return self::SUCCESS;
     }
 
     /**
