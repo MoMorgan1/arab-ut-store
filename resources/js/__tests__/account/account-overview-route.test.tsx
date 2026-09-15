@@ -208,7 +208,6 @@ const mockPage = vi.hoisted(() => ({
                 cart: 'السلة',
                 account: 'حسابي',
             },
-            preferences: { exchange_rate_attribution: 'Rates provider' },
             footer: {
                 description: 'خدمات موثوقة.',
                 important_links: 'روابط مهمة',

@@ -69,8 +69,10 @@ test('Arabic and English shell translation leaves and placeholders stay in parit
 
     expect(data_get($arabic, 'header.fut_champions'))->toBe('فوت تشامبيونز')
         ->and(data_get($english, 'header.fut_champions'))->toBe('FUT Champions')
-        ->and(data_get($arabic, 'preferences.exchange_rate_attribution'))->toBe('Rates By Exchange Rate API')
-        ->and(data_get($english, 'preferences.exchange_rate_attribution'))->toBe('Rates By Exchange Rate API')
+        // No customer-facing string names the rates provider anywhere in the
+        // shell (owner decision, docs/decisions/2026-09-15-drop-exchange-rate-attribution.md).
+        ->and($arabic)->not->toHaveKey('preferences')
+        ->and($english)->not->toHaveKey('preferences')
         ->and($arabic['footer'])->not->toHaveKey('exchange_rate_attribution')
         ->and($english['footer'])->not->toHaveKey('exchange_rate_attribution')
         ->and($arabic['footer'])->not->toHaveKey('legal_navigation')

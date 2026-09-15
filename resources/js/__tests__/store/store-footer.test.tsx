@@ -85,9 +85,6 @@ const translations = {
         cart: 'Cart',
         account: 'Account',
     },
-    preferences: {
-        exchange_rate_attribution: 'Rates By Exchange Rate API',
-    },
     footer: {
         description: 'Trusted FC 27 services and secure Coins delivery.',
         important_links: 'Important links',
@@ -205,7 +202,7 @@ describe('StoreFooter', () => {
         ).toHaveAttribute('href', 'mailto:info@arab-ut.com');
     });
 
-    it('keeps one legal navigation and omits the relocated provider attribution', () => {
+    it('keeps one legal navigation and names no rates provider', () => {
         const footer = renderFooter();
         const bottom = footer.querySelector('.store-footer__bottom');
         const legalLine = footer.querySelector('.store-footer__legal-line');

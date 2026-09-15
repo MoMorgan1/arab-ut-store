@@ -33,9 +33,6 @@ return [
         'cart' => 'Cart',
         'account' => 'My account',
     ],
-    'preferences' => [
-        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
-    ],
     'footer' => [
         'description' => 'Arab UT specializes in FC 27 services, delivering Coins safely with a full guarantee and competitive prices.',
         'important_links' => 'Important links',

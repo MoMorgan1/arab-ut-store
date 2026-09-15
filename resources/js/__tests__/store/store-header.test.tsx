@@ -94,9 +94,6 @@ const translations = {
         cart: 'Cart',
         account: 'Account',
     },
-    preferences: {
-        exchange_rate_attribution: 'Rates By Exchange Rate API',
-    },
     footer: {
         description: '',
         important_links: '',
@@ -271,15 +268,6 @@ describe('StoreHeader', () => {
                 (option) => option.textContent,
             ),
         ).toEqual(['العربية', 'English']);
-
-        const attribution = within(
-            screen.getByRole('dialog', { name: 'Display preferences' }),
-        ).getByRole('link', { name: 'Rates By Exchange Rate API' });
-        expect(attribution).toHaveAttribute(
-            'href',
-            'https://www.exchangerate-api.com',
-        );
-        expect(attribution).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('uses the exact safe WhatsApp destination and touch-target contract', () => {

@@ -117,9 +117,6 @@ const storeUi = {
         cart: 'السلة',
         account: 'الحساب',
     },
-    preferences: {
-        exchange_rate_attribution: 'Rates By Exchange Rate API',
-    },
     footer: {
         description: 'متجر عرب التيميت لخدمات FC 27.',
         important_links: 'روابط تهمك',

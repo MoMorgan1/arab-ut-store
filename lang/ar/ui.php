@@ -33,9 +33,6 @@ return [
         'cart' => 'السلة',
         'account' => 'حسابي',
     ],
-    'preferences' => [
-        'exchange_rate_attribution' => 'Rates By Exchange Rate API',
-    ],
     'footer' => [
         'description' => 'متجر عرب التيميت، فريق متخصص في خدمات FC 27. نوصل لك الكوينز بأمان وضمان كامل وبأسعار منافسة.',
         'important_links' => 'روابط تهمك',

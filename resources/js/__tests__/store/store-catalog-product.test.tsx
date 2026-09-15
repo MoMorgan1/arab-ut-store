@@ -121,7 +121,6 @@ function productProps() {
                 cart: 'Cart',
                 account: 'Account',
             },
-            preferences: { exchange_rate_attribution: 'Rates' },
             footer: {
                 description: '',
                 important_links: '',

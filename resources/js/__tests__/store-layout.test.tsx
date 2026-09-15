@@ -69,9 +69,6 @@ const mockPage = vi.hoisted(() => ({
                 cart: 'Cart',
                 account: 'Account',
             },
-            preferences: {
-                exchange_rate_attribution: 'Rates By Exchange Rate API',
-            },
             footer: {
                 description: '',
                 important_links: '',
