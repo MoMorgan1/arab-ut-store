@@ -1,0 +1,26 @@
+/* Fill — a bar grows to its value instead of appearing already full, and a
+   badge that arrives after an edit settles in rather than popping. Resting
+   states are the final ones; only the entrance is opt-in. */
+@media (prefers-reduced-motion: no-preference) {
+    .t-fill {
+        animation: t-fill var(--motion-emphasis) var(--motion-ease) backwards;
+    }
+
+    @keyframes t-fill {
+        from {
+            inline-size: 0;
+        }
+    }
+
+    .t-appear {
+        animation: t-appear var(--motion-emphasis) var(--motion-ease-spring)
+            backwards;
+    }
+
+    @keyframes t-appear {
+        from {
+            opacity: 0;
+            scale: 0.8;
+        }
+    }
+}

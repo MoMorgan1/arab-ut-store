@@ -1,0 +1,79 @@
+/* Disclosure — a block that opens and closes in place. Opening grows the row
+   and lifts the content in; closing folds it back. The closed state hides the
+   block from readers and the tab order (inert) only after the fold ends. */
+:root {
+    --disclosure-open: var(--motion-slow);
+    --disclosure-close: var(--motion-medium);
+    --disclosure-ease: var(--motion-ease);
+}
+
+/* Resting states are unconditional: open is 1fr, closed is 0fr and hidden. */
+.t-disclosure {
+    display: grid;
+    grid-template-rows: 1fr;
+}
+
+.t-disclosure > * {
+    min-height: 0;
+}
+
+.t-disclosure[data-state='closed'] {
+    grid-template-rows: 0fr;
+    visibility: hidden;
+}
+
+.t-disclosure[data-state='closed'] > * {
+    overflow: hidden;
+    opacity: 0;
+    translate: 0 -0.35rem;
+}
+
+/* An anchored popover keeps its absolute position; it fades and settles
+   instead of growing. */
+.t-popover[data-state='closed'] {
+    visibility: hidden;
+    opacity: 0;
+    translate: 0 -0.35rem;
+    scale: 0.97;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .t-disclosure {
+        transition: grid-template-rows var(--disclosure-open)
+            var(--disclosure-ease);
+    }
+
+    .t-disclosure > * {
+        overflow: hidden;
+        transition:
+            opacity var(--disclosure-open) var(--disclosure-ease),
+            translate var(--disclosure-open) var(--disclosure-ease);
+    }
+
+    .t-disclosure[data-state='closed'] {
+        transition:
+            grid-template-rows var(--disclosure-close) var(--disclosure-ease),
+            visibility 0s linear var(--disclosure-close);
+    }
+
+    .t-disclosure[data-state='closed'] > * {
+        transition:
+            opacity var(--disclosure-close) var(--disclosure-ease),
+            translate var(--disclosure-close) var(--disclosure-ease);
+    }
+
+    .t-popover {
+        transition:
+            opacity var(--motion-fast) var(--disclosure-ease),
+            translate var(--motion-fast) var(--disclosure-ease),
+            scale var(--motion-fast) var(--disclosure-ease);
+    }
+
+    .t-popover[data-state='closed'] {
+        transition:
+            opacity var(--motion-quick) var(--disclosure-ease),
+            translate var(--motion-quick) var(--disclosure-ease),
+            scale var(--motion-quick) var(--disclosure-ease),
+            visibility 0s linear var(--motion-quick);
+    }
+}

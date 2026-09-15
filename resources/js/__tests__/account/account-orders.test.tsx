@@ -657,11 +657,19 @@ it('stacks two artworks and counts the items when an order mixes services', () =
     ).toBeVisible();
     expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    // Once opened the lines stay mounted so they can fold shut; closed
+    // means inert.
+    const fold = screen
+        .getByText('SBC weekly challenge')
+        .closest('.t-disclosure');
+    expect(fold).toHaveAttribute('data-state', 'open');
+    expect(fold).not.toHaveAttribute('inert');
     expect(screen.getByText('FUT Champions service')).toBeVisible();
     expect(screen.getByText('FC 27 Coins')).toBeVisible();
     expect(screen.getByText('SBC weekly challenge')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Hide details' }));
-    expect(screen.queryByText('SBC weekly challenge')).not.toBeInTheDocument();
+    expect(fold).toHaveAttribute('data-state', 'closed');
+    expect(fold).toHaveAttribute('inert');
     // An unpaid order carries the one thing to do next, inside the card.
     expect(
         screen.getByRole('link', { name: 'Complete payment' }),

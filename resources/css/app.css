@@ -10,6 +10,8 @@
 @import '../js/styles/motion/success-check.css';
 @import '../js/styles/motion/number-pop.css';
 @import '../js/styles/motion/panel-reveal.css';
+@import '../js/styles/motion/disclosure.css';
+@import '../js/styles/motion/fill.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -12285,10 +12287,29 @@ html.admin-document {
 }
 
 .store-faq details p {
+    min-height: 0;
     padding: 0 1.1rem 1.2rem;
     color: var(--arabut-muted);
     line-height: 1.8;
     white-space: pre-line;
+}
+
+/* The answer folds open and shut on browsers that expose the details
+   content box (Chrome 131+, Safari 18.4+); older ones keep the snap. */
+@media (prefers-reduced-motion: no-preference) {
+    .store-faq details::details-content {
+        display: grid;
+        grid-template-rows: 0fr;
+        overflow: hidden;
+        transition:
+            grid-template-rows var(--motion-medium) var(--motion-ease),
+            content-visibility var(--motion-medium) allow-discrete;
+    }
+
+    .store-faq details[open]::details-content {
+        grid-template-rows: 1fr;
+        transition-duration: var(--motion-slow);
+    }
 }
 
 /* Reviews: trust summary, cards, rail, page filters */

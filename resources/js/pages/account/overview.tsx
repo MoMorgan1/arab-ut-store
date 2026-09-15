@@ -272,6 +272,7 @@ export default function AccountOverview() {
                             role="progressbar"
                         >
                             <span
+                                className="t-fill"
                                 style={{
                                     inlineSize: `${props.loyalty.progressPercent}%`,
                                 }}

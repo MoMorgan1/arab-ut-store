@@ -64,6 +64,15 @@ export default function AccountProfile() {
     const countdown = useResendCountdown(60);
 
     const hasEmail = Boolean(props.profile.email.value);
+    const phoneUnverified =
+        Boolean(props.profile.phone.value) && !props.profile.phone.verified;
+    const emailUnverified = hasEmail && !props.profile.email.verified;
+    // A badge already there on load stays still; one that appears after a
+    // save settles in.
+    const [badgesOnLoad] = useState({
+        email: emailUnverified,
+        phone: phoneUnverified,
+    });
 
     const details = useForm({
         first_name: props.profile.firstName,
@@ -392,9 +401,14 @@ export default function AccountProfile() {
                                         {/* Nothing to verify before a number
                                             exists, so the badge only appears
                                             once there is one. */}
-                                        {props.profile.phone.value &&
-                                        !props.profile.phone.verified ? (
-                                            <span className="account-profile-badge account-profile-badge--warn">
+                                        {phoneUnverified ? (
+                                            <span
+                                                className={cn(
+                                                    'account-profile-badge account-profile-badge--warn',
+                                                    !badgesOnLoad.phone &&
+                                                        't-appear',
+                                                )}
+                                            >
                                                 {
                                                     props.accountUi.profile
                                                         .unverified
@@ -661,9 +675,14 @@ export default function AccountProfile() {
                                             does not exist, and never spend a
                                             badge saying "fine". The badge exists
                                             only to flag what is outstanding. */}
-                                        {hasEmail &&
-                                        !props.profile.email.verified ? (
-                                            <span className="account-profile-badge account-profile-badge--warn">
+                                        {emailUnverified ? (
+                                            <span
+                                                className={cn(
+                                                    'account-profile-badge account-profile-badge--warn',
+                                                    !badgesOnLoad.email &&
+                                                        't-appear',
+                                                )}
+                                            >
                                                 {
                                                     props.accountUi.profile
                                                         .unverified

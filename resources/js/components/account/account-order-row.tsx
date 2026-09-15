@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { Disclosure } from '@/components/motion/disclosure';
 import { formatAccountMoney } from '@/lib/account-money';
 import { formatOrderAge, formatOrderNumber } from '@/lib/account-order-format';
 import { formatInteger } from '@/lib/money';
@@ -91,13 +92,16 @@ export default function AccountOrderRow({
                         ? translations.orders.hide_details
                         : translations.orders.details}
                 </button>
-                {showItems ? (
-                    <ul className="account-order-row__items" id={itemsId}>
-                        {order.items.map((item, index) => (
-                            <li key={`${index}-${item.name}`}>{item.name}</li>
-                        ))}
-                    </ul>
-                ) : null}
+                <Disclosure
+                    as="ul"
+                    className="account-order-row__items"
+                    id={itemsId}
+                    open={showItems}
+                >
+                    {order.items.map((item, index) => (
+                        <li key={`${index}-${item.name}`}>{item.name}</li>
+                    ))}
+                </Disclosure>
             </div>
             <div className="account-order-row__side">
                 <strong className="account-order-row__total">
