@@ -1,3 +1,4 @@
+import { currencyLabel } from '@/lib/money';
 import type { AccountMoney } from '@/types/account';
 
 function localizedDigits(value: string, locale: string): string {
@@ -29,7 +30,13 @@ export function formatAccountMoney(
         minimumFractionDigits: 0,
         style: 'currency',
     });
-    const parts = formatter.formatToParts(wholeAmount);
+    const parts = formatter
+        .formatToParts(wholeAmount)
+        .map((part) =>
+            part.type === 'currency'
+                ? { ...part, value: currencyLabel(money.currency, locale) }
+                : part,
+        );
 
     if (minorDigits === 0) {
         return parts.map((part) => part.value).join('');

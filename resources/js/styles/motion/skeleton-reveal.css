@@ -14,7 +14,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
     .t-reveal-item[data-revealing='true'] {
-        animation: t-reveal-in var(--reveal-dur) var(--reveal-ease) both;
+        animation: t-reveal-in var(--reveal-dur) var(--reveal-ease) backwards;
         animation-delay: calc(var(--reveal-stagger) * var(--reveal-index, 0));
     }
 

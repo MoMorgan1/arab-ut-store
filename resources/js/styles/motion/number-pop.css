@@ -23,11 +23,20 @@
     white-space: pre;
 }
 
+/* A host may colour its label spans (`.x span { color }`); the figure's
+   spans are not labels, they carry the host element's own colour. */
+.t-digits,
+.t-digits .t-digit {
+    color: inherit;
+}
+
 @media (prefers-reduced-motion: no-preference) {
     .t-digit[data-changed='true'] {
-        animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+        /* `backwards`, not `both`: the resting style already equals the last
+           keyframe, and holding a blur(0) filter after the run keeps the
+           glyphs on a composited layer where text loses its crispness. */
+        animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) backwards;
         animation-delay: calc(var(--digit-stagger) * var(--digit-stagger-n, 0));
-        will-change: transform, opacity, filter;
     }
 
     @keyframes t-digit-pop-in {

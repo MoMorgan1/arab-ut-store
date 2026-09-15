@@ -12,7 +12,6 @@
 .t-success-check {
     display: inline-block;
     transform-origin: center;
-    will-change: transform, opacity, filter;
 }
 
 .t-success-check svg {
@@ -29,15 +28,15 @@
 @media (prefers-reduced-motion: no-preference) {
     .t-success-check[data-state='in'] {
         animation:
-            t-check-fade var(--check-dur) var(--check-ease) both,
-            t-check-rotate var(--check-dur) var(--check-ease) both,
-            t-check-blur var(--check-dur) var(--check-ease) both,
-            t-check-settle var(--check-dur) var(--check-ease-settle) both;
+            t-check-fade var(--check-dur) var(--check-ease) backwards,
+            t-check-rotate var(--check-dur) var(--check-ease) backwards,
+            t-check-blur var(--check-dur) var(--check-ease) backwards,
+            t-check-settle var(--check-dur) var(--check-ease-settle) backwards;
     }
 
     .t-success-check[data-state='in'] svg [pathLength] {
         animation: t-check-draw var(--check-dur) var(--check-ease)
-            var(--check-path-delay) both;
+            var(--check-path-delay) backwards;
     }
 
     @keyframes t-check-fade {

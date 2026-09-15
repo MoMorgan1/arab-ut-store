@@ -943,7 +943,11 @@ describe('Coins homepage', () => {
 
             expect(amountInput).toHaveValue('50,000');
             expect(customerSurface?.textContent).toContain('500.00');
-            expect(customerSurface?.textContent).toContain('SAR');
+            // The Arabic surface spells the riyal as the letters the
+            // Thmanyah fonts ligate into the riyal sign; English keeps the code.
+            expect(customerSurface?.textContent).toContain(
+                locale === 'ar' ? 'ر.س' : 'SAR',
+            );
             expect(
                 `${amountInput.getAttribute('value') ?? ''} ${customerSurface?.textContent ?? ''}`,
             ).not.toMatch(/[٠-٩]/);

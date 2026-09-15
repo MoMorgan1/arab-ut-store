@@ -17,12 +17,12 @@
 
 @media (prefers-reduced-motion: no-preference) {
     .t-panel[data-state='in'] {
-        animation: t-panel-grow var(--panel-dur) var(--panel-ease) both;
+        animation: t-panel-grow var(--panel-dur) var(--panel-ease) backwards;
     }
 
     .t-panel[data-state='in'] > * {
         overflow: hidden;
-        animation: t-panel-rise var(--panel-dur) var(--panel-ease) both;
+        animation: t-panel-rise var(--panel-dur) var(--panel-ease) backwards;
     }
 
     @keyframes t-panel-grow {
