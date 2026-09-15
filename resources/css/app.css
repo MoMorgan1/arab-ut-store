@@ -17181,3 +17181,27 @@ html.store-document body > * {
         background: var(--arabut-navy);
     }
 }
+
+/* Artwork that has not arrived yet shimmers in its own slot instead of
+   leaving a hole in a card that is otherwise complete. The picture paints
+   straight over this background, so there is no second element to fade and
+   nothing to remove once it lands. Same material as the catalog's skeleton
+   cards, so a page part-way through loading reads as one thing. */
+.store-artwork-image[data-loaded='false'] {
+    border-radius: 1rem;
+    background-color: rgb(255 255 255 / 5%);
+    background-image: linear-gradient(
+        100deg,
+        transparent 30%,
+        rgb(240 202 112 / 12%) 50%,
+        transparent 70%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .store-artwork-image[data-loaded='false'] {
+        animation: store-catalog-skeleton-shimmer 1.6s linear infinite;
+    }
+}
