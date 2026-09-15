@@ -418,8 +418,8 @@ html.admin-document {
             rgb(26 21 16 / 26%),
             rgb(16 12 9 / 40%)
         );
-        -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.1);
-        backdrop-filter: blur(28px) saturate(180%) brightness(1.1);
+        -webkit-backdrop-filter: var(--glass-layer-filter);
+        backdrop-filter: var(--glass-layer-filter);
         /* Two hairlines, top brighter than bottom, so the slab reads convex;
            a tight shadow instead of a large diffuse one. */
         box-shadow:
@@ -8418,12 +8418,16 @@ html.admin-document {
         linear-gradient(145deg, rgb(255 255 255 / 6%), rgb(255 255 255 / 2%)),
         rgb(20 18 15 / 62%);
     --manual-glass-border: 1px solid rgb(212 168 67 / 18%);
-    --manual-glass-blur: blur(1rem) saturate(1.1);
+    /* These two were their own dialect — 16px at 110% with no lift for a
+       panel, a bare 12px for a field — written before the scale existed. A
+       panel is raised off the page and a field sits on it, so they take the
+       strengths that say exactly that. */
+    --manual-glass-blur: var(--glass-surface-filter);
     --manual-glass-highlight: inset 0 1px 0 rgb(255 255 255 / 7%);
     --manual-glass-shadow:
         0 1.25rem 3rem rgb(0 0 0 / 18%), 0 0.25rem 1rem rgb(0 0 0 / 12%);
     --manual-field-bg: rgb(8 8 8 / 35%);
-    --manual-field-blur: blur(0.75rem);
+    --manual-field-blur: var(--glass-control-filter);
 }
 
 @supports not (backdrop-filter: blur(1px)) {
@@ -15944,7 +15948,10 @@ html.admin-document {
        Fields keep a rounded rect, as they do on iOS. */
     --btn-radius: 999px;
     --field-radius: 1rem;
-    --btn-blur: blur(20px) saturate(180%) brightness(1.12);
+    /* A button sits on the page — that is what a control is — so it takes
+       the control strength rather than the 20px it happened to be written
+       with, which is a panel's depth on something that is not a panel. */
+    --btn-blur: var(--glass-control-filter);
     --btn-band: linear-gradient(
         152deg,
         rgb(255 255 255 / 30%),
@@ -15998,7 +16005,9 @@ html.admin-document {
     --btn-ease: cubic-bezier(0.16, 1, 0.3, 1);
     --field-fill: linear-gradient(180deg, rgb(8 7 5 / 58%), rgb(14 11 8 / 44%));
     --field-border: rgb(212 168 67 / 22%);
-    --field-blur: blur(14px) saturate(150%);
+    /* Already the control's blur; it was only missing the saturation and
+       the lift that make it the same material as everything around it. */
+    --field-blur: var(--glass-control-filter);
     --field-inset:
         inset 0 2px 6px rgb(0 0 0 / 48%), inset 0 -1px 0 rgb(255 255 255 / 7%);
 }
@@ -16864,8 +16873,8 @@ html.admin-document {
         rgb(255 255 255 / 4%) 48%,
         rgb(212 168 67 / 13%)
     );
-    -webkit-backdrop-filter: blur(14px) saturate(175%) brightness(1.12);
-    backdrop-filter: blur(14px) saturate(175%) brightness(1.12);
+    -webkit-backdrop-filter: var(--glass-control-filter);
+    backdrop-filter: var(--glass-control-filter);
     box-shadow:
         inset 0 1px 0 rgb(255 255 255 / 45%),
         inset 0 -1px 0 rgb(212 168 67 / 22%),
@@ -16926,8 +16935,8 @@ html.admin-document {
             rgb(212 168 67 / 11%)
         ),
         rgb(14 11 9 / 88%);
-    -webkit-backdrop-filter: blur(28px) saturate(185%) brightness(1.08);
-    backdrop-filter: blur(28px) saturate(185%) brightness(1.08);
+    -webkit-backdrop-filter: var(--glass-layer-filter);
+    backdrop-filter: var(--glass-layer-filter);
     box-shadow:
         inset 0 1px 0 rgb(255 255 255 / 40%),
         inset 0 -1px 0 rgb(212 168 67 / 20%),
@@ -16972,8 +16981,8 @@ html.admin-document {
     background:
         linear-gradient(180deg, rgb(255 255 255 / 7%), rgb(255 255 255 / 2%)),
         rgb(13 11 8 / 64%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%) brightness(1.06);
-    backdrop-filter: blur(18px) saturate(180%) brightness(1.06);
+    -webkit-backdrop-filter: var(--glass-surface-filter);
+    backdrop-filter: var(--glass-surface-filter);
     box-shadow:
         inset 0 1px 0 rgb(255 255 255 / 12%),
         inset 0 -1px 0 rgb(212 168 67 / 14%);
