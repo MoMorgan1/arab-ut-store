@@ -11,6 +11,7 @@ import { useState } from 'react';
 import AccountMetric from '@/components/account/account-metric';
 import AccountOrderList from '@/components/account/account-order-list';
 import AccountOrderRow from '@/components/account/account-order-row';
+import { SuccessCheck } from '@/components/motion/success-check';
 import { useResendCountdown } from '@/hooks/use-resend-countdown';
 import MyAccountLayout from '@/layouts/my-account-layout';
 import { formatAccountMoney } from '@/lib/account-money';
@@ -105,6 +106,7 @@ export default function AccountOverview() {
                                         className="account-alert-banner__sent"
                                         role="status"
                                     >
+                                        <SuccessCheck variant="circle" />
                                         {emailAlert.sent ??
                                             (props.locale === 'en'
                                                 ? 'We sent a verification link to your email.'

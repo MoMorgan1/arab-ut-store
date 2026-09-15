@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
+import { PopNumber } from '@/components/motion/pop-number';
 import { CatalogAddControl } from '@/components/store/catalog/catalog-add-control';
 import { SbcCatalogCard } from '@/components/store/catalog/sbc-catalog-card';
 import { SbcProductConfigurator } from '@/components/store/catalog/sbc-product-configurator';
@@ -148,14 +149,20 @@ export default function StoreCatalogProduct() {
                                 <div>
                                     <dt>{props.productPage.price}</dt>
                                     <dd>
-                                        {variant?.price == null
-                                            ? props.productPage
-                                                  .unavailable_price
-                                            : formatMinorUnits(
-                                                  variant.price.amountMinor,
-                                                  variant.price.currency,
-                                                  props.locale,
-                                              )}
+                                        <PopNumber
+                                            value={
+                                                variant?.price == null
+                                                    ? props.productPage
+                                                          .unavailable_price
+                                                    : formatMinorUnits(
+                                                          variant.price
+                                                              .amountMinor,
+                                                          variant.price
+                                                              .currency,
+                                                          props.locale,
+                                                      )
+                                            }
+                                        />
                                         {variant?.compareAtPrice ? (
                                             <del className="store-price-compare">
                                                 {formatMinorUnits(

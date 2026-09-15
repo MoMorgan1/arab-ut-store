@@ -29,6 +29,33 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => page,
 }));
 
+function textMatches(pattern: string | RegExp) {
+    return (_content: string, element: Element | null) => {
+        if (!element) {
+            return false;
+        }
+
+        const normalize = (s: string) =>
+            s.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+        const text = normalize(element.textContent ?? '');
+
+        const matches =
+            typeof pattern === 'string' ? text === pattern : pattern.test(text);
+
+        if (!matches) {
+            return false;
+        }
+
+        return Array.from(element.children).every((child) => {
+            const childText = normalize(child.textContent ?? '');
+
+            return typeof pattern === 'string'
+                ? childText !== pattern
+                : !pattern.test(childText);
+        });
+    };
+}
+
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -159,7 +186,7 @@ it('submits 5 to Elite as SAR 750 and never sends an urgent field', async () => 
     expect(form.get('credentials[ea_backup_codes][0]')).toBe('12345678');
     expect(form.get('credentials[playstation_backup_codes][1]')).toBe('D4E5F6');
     expect(form.get('squadImage')).toBe(image);
-    expect(screen.getAllByText(/750\.00/)[0]).toBeVisible();
+    expect(screen.getAllByText(textMatches(/750\.00/))[0]).toBeVisible();
     expect(document.body.textContent).not.toContain('PS secret');
 });
 
@@ -254,7 +281,7 @@ it('swaps between promotion and weekly matches modes correctly', () => {
     expect(
         screen.queryByRole('slider', { name: 'Target division' }),
     ).not.toBeInTheDocument();
-    expect(screen.getAllByText(/250\.00/)[0]).toBeVisible();
+    expect(screen.getAllByText(textMatches(/250\.00/))[0]).toBeVisible();
 
     fireEvent.click(screen.getByRole('radio', { name: 'Division promotion' }));
 

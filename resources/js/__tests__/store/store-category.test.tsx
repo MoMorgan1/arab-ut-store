@@ -470,6 +470,150 @@ it('shows the skeleton grid only after a slow catalog reload', () => {
         visitOptions.onFinish?.();
     });
     expect(document.querySelector('.store-catalog-skeleton')).toBeNull();
+
+    // SBC cards keep their own mount reveal (app.css), so the grid hands them
+    // nothing extra.
+    const card = document.querySelector<HTMLElement>(
+        '#store-catalog-products > li',
+    );
+    expect(card?.getAttribute('data-revealing')).toBeNull();
+    expect(card?.style.getPropertyValue('--reveal-index')).toBe('');
+    vi.useRealTimers();
+});
+
+function objectivesProps() {
+    const props = categoryProps();
+
+    return categoryProps({
+        catalog: { ...props.catalog, service: 'objectives' },
+        catalogPageUrl: '/en/objectives',
+        servicePage: {
+            ...props.servicePage,
+            page_title: undefined,
+            title: 'Objectives',
+        },
+    });
+}
+
+it('reveals the cards that replace a skeleton the customer saw', () => {
+    vi.useFakeTimers();
+    page.props = objectivesProps();
+    render(<StoreCategory />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), {
+        target: { value: 'price_desc' },
+    });
+
+    const visitOptions = mocks.get.mock.lastCall?.[2] as {
+        onStart?: () => void;
+        onFinish?: () => void;
+    };
+
+    act(() => {
+        visitOptions.onStart?.();
+        vi.advanceTimersByTime(200);
+    });
+    expect(document.querySelector('.store-catalog-skeleton')).not.toBeNull();
+
+    act(() => {
+        visitOptions.onFinish?.();
+    });
+
+    // The cards get a stagger index for the reveal, cleared once the
+    // animation has had time to finish.
+    const card = document.querySelector<HTMLElement>(
+        '#store-catalog-products > li',
+    );
+    expect(card).toHaveAttribute('data-revealing', 'true');
+    expect(card?.style.getPropertyValue('--reveal-index')).toBe('0');
+
+    act(() => {
+        vi.advanceTimersByTime(2000);
+    });
+    expect(card?.getAttribute('data-revealing')).toBeNull();
+    expect(card?.style.getPropertyValue('--reveal-index')).toBe('');
+    vi.useRealTimers();
+});
+
+it('carries the skeleton reveal across the page remount a visit causes', () => {
+    vi.useFakeTimers();
+    page.props = objectivesProps();
+    const first = render(<StoreCategory />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), {
+        target: { value: 'price_desc' },
+    });
+
+    const visitOptions = mocks.get.mock.lastCall?.[2] as {
+        onStart?: () => void;
+        onFinish?: () => void;
+    };
+
+    act(() => {
+        visitOptions.onStart?.();
+        vi.advanceTimersByTime(200);
+    });
+    expect(document.querySelector('.store-catalog-skeleton')).not.toBeNull();
+
+    // Whichever order Inertia uses, the next mount animates the cards in.
+    first.unmount();
+    render(<StoreCategory />);
+    act(() => {
+        visitOptions.onFinish?.();
+    });
+
+    let card = document.querySelector<HTMLElement>(
+        '#store-catalog-products > li',
+    );
+    expect(card?.style.getPropertyValue('--reveal-index')).toBe('0');
+    cleanup();
+
+    const second = render(<StoreCategory />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), {
+        target: { value: 'price_desc' },
+    });
+    const later = mocks.get.mock.lastCall?.[2] as {
+        onStart?: () => void;
+        onFinish?: () => void;
+    };
+    act(() => {
+        later.onStart?.();
+        vi.advanceTimersByTime(200);
+        later.onFinish?.();
+    });
+    second.unmount();
+    render(<StoreCategory />);
+
+    card = document.querySelector<HTMLElement>('#store-catalog-products > li');
+    expect(card?.style.getPropertyValue('--reveal-index')).toBe('0');
+    vi.useRealTimers();
+});
+
+it('does not animate cards after a fast reload that showed no skeleton', () => {
+    vi.useFakeTimers();
+    page.props = objectivesProps();
+    render(<StoreCategory />);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort' }), {
+        target: { value: 'price_desc' },
+    });
+
+    const visitOptions = mocks.get.mock.lastCall?.[2] as {
+        onStart?: () => void;
+        onFinish?: () => void;
+    };
+
+    act(() => {
+        visitOptions.onStart?.();
+        vi.advanceTimersByTime(50);
+        visitOptions.onFinish?.();
+    });
+
+    const card = document.querySelector<HTMLElement>(
+        '#store-catalog-products > li',
+    );
+    expect(card?.getAttribute('data-revealing')).toBeNull();
+    expect(card?.style.getPropertyValue('--reveal-index')).toBe('');
     vi.useRealTimers();
 });
 

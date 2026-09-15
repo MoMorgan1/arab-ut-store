@@ -6,6 +6,9 @@
 @import '../js/styles/motion/text-swap.css';
 @import '../js/styles/motion/icon-swap.css';
 @import '../js/styles/motion/error-shake.css';
+@import '../js/styles/motion/skeleton-reveal.css';
+@import '../js/styles/motion/success-check.css';
+@import '../js/styles/motion/number-pop.css';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -10847,11 +10850,6 @@ html.admin-document {
     box-shadow: 0 0 0 0.28rem rgb(103 232 154 / 12%);
 }
 
-.store-catalog-add button[data-state='success']::before {
-    content: '✓';
-    font-weight: 900;
-}
-
 .store-catalog-add--in-cart {
     display: grid;
     gap: 0.45rem;
@@ -11015,7 +11013,8 @@ html.admin-document {
         transform 220ms var(--store-ease-out),
         box-shadow 220ms var(--store-ease-out),
         filter 220ms var(--store-ease-out);
-    animation: store-sbc-card-reveal 520ms var(--store-ease-out) backwards;
+    animation: store-sbc-card-reveal var(--motion-emphasis) var(--motion-ease)
+        backwards;
 }
 
 .store-catalog-card__target {
@@ -16117,11 +16116,6 @@ html.admin-document {
         inset 1px 1px 0 rgb(255 255 255 / 22%),
         0 0 0 0.28rem rgb(103 232 154 / 10%);
     transform: none;
-}
-
-.manual-configurator__submit[data-state='success']::before {
-    content: '✓';
-    font-weight: 900;
 }
 
 /* Secondary: smoked glass, no gold. A different material, not a dimmer copy. */

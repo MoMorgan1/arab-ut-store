@@ -1,5 +1,7 @@
 import type { Ref } from 'react';
+import { useState } from 'react';
 
+import { SuccessCheck } from '@/components/motion/success-check';
 import { formatCoins, formatMinorUnits } from '@/lib/money';
 import type {
     CoinsDeliveryValue,
@@ -42,6 +44,8 @@ export function SummaryStep(props: SummaryStepProps) {
         retrying,
         translations,
     } = props;
+    const [initialInCart] = useState(inCart);
+    const justAdded = !initialInCart && inCart;
     const deliveryLabel =
         delivery === null
             ? translations.summary.delivery_pc
@@ -109,6 +113,7 @@ export function SummaryStep(props: SummaryStepProps) {
                         disabled
                         type="button"
                     >
+                        {justAdded ? <SuccessCheck /> : null}
                         {translations.summary.in_cart}
                     </button>
                 ) : (

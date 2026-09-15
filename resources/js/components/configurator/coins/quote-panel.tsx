@@ -1,3 +1,4 @@
+import { PopNumber } from '@/components/motion/pop-number';
 import { formatMinorUnits } from '@/lib/money';
 import type {
     CoinsQuoteViewState,
@@ -44,11 +45,13 @@ export function QuotePanel({ locale, state, translations }: QuotePanelProps) {
                 >
                     <span>{translations.quote.total}</span>
                     <strong>
-                        {formatMinorUnits(
-                            quote.displayTotal.amountMinor,
-                            quote.displayTotal.currency,
-                            locale,
-                        )}
+                        <PopNumber
+                            value={formatMinorUnits(
+                                quote.displayTotal.amountMinor,
+                                quote.displayTotal.currency,
+                                locale,
+                            )}
+                        />
                     </strong>
                 </div>
             ) : null}

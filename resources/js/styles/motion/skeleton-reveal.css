@@ -1,0 +1,31 @@
+/* Skeleton reveal — real content fades in from a slight blur once a skeleton leaves. */
+:root {
+    --reveal-dur: var(--motion-slow);
+    --reveal-blur: 2px;
+    --reveal-ease: var(--motion-ease-in-out);
+    --reveal-stagger: var(--motion-stagger);
+}
+
+/* The resting state is unconditional; the entrance is opt-in. */
+.t-reveal-item {
+    opacity: 1;
+    filter: blur(0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .t-reveal-item[data-revealing='true'] {
+        animation: t-reveal-in var(--reveal-dur) var(--reveal-ease) both;
+        animation-delay: calc(var(--reveal-stagger) * var(--reveal-index, 0));
+    }
+
+    @keyframes t-reveal-in {
+        from {
+            opacity: 0;
+            filter: blur(var(--reveal-blur));
+        }
+        to {
+            opacity: 1;
+            filter: blur(0);
+        }
+    }
+}

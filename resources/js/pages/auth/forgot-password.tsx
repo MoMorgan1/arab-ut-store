@@ -1,6 +1,8 @@
 import { Form, Head } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
+
 import InputError from '@/components/input-error';
+import { SuccessCheck } from '@/components/motion/success-check';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +28,7 @@ export default function ForgotPassword({
                     role="status"
                     aria-live="polite"
                 >
+                    <SuccessCheck variant="circle" />
                     {status}
                 </div>
             )}

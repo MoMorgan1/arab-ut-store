@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { SuccessCheck } from '@/components/motion/success-check';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useResendCountdown } from '@/hooks/use-resend-countdown';
@@ -43,6 +44,7 @@ export default function VerifyEmail({ authUi, status }: Props) {
                     role="status"
                     aria-live="polite"
                 >
+                    <SuccessCheck variant="circle" />
                     {copy.sent}
                 </div>
             ) : null}

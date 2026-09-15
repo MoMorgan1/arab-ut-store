@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { SuccessCheck } from '@/components/motion/success-check';
 import { newAttemptKey } from '@/lib/attempt-key';
 import {
     announceCartAddition,
@@ -171,6 +172,7 @@ export function CatalogAddControl({
                 onClick={(event) => void add(event.currentTarget)}
                 type="button"
             >
+                {success ? <SuccessCheck /> : null}
                 {loading
                     ? loadingLabel
                     : success

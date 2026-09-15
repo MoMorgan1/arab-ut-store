@@ -40,6 +40,33 @@ beforeEach(() => {
     page.props = categoryProps();
 });
 
+function textMatches(pattern: string | RegExp) {
+    return (_content: string, element: Element | null) => {
+        if (!element) {
+            return false;
+        }
+
+        const normalize = (s: string) =>
+            s.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+        const text = normalize(element.textContent ?? '');
+
+        const matches =
+            typeof pattern === 'string' ? text === pattern : pattern.test(text);
+
+        if (!matches) {
+            return false;
+        }
+
+        return Array.from(element.children).every((child) => {
+            const childText = normalize(child.textContent ?? '');
+
+            return typeof pattern === 'string'
+                ? childText !== pattern
+                : !pattern.test(childText);
+        });
+    };
+}
+
 it('shows the promotion badge struck-through base price and discounted price on catalog cards', () => {
     render(<StoreCategory />);
 
@@ -47,7 +74,7 @@ it('shows the promotion badge struck-through base price and discounted price on 
 
     expect(badge).toBeVisible();
     expect(badge).toHaveClass('store-promo-badge');
-    expect(screen.getByText('SAR 80.00')).toBeVisible();
+    expect(screen.getByText(textMatches('SAR 80.00'))).toBeVisible();
     expect(screen.getByText(/100\.00/).closest('del')).toHaveClass(
         'store-price-compare',
     );
@@ -86,7 +113,7 @@ it('renders without a badge or compare-at price when no promotion applies', () =
 
     expect(screen.queryByText('20% off')).not.toBeInTheDocument();
     expect(screen.queryByText('SAR 100.00')).not.toBeInTheDocument();
-    expect(screen.getByText('SAR 80.00')).toBeVisible();
+    expect(screen.getByText(textMatches('SAR 80.00'))).toBeVisible();
 });
 
 type CatalogVariantShape = {

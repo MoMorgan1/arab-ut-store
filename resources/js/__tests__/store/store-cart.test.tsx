@@ -23,6 +23,33 @@ const navigateToHostedPayment = vi.hoisted(() => vi.fn());
 const navigateToOrder = vi.hoisted(() => vi.fn());
 const reloadAfterPhoneVerification = vi.hoisted(() => vi.fn());
 
+function textMatches(pattern: string | RegExp) {
+    return (_content: string, element: Element | null) => {
+        if (!element) {
+            return false;
+        }
+
+        const normalize = (s: string) =>
+            s.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+        const text = normalize(element.textContent ?? '');
+
+        const matches =
+            typeof pattern === 'string' ? text === pattern : pattern.test(text);
+
+        if (!matches) {
+            return false;
+        }
+
+        return Array.from(element.children).every((child) => {
+            const childText = normalize(child.textContent ?? '');
+
+            return typeof pattern === 'string'
+                ? childText !== pattern
+                : !pattern.test(childText);
+        });
+    };
+}
+
 vi.mock('@/lib/checkout-phone-api', async (importOriginal) => ({
     ...(await importOriginal<typeof CheckoutPhoneApi>()),
     reloadAfterPhoneVerification,
@@ -410,11 +437,11 @@ it('renders only the authoritative read-only Coins cart summary', () => {
     expect(screen.getByText('Fast')).toBeVisible();
     expect(screen.getByText('500,000 Coins')).toBeVisible();
     // Line total, summary subtotal, summary total, and the dock mirror.
-    expect(screen.getAllByText(/125\.00/)).toHaveLength(4);
+    expect(screen.getAllByText(textMatches(/125\.00/))).toHaveLength(4);
     expect(
         within(
             document.querySelector('.store-cart-dock') as HTMLElement,
-        ).getByText(/125\.00/),
+        ).getByText(textMatches(/125\.00/)),
     ).toBeVisible();
     expect(document.body.textContent).not.toContain('EA email:');
     expect(screen.getByText(/3 backup codes stored/)).toBeVisible();
@@ -1319,7 +1346,7 @@ describe('cart coupon field', () => {
         expect(screen.getByText('Discount')).toBeVisible();
         expect(screen.getByText('-SAR 25.00')).toBeVisible();
         // 125.00 subtotal minus the 25.00 discount, mirrored in the dock.
-        expect(screen.getAllByText('SAR 100.00')).toHaveLength(2);
+        expect(screen.getAllByText(textMatches('SAR 100.00'))).toHaveLength(2);
         expect(
             screen.queryByLabelText('Discount code'),
         ).not.toBeInTheDocument();
@@ -1433,7 +1460,7 @@ describe('Cart wallet balance at checkout', () => {
         expect(screen.getByText('Wallet balance')).toBeVisible();
         expect(screen.getByText('-SAR 50.00')).toBeVisible();
         // 125.00 minus 50.00 = 75.00, mirrored in the dock.
-        expect(screen.getAllByText('SAR 75.00')).toHaveLength(2);
+        expect(screen.getAllByText(textMatches('SAR 75.00'))).toHaveLength(2);
     });
 
     it('displays breakdown correctly with both coupon discount and wallet deduction', () => {
@@ -1450,7 +1477,7 @@ describe('Cart wallet balance at checkout', () => {
         expect(screen.getByText('-SAR 25.00')).toBeVisible();
         expect(screen.getByText('Wallet balance')).toBeVisible();
         expect(screen.getByText('-SAR 50.00')).toBeVisible();
-        expect(screen.getAllByText('SAR 50.00')).toHaveLength(2);
+        expect(screen.getAllByText(textMatches('SAR 50.00'))).toHaveLength(2);
     });
 
     it('displays zero payable total when order is fully covered by wallet', () => {
@@ -1461,7 +1488,7 @@ describe('Cart wallet balance at checkout', () => {
 
         expect(screen.getByText('Wallet balance')).toBeVisible();
         expect(screen.getByText('-SAR 125.00')).toBeVisible();
-        expect(screen.getAllByText('SAR 0.00')).toHaveLength(2);
+        expect(screen.getAllByText(textMatches('SAR 0.00'))).toHaveLength(2);
     });
 });
 
@@ -1566,7 +1593,9 @@ describe('cart repricing states', () => {
         );
         // Both pairs are shown now, so the figure appears more than once.
         expect(
-            within(screen.getByRole('alert')).getAllByText('SAR 130.00'),
+            within(screen.getByRole('alert')).getAllByText(
+                textMatches('SAR 130.00'),
+            ),
         ).not.toHaveLength(0);
         expect(
             screen.getByText(
@@ -1633,7 +1662,7 @@ it('shows the order total in the confirmation when a wallet hides the change', a
 
     expect(within(confirm).getByText('Order total before')).toBeVisible();
     expect(within(confirm).getByText('SAR 125.00')).toBeVisible();
-    expect(within(confirm).getByText('SAR 150.00')).toBeVisible();
+    expect(within(confirm).getByText(textMatches('SAR 150.00'))).toBeVisible();
 });
 
 describe('phone checkout dock and line status', () => {

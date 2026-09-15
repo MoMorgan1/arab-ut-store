@@ -1,0 +1,45 @@
+/* Number pop-in — a changed digit re-enters from below; unchanged digits stay put. */
+:root {
+    --digit-dur: var(--motion-emphasis);
+    --digit-distance: 8px;
+    --digit-blur: 2px;
+    --digit-stagger: var(--motion-stagger);
+    --digit-ease: var(--motion-ease-spring);
+}
+
+/* Each character is its own flex item, so the bidi algorithm no longer orders
+   them: the run is pinned left-to-right, which is how a formatted figure reads
+   in both Arabic and English. */
+.t-digits {
+    display: inline-flex;
+    align-items: baseline;
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+}
+
+.t-digit {
+    display: inline-block;
+    white-space: pre;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .t-digit[data-changed='true'] {
+        animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+        animation-delay: calc(var(--digit-stagger) * var(--digit-stagger-n, 0));
+        will-change: transform, opacity, filter;
+    }
+
+    @keyframes t-digit-pop-in {
+        from {
+            transform: translateY(var(--digit-distance));
+            opacity: 0;
+            filter: blur(var(--digit-blur));
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+            filter: blur(0);
+        }
+    }
+}
