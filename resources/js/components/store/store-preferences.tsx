@@ -233,15 +233,6 @@ export function StorePreferences({
                                 <ChevronIcon />
                             </span>
                         </div>
-                        <a
-                            className="store-preferences__attribution"
-                            dir="ltr"
-                            href="https://www.exchangerate-api.com"
-                            rel="noopener noreferrer"
-                            target="_blank"
-                        >
-                            {translations.preferences.exchange_rate_attribution}
-                        </a>
                     </>
                 )}
             </Disclosure>

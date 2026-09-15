@@ -121,7 +121,7 @@ The Coins destination becomes active whenever the current homepage hash is `#coi
 
 ### Exchange-rate attribution
 
-The current open ExchangeRate-API endpoint contract requires linked attribution on pages using its rates. The standalone footer line is removed, but the same verified link moves into the language/currency preferences dialog beside the selected display-currency explanation. It stays discreet, reachable by keyboard, and present on every page that displays converted rates. It may be removed entirely only after switching to a provider plan whose contract does not require attribution.
+**Superseded on 2026-09-15** — the attribution was removed from the store at Mohamed's decision; see [2026-09-15-drop-exchange-rate-attribution.md](2026-09-15-drop-exchange-rate-attribution.md). The paragraph below records what was true until then. The current open ExchangeRate-API endpoint contract requires linked attribution on pages using its rates. The standalone footer line is removed, but the same verified link moves into the language/currency preferences dialog beside the selected display-currency explanation. It stays discreet, reachable by keyboard, and present on every page that displays converted rates. It may be removed entirely only after switching to a provider plan whose contract does not require attribution.
 
 ## Error and lifecycle behavior
 
