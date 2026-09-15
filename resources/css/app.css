@@ -5336,6 +5336,11 @@ html.admin-document {
         font-size: 0.8rem;
     }
 
+    .store-cart-coupon__field {
+        display: grid;
+        gap: 0.45rem;
+    }
+
     .store-cart-coupon__row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -8956,6 +8961,20 @@ html.admin-document {
     height: 2.75rem;
     display: flex;
     align-items: center;
+}
+
+/* Registered so the fill's gradient stop can transition between notches. */
+@property --manual-slider-progress {
+    syntax: '<percentage>';
+    inherits: false;
+    initial-value: 0%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .manual-service-slider input[type='range'] {
+        transition: --manual-slider-progress var(--motion-medium)
+            var(--motion-ease);
+    }
 }
 
 .manual-service-slider input[type='range'] {
@@ -15840,6 +15859,11 @@ html.admin-document {
 .store-shell--reveal-ready [data-reveal]:not(.is-revealed) {
     opacity: 0;
     transform: translateY(18px);
+}
+
+/* The rating bars fill only once their section has scrolled into view. */
+.store-shell--reveal-ready [data-reveal]:not(.is-revealed) .t-fill {
+    animation: none;
 }
 
 .store-shell--reveal-ready [data-reveal].is-revealed {
