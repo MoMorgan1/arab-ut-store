@@ -1006,6 +1006,14 @@ node. Set instance concurrency to 1, as `automation/n8n/sbc-catalog-v1/README.md
 `SBC: Supplier Decision` and `newSBCAPI` / `Submit Solve`, triggered by the store once the
 shipment has landed rather than by an in-workflow poll. Same removals.
 
+*2026-09-15:* the funding half of that path shipped inside `ship-coins` (F1). The solve half is
+planned in `docs/plans/2026-09-15-solve-challenge-workflow.md`.
+
+**Auto-resume is not built, by owner decision (2026-09-15).** v14 re-fired `resumeOrderAPI` on an
+FFT `interrupted` order every third poll. The owner's words: an order he stopped on purpose would
+be restarted by it. Resuming stays a deliberate act: the customer's button on the card, and the
+admin's when the admin surface exists. Nothing in D3 may call `resumeOrderAPI` on its own.
+
 **F3. Retire.** Delete `Customer Notifier` and v14's `Forward Status Update` node once D3 is live
 and verified. Disable every execution-data save mode on the credential-bearing workflows first
 (the ADR's condition), and verify with synthetic credentials before any real order runs through.
