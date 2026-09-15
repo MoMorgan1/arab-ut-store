@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property HoldTone|null $hold_tone
  * @property array<string, mixed>|null $observation
  * @property array<int, mixed>|null $allowed_actions
+ * @property array<string, array<string, mixed>>|null $challenge_retries
  * @property bool $observation_supported
  * @property string|null $observed_state
  * @property string|null $lease_token
@@ -55,6 +56,7 @@ class FulfillmentJob extends DomainModel
             'hold_tone' => HoldTone::class,
             'observation' => 'array',
             'allowed_actions' => 'array',
+            'challenge_retries' => 'array',
             'observation_supported' => 'boolean',
             'observed_at' => 'immutable_datetime',
             'last_viewed_at' => 'immutable_datetime',

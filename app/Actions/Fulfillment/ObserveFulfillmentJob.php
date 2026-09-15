@@ -6,6 +6,7 @@ use App\Enums\DeliveryPhase;
 use App\Enums\ObservationResult;
 use App\Enums\OrderStatus;
 use App\Enums\Supplier;
+use App\Fulfillment\ChallengeAutoRetry;
 use App\Models\FulfillmentJob;
 use App\Models\FulfillmentPlacement;
 use App\Models\Order;
@@ -38,6 +39,7 @@ final class ObserveFulfillmentJob
         private readonly SupplierRegistry $registry,
         private readonly SupplierStateTranslator $translator,
         private readonly ApplySupplierObservation $applyObservation,
+        private readonly ChallengeAutoRetry $autoRetry,
     ) {}
 
     public function execute(FulfillmentJob $job, OrderItem $item, ?Order $order): ObservationOutcome
@@ -142,6 +144,11 @@ final class ObserveFulfillmentJob
             CarbonImmutable::now(),
             $bulk,
         );
+
+        // v14's automatic retrySBCAPI on a transient solve status, on its
+        // cadence (owner decision, 2026-09-15). After the observation is
+        // written, so what the customer sees is this read, not the retry.
+        $this->autoRetry->execute($job, $placement, $bulk, $client);
 
         return new ObservationOutcome(ObservationResult::Observed, null, $latencyMs);
     }
