@@ -66,8 +66,12 @@ test('a challenge whose coins have landed queues one challenge.ready row, commit
             'order_item_public_id' => $item->public_id,
         ]);
 
-    // The row names the item and nothing more.
-    expect(json_encode($event->payload, JSON_THROW_ON_ERROR))->not->toContain('ea_')->not->toContain('412');
+    // The row names the item and nothing more. The supplier's set id is
+    // matched whole: a bare '412' also occurs inside a random ULID now and
+    // then, which failed this test on unrelated changes.
+    expect(json_encode($event->payload, JSON_THROW_ON_ERROR))
+        ->not->toContain('ea_')
+        ->not->toContain($item->productVariant->product->external_id);
 
     // A repeated "finished" reading queues nothing new.
     observe($job->fresh());
