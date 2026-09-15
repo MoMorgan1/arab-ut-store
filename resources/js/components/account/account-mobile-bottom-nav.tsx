@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/account/app-icon';
 import type { AppIconName } from '@/components/account/app-icon';
 import { useKeyboardOpen } from '@/hooks/use-keyboard-open';
+import { afterPaint, prefersReducedMotion } from '@/hooks/use-travelling-lens';
 import { cn } from '@/lib/utils';
 import type {
     AccountDestination,
@@ -43,39 +44,6 @@ type AccountMobileBottomNavProps = {
  */
 let carried: { key: AccountDestination; left: number; width: number } | null =
     null;
-
-/**
- * Runs `job` once the current placement has had a chance to be painted.
- *
- * `requestAnimationFrame` is the right signal, but it never fires while the tab
- * is hidden - and a bar that only places its lens when visible is a bar with no
- * lens at all. The timeout is the floor that makes sure the placement lands
- * either way; whichever arrives first wins.
- */
-function afterPaint(job: () => void): () => void {
-    let ran = false;
-    const once = () => {
-        if (!ran) {
-            ran = true;
-            job();
-        }
-    };
-
-    const frame = requestAnimationFrame(once);
-    const timer = window.setTimeout(once, 32);
-
-    return () => {
-        cancelAnimationFrame(frame);
-        window.clearTimeout(timer);
-    };
-}
-
-function prefersReducedMotion(): boolean {
-    return (
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
-}
 
 const ALLOWED_KEYS: AccountDestination[] = [
     'overview',
