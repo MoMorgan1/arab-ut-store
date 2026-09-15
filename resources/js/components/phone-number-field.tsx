@@ -54,23 +54,49 @@ export default function PhoneNumberField({
 
     return (
         <div className={cn('auth-phone-field', className)} dir="ltr">
-            <label className="sr-only" htmlFor={`${id}-country`}>
-                {labels.country}
-            </label>
-            <select
-                id={`${id}-country`}
-                aria-label={labels.country}
-                className="auth-phone-field__country"
-                disabled={disabled}
-                onChange={handleCountryChange}
-                value={dial}
-            >
-                {phoneCountries.map((country) => (
-                    <option key={country.iso} value={country.dial}>
-                        {`${country.name[locale]} (${country.dial})`}
-                    </option>
-                ))}
-            </select>
+            {/*
+             * One control, not two boxes: the dial code is a compact segment
+             * against the number, divided by a hairline. The native select is
+             * still the control — it lies over the segment, invisible — so a
+             * phone opens its own picker and the label keeps working.
+             */}
+            <span className="auth-phone-field__code">
+                <span aria-hidden="true" className="auth-phone-field__dial">
+                    {dial}
+                </span>
+                <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    width="16"
+                >
+                    <path
+                        d="m6 9 6 6 6-6"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                    />
+                </svg>
+                <label className="sr-only" htmlFor={`${id}-country`}>
+                    {labels.country}
+                </label>
+                <select
+                    id={`${id}-country`}
+                    aria-label={labels.country}
+                    className="auth-phone-field__country"
+                    disabled={disabled}
+                    onChange={handleCountryChange}
+                    value={dial}
+                >
+                    {phoneCountries.map((country) => (
+                        <option key={country.iso} value={country.dial}>
+                            {`${country.name[locale]} (${country.dial})`}
+                        </option>
+                    ))}
+                </select>
+            </span>
             <Input
                 id={id}
                 type="tel"

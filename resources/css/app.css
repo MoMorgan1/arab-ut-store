@@ -1013,32 +1013,6 @@ html.admin-document {
         box-shadow: inset 0 0 0 1px rgb(212 168 67 / 35%);
     }
 
-    .auth-phone-field {
-        display: grid;
-        grid-template-columns: minmax(8.5rem, auto) minmax(0, 1fr);
-        gap: 0.5rem;
-    }
-
-    .auth-phone-field__country {
-        min-height: 2.75rem;
-        border: 1px solid rgb(237 228 208 / 20%);
-        border-radius: 0.625rem;
-        background-color: rgb(8 7 5 / 92%);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a89880' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0.6rem center;
-        padding-inline: 0.65rem 1.9rem;
-        color: var(--arabut-ink);
-        appearance: none;
-        text-overflow: ellipsis;
-    }
-
-    @media (min-width: 34rem) {
-        .auth-phone-field__country {
-            min-width: 11.5rem;
-        }
-    }
-
     .otp-field {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -14734,7 +14708,11 @@ html.admin-document {
     font-weight: 750;
 }
 
-.account-profile-form :is(input, select):not(.auth-phone-field__country) {
+.account-profile-form
+    :is(input, select):not(
+        .auth-phone-field__country,
+        .auth-phone-field__number
+    ) {
     width: 100%;
     height: 3rem;
     min-height: 3rem;
@@ -14756,20 +14734,25 @@ html.admin-document {
     border-color: var(--arabut-danger);
 }
 
-.account-profile-form .auth-phone-field__country {
-    height: 3rem;
-    min-height: 3rem;
+/* The account card's fields are flatter than the store's glass, so the phone
+   shell takes that page's border, fill and radius rather than the field
+   tokens. */
+.account-profile-form .auth-phone-field {
     border: 1px solid var(--arabut-line);
     border-radius: 0.7rem;
-    background-color: rgb(8 7 5 / 62%);
-    color: var(--arabut-ink);
-    font-size: 1rem;
+    background: rgb(8 7 5 / 62%);
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
 }
 
-.account-profile-form .auth-phone-field__country:focus-visible {
+.account-profile-form .auth-phone-field:has(:focus-visible) {
     border-color: var(--arabut-focus);
     box-shadow: 0 0 0 0.2rem rgb(212 168 67 / 12%);
-    outline: none;
+}
+
+.account-profile-form .auth-phone-field__code {
+    border-inline-end-color: var(--arabut-line);
 }
 
 .account-profile-form button:disabled {
@@ -16665,5 +16648,171 @@ html.admin-document {
 @media (max-width: 52rem) {
     body:has(.store-cart-undo) .chat-widget-root {
         bottom: calc(9.25rem + env(safe-area-inset-bottom));
+    }
+}
+
+/* A phone number is one value, so its field is one control (Mohamed,
+   2026-09-15: the dial box and the number box read as two unrelated inputs).
+   The shell carries the border, the fill and the focus ring; inside it the
+   dial code sits against the number behind one hairline. The native select
+   is still the control — it lies over the dial segment, invisible — so a
+   phone opens its own picker, the label keeps naming it, and the option list
+   keeps the full country names the compact segment has no room for. */
+.auth-phone-field {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0;
+    min-height: 3rem;
+    border: 1px solid var(--field-border);
+    border-radius: var(--field-radius);
+    background: var(--field-fill);
+    box-shadow: var(--field-inset);
+    -webkit-backdrop-filter: var(--field-blur);
+    backdrop-filter: var(--field-blur);
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.auth-phone-field:has(:focus-visible) {
+    border-color: var(--arabut-focus);
+    box-shadow:
+        var(--field-inset),
+        0 0 0 3px rgb(212 168 67 / 20%);
+}
+
+.auth-phone-field:has(.auth-phone-field__number[aria-invalid='true']) {
+    border-color: var(--arabut-danger);
+    box-shadow:
+        var(--field-inset),
+        0 0 0 3px rgb(255 180 169 / 18%);
+}
+
+.auth-phone-field:has(.auth-phone-field__country:disabled) {
+    opacity: 0.6;
+}
+
+.auth-phone-field__code {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-inline-end: 1px solid var(--field-border);
+    border-start-start-radius: inherit;
+    border-end-start-radius: inherit;
+    padding-inline: 0.875rem 0.7rem;
+    color: var(--arabut-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease;
+}
+
+.auth-phone-field__code svg {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    color: var(--arabut-muted);
+}
+
+.auth-phone-field__code:hover {
+    background-color: rgb(255 255 255 / 4%);
+}
+
+/* Focus lands on the invisible select, so the segment it covers shows it. */
+.auth-phone-field__code:has(.auth-phone-field__country:focus-visible) {
+    background-color: rgb(212 168 67 / 12%);
+    color: var(--arabut-gold-bright);
+}
+
+.auth-phone-field__country {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    opacity: 0;
+    appearance: none;
+    cursor: pointer;
+}
+
+.auth-phone-field__country:disabled {
+    cursor: not-allowed;
+}
+
+.auth-phone-field .auth-phone-field__number {
+    min-width: 0;
+    height: auto;
+    min-height: 3rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    padding: 0.6875rem 0.875rem;
+    font-size: 1rem;
+    letter-spacing: 0.03em;
+}
+
+.auth-phone-field .auth-phone-field__number:focus-visible {
+    border: 0;
+    outline: none;
+    box-shadow: none;
+}
+
+@supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+    .auth-phone-field {
+        background: #0e0a08;
+    }
+}
+
+/* The hero's line sits over the artwork rather than over navy, so it is the
+   one badge that has something to refract: the house lens, at the strength a
+   surface floating over a photograph needs. */
+.store-hero__badge {
+    border-color: rgb(255 255 255 / 20%);
+    background: linear-gradient(
+        158deg,
+        rgb(255 255 255 / 22%),
+        rgb(255 255 255 / 7%) 48%,
+        rgb(212 168 67 / 18%)
+    );
+    -webkit-backdrop-filter: blur(16px) saturate(185%) brightness(1.18);
+    backdrop-filter: blur(16px) saturate(185%) brightness(1.18);
+    color: #fdf3dc;
+    /* The warm and cool flanks are the dispersion a real lens edge shows, at
+       the same strengths the bottom bar and the tab lens use. */
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 55%),
+        inset 0 -1px 0 rgb(212 168 67 / 28%),
+        inset 1px 0 0 rgb(255 214 170 / 12%),
+        inset -1px 0 0 rgb(170 214 255 / 10%),
+        0 10px 28px rgb(0 0 0 / 34%);
+}
+
+@supports not (
+    (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+    .store-hero__badge {
+        background: rgb(32 26 20 / 92%);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .store-hero__badge {
+        background: rgb(32 26 20 / 92%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
     }
 }
