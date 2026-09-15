@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe('PopNumber', () => {
-    it('renders one span per character with the full value as the accessible name', () => {
+    it('renders one span per digit, keeps the runs between digits whole, and reads the full value once', () => {
         const value = '1,250.00 SAR';
         const { container } = render(<PopNumber value={value} />);
         const wrapper = container.querySelector('.t-digits');
@@ -18,12 +18,22 @@ describe('PopNumber', () => {
         expect(wrapper?.querySelector('.sr-only')).toHaveTextContent(value);
 
         const digitSpans = container.querySelectorAll('.t-digit');
+        const expected = ['1', ',', '2', '5', '0', '.', '0', '0', ' SAR'];
 
-        expect(digitSpans).toHaveLength(value.length);
+        expect(digitSpans).toHaveLength(expected.length);
         digitSpans.forEach((span, i) => {
-            expect(span.textContent).toBe(value[i]);
+            expect(span.textContent).toBe(expected[i]);
             expect(span).toHaveAttribute('aria-hidden', 'true');
         });
+    });
+
+    it('keeps the Arabic riyal letters in one span so the font can ligate them', () => {
+        const { container } = render(<PopNumber value="‏12.50 ر.س" />);
+        const spans = [...container.querySelectorAll('.t-digit')].map(
+            (span) => span.textContent,
+        );
+
+        expect(spans).toEqual(['‏', '1', '2', '.', '5', '0', ' ر.س']);
     });
 
     it('nothing is data-changed on first render', () => {
@@ -49,7 +59,8 @@ describe('PopNumber', () => {
 
         const digitSpans = container.querySelectorAll('.t-digit');
 
-        expect(digitSpans).toHaveLength('1,125.00 SAR'.length);
+        // 1 , 1 2 5 . 0 0 " SAR" — nine tokens
+        expect(digitSpans).toHaveLength(9);
 
         const changedIndices = [2, 3, 4];
 
@@ -71,7 +82,8 @@ describe('PopNumber', () => {
 
         const digitSpans = container.querySelectorAll('.t-digit');
 
-        expect(digitSpans).toHaveLength('950.00 SAR'.length);
+        // 9 5 0 . 0 0 " SAR" — seven tokens
+        expect(digitSpans).toHaveLength(7);
         digitSpans.forEach((span) => {
             expect(span).toHaveAttribute('data-changed', 'true');
         });

@@ -104,7 +104,7 @@ describe('Coins quantity controls', () => {
                 ]),
             );
             expect(values.join(' ')).toContain('EUR');
-            expect(values.join(' ')).toContain('SAR');
+            expect(values.join(' ')).toContain(locale === 'ar' ? 'ر.س' : 'SAR');
             expect(values.join(' ')).not.toMatch(/[٠-٩]/);
         },
     );

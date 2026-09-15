@@ -2958,7 +2958,8 @@ html.admin-document {
         padding-block: 0.3rem;
     }
 
-    .coins-quote-panel__result span {
+    /* The label only; the figure inside <strong> renders its own spans. */
+    .coins-quote-panel__result > span {
         color: var(--arabut-muted);
     }
 
