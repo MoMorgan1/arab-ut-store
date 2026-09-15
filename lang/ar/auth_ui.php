@@ -8,7 +8,6 @@ return [
         'email' => 'البريد الإلكتروني',
         'password' => 'كلمة المرور',
         'password_confirmation' => 'تأكيد كلمة المرور',
-        'remember' => 'تذكرني',
     ],
     'password_visibility' => [
         'show' => 'إظهار كلمة المرور',
@@ -17,7 +16,7 @@ return [
     'login' => [
         'head_title' => 'تسجيل الدخول',
         'title' => 'تسجيل الدخول إلى حسابك',
-        'description' => 'أدخل بريدك الإلكتروني وكلمة المرور للمتابعة.',
+        'description' => '',
         'submit' => 'تسجيل الدخول',
         'forgot_password' => 'نسيت كلمة المرور؟',
         'registration_prompt' => 'ما عندك حساب؟',

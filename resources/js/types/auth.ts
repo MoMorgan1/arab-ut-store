@@ -51,7 +51,6 @@ export type AuthUiTranslations = {
         email: string;
         password: string;
         password_confirmation: string;
-        remember: string;
     };
     password_visibility: { show: string; hide: string };
     login: {

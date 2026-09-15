@@ -8,7 +8,6 @@ return [
         'email' => 'Email address',
         'password' => 'Password',
         'password_confirmation' => 'Confirm password',
-        'remember' => 'Remember me',
     ],
     'password_visibility' => [
         'show' => 'Show password',
@@ -17,7 +16,7 @@ return [
     'login' => [
         'head_title' => 'Log in',
         'title' => 'Log in to your account',
-        'description' => 'Continue with email and password, Google, or a verified WhatsApp number.',
+        'description' => '',
         'submit' => 'Log in',
         'forgot_password' => 'Forgot your password?',
         'registration_prompt' => "Don't have an account?",

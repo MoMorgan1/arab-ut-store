@@ -900,6 +900,13 @@ html.admin-document {
         margin-block-start: 0.15rem;
     }
 
+    /* The reset link sits under the sign-in action, centred like the footer
+       links, and pulls up so it belongs to the button rather than the divider. */
+    .auth-form__after-action {
+        justify-self: center;
+        margin-block-start: -0.35rem;
+    }
+
     .auth-terms {
         margin-block-start: -0.45rem;
     }
@@ -958,14 +965,11 @@ html.admin-document {
         min-width: 0;
     }
 
+    /* Two glass pills side by side; the row itself draws nothing. */
     .auth-login-method {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.35rem;
-        border: 1px solid rgb(212 168 67 / 22%);
-        border-radius: 0.75rem;
-        background: rgb(8 7 5 / 58%);
-        padding: 0.3rem;
+        gap: 0.5rem;
     }
 
     .auth-login-method__tab {
@@ -1325,17 +1329,6 @@ html.admin-document {
 
         .auth-form__field--floating > [role='alert'] {
             margin-block-start: 0.5rem;
-        }
-
-        .auth-form__field-heading {
-            min-height: 1.4375rem;
-        }
-
-        .auth-form__field-heading [data-slot='label'],
-        .auth-form__field-action {
-            /* 23px heading + 8px gap + 40px control matches the annotated row. */
-            min-height: 0;
-            line-height: 1.4375rem;
         }
     }
 
@@ -2602,21 +2595,14 @@ html.admin-document {
     }
 
     /* On phones the step action (next / add to cart) stays reachable while the
-       long steps scroll; the card has no overflow clip, so sticky works. */
+       long steps scroll; the card has no overflow clip, so sticky works. The
+       buttons are glass on their own, so the row draws no tray around them. */
     @media (max-width: 63.99rem) {
         .coins-step__actions {
             position: sticky;
             inset-block-end: 0.75rem;
             z-index: 5;
             margin-block-start: 1rem;
-            margin-inline: -0.5rem;
-            border: 1px solid rgb(214 175 71 / 22%);
-            border-radius: 0.9rem;
-            background: rgb(18 14 10 / 92%);
-            padding: 0.6rem 0.5rem;
-            box-shadow: 0 -10px 30px rgb(0 0 0 / 35%);
-            -webkit-backdrop-filter: blur(1rem);
-            backdrop-filter: blur(1rem);
         }
     }
 
@@ -2689,26 +2675,7 @@ html.admin-document {
         align-items: baseline;
         justify-content: center;
         gap: 0.55rem;
-        border-block-end: 1px solid rgb(212 168 67 / 24%);
-        padding: 0 0 0.35rem;
-        transition:
-            border-color 160ms ease,
-            box-shadow 160ms ease;
-    }
-
-    .coins-amount-field__control:hover {
-        border-block-end-color: rgb(212 168 67 / 44%);
-    }
-
-    .coins-amount-field__control:focus-within {
-        border-block-end-color: var(--arabut-gold-bright);
-        box-shadow: 0 2px 0 rgb(212 168 67 / 12%);
-    }
-
-    .coins-amount-field__control:has(.coins-amount-input:focus-visible) {
-        border-radius: 0.25rem;
-        outline: 2px solid var(--arabut-gold-bright);
-        outline-offset: 3px;
+        padding: 0;
     }
 
     .coins-amount-input {
@@ -16248,16 +16215,7 @@ html.admin-document {
 /* Segmented tabs: a glass bar, and the selected tab is the bottom bar's lens. */
 .manual-service-tabs,
 .auth-login-method {
-    gap: 0.25rem;
-    border: 1px solid rgb(212 168 67 / 24%);
-    border-radius: 1.125rem;
-    background: rgb(255 255 255 / 5%);
-    padding: 0.25rem;
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-    box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 12%),
-        inset 0 -1px 0 rgb(0 0 0 / 22%);
+    gap: 0.5rem;
 }
 
 .manual-service-tabs__tab,
@@ -16347,21 +16305,15 @@ html.admin-document {
     min-height: 3rem;
 }
 
-/* "Remember me" came from the component defaults at a 16px box in a 40px row.
-   The box stays small because that is what a checkbox looks like; the row it
-   sits in is what the finger actually hits. */
-.auth-shell [data-slot='checkbox'] {
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: 0.4375rem;
-    border-color: var(--field-border);
-    background: var(--field-fill);
-    box-shadow: inset 0 2px 5px rgb(0 0 0 / 45%);
+/* Without a tray the unselected tab needs its own quiet edge so the pair
+   reads as two pills, like a step's back / next row. */
+.auth-shell .auth-login-method__tab {
+    border: 1px solid var(--btn-smoke-border);
+    border-radius: 999px;
 }
 
-.auth-shell [data-slot='checkbox'] + label,
-.auth-shell :has(> [data-slot='checkbox']) {
-    min-height: 2.75rem;
+.auth-shell .auth-login-method__tab[aria-selected='true'] {
+    border: 0;
 }
 
 /* Catalog filter chips are a segmented selection like the tabs, so the picked
@@ -16585,8 +16537,7 @@ html.admin-document {
         background: var(--arabut-navy-active);
     }
 
-    .manual-service-tabs,
-    .auth-login-method {
+    .manual-service-tabs {
         background: rgb(13 11 8 / 96%);
     }
 

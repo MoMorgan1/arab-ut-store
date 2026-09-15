@@ -142,7 +142,6 @@ const arabicAuthUi = {
         email: 'البريد الإلكتروني',
         password: 'كلمة المرور',
         password_confirmation: 'تأكيد كلمة المرور',
-        remember: 'تذكرني',
     },
     password_visibility: {
         show: 'إظهار كلمة المرور',
@@ -257,7 +256,6 @@ const englishAuthUi = {
         email: 'Email address',
         password: 'Password',
         password_confirmation: 'Confirm password',
-        remember: 'Remember me',
     },
     password_visibility: { show: 'Show password', hide: 'Hide password' },
     login: {
@@ -488,9 +486,10 @@ describe('storefront authentication shell', () => {
             screen.getByRole('button', { name: 'إظهار كلمة المرور' }),
         ).toHaveClass('right-0');
         expect(screen.getByLabelText('كلمة المرور')).toHaveClass('pr-11');
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
         expect(
-            screen.getByText(arabicAuthUi.fields.remember).closest('label'),
-        ).toHaveClass('min-h-10', 'flex-1');
+            document.querySelector('input[name="remember"]'),
+        ).toHaveAttribute('type', 'hidden');
         expect(screen.getByRole('tab', { name: /البريد/ })).toHaveAttribute(
             'aria-selected',
             'true',

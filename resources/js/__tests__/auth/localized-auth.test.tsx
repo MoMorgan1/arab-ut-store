@@ -90,7 +90,6 @@ const arabicUi = {
         email: 'البريد الإلكتروني',
         password: 'كلمة المرور',
         password_confirmation: 'تأكيد كلمة المرور',
-        remember: 'تذكرني',
     },
     password_visibility: {
         show: 'إظهار كلمة المرور',
@@ -205,7 +204,6 @@ const englishUi = {
         email: 'Email address',
         password: 'Password',
         password_confirmation: 'Confirm password',
-        remember: 'Remember me',
     },
     password_visibility: { show: 'Show password', hide: 'Hide password' },
     register: {
