@@ -1,0 +1,89 @@
+{
+  "name": "solve-challenge - Failure Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger-solve-challenge-v1",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        280
+      ],
+      "notes": "Set Workflow Settings -> Error Workflow of solve-challenge to point here."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Runs inside the Error Workflow, not in solve-challenge. It is reached by\n// every failure a run can produce - a rejected signature, a set FFT no longer\n// lists or prices, a solve FFT refused, a report the store refused, a\n// timeout - because solve-challenge fails by throwing rather than routing\n// failures through IF gates. The message thrown carries the order number,\n// which is why every throw in nodes/*.js starts with \"[stage] order AUT-…\".\n//\n// Execution data is not saved on solve-challenge (the EA account travels in\n// the request), so this is the only record of the failure. It goes to\n// Telegram, not WhatsApp (owner decision, 2026-09-14).\nconst event = $input.first().json;\nconst execution = event.execution ?? {};\nconst workflow = event.workflow ?? {};\nconst error = execution.error ?? {};\nconst message = error.message || 'خطأ غير معروف';\n\nconst lines = [\n    'solve-challenge وقف - التحدي ما اتقدمش.',\n    'المتجر هيعيد المحاولة تلقائياً.',\n    '',\n    `السبب: ${message}`,\n];\n\nif (/يحتاج حل يدوي|غير موجود/.test(message)) {\n    lines.push('دي مش هتتصلح لوحدها: حل التحدي يدوي والصق الرقم من الأدمن.');\n}\nif (/429|[Tt]oo [Mm]any/.test(message)) {\n    lines.push('غالباً ضغط طلبات (rate limit) - المحاولة الجاية بعد دقيقة.');\n}\nif (execution.lastNodeExecuted) {\n    lines.push(`عند النود: ${execution.lastNodeExecuted}`);\n}\nif (workflow.name) {\n    lines.push(`الوركفلو: ${workflow.name}`);\n}\n\n// Deliberately no throw here. This code runs inside the error execution, so a\n// throw would only bury the original failure. The chat id is typed into the\n// Telegram node itself; a placeholder left there makes that node go red,\n// which stays visible in the executions list.\nreturn [\n    {\n        json: {\n            body: lines.join('\\n'),\n            failureReason: error.message || null,\n        },\n    },\n];\n"
+      },
+      "id": "build-failure-alert-solve-challenge-v1",
+      "name": "Build Failure Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        280
+      ],
+      "notes": "Source: nodes/failure-alert.js"
+    },
+    {
+      "parameters": {
+        "chatId": "CONFIGURE_OPS_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.body }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-failure-alert-solve-challenge-v1",
+      "name": "Telegram Failure Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        280
+      ],
+      "webhookId": "b2e6c814-5a9f-4d31-9c07-3f8e6a1d2b55",
+      "credentials": {
+        "telegramApi": {
+          "id": "CONFIGURE_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "Replace the Chat ID placeholder with the ops Telegram chat. No onError override: an undelivered alert stays red."
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Telegram Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "SOLVE_CHALLENGE_FAILURE_ALERT_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
