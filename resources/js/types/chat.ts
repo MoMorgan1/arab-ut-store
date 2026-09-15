@@ -71,6 +71,10 @@ export type AppStreamEvent =
     | {
           event: 'response.failed';
           data: { turn: AgentTurnState; code: string; message: string };
+      }
+    | {
+          event: 'conversation.subject';
+          data: { conversationPublicId: string; subject: string };
       };
 
 export type ChatConversation = {

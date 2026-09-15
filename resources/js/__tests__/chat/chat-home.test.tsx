@@ -74,6 +74,24 @@ describe('ChatHome', () => {
         expect(props.onContinue).toHaveBeenCalledTimes(1);
     });
 
+    it('names the continue card after the conversation once it has a title', () => {
+        renderHome({
+            locale: 'en',
+            hasConversation: true,
+            subject: 'Coins price today',
+            lastMessage: {
+                preview: 'Order #4821 is being prepared…',
+                createdAt: '2026-08-22T10:42:00Z',
+            },
+        });
+
+        const card = screen.getByRole('button', { name: /Coins price today/ });
+        expect(card).toHaveTextContent('Order #4821 is being prepared…');
+        expect(
+            screen.queryByText('Continue your conversation'),
+        ).not.toBeInTheDocument();
+    });
+
     it('starts a conversation and selects topics by label', () => {
         const props = renderHome({ locale: 'en' });
 

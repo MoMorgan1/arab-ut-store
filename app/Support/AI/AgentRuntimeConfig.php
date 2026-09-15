@@ -165,6 +165,32 @@ final class AgentRuntimeConfig
         return $stale;
     }
 
+    public function subjectEnabled(): bool
+    {
+        $enabled = $this->value('subject.enabled');
+
+        if (! is_bool($enabled)) {
+            $this->invalid();
+        }
+
+        return $enabled;
+    }
+
+    public function subjectPromptVersion(): string
+    {
+        return $this->fixedString('subject.prompt_version', 'subject-v1');
+    }
+
+    public function subjectMaxOutputTokens(): int
+    {
+        return $this->integerInRange('subject.max_output_tokens', 1, 200);
+    }
+
+    public function subjectTimeoutSeconds(): int
+    {
+        return $this->integerInRange('subject.timeout_seconds', 1, 20);
+    }
+
     public function fakeDeltaDelayMilliseconds(): int
     {
         return $this->integerInRange('fake_delta_delay_ms', 0, 2000);

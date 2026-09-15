@@ -13,6 +13,7 @@ const ALLOWED_STREAM_EVENTS = new Set<string>([
     'response.delta',
     'response.completed',
     'response.failed',
+    'conversation.subject',
 ]);
 
 const VALID_TURN_STATUSES = new Set<AgentTurnStatus>([
@@ -286,6 +287,29 @@ export function parseAppStreamFrame(
                     turn,
                     code: errorSource.code,
                     message: errorSource.message,
+                },
+            };
+        }
+
+        case 'conversation.subject': {
+            if (
+                typeof parsedJson.conversationPublicId !== 'string' ||
+                parsedJson.conversationPublicId === '' ||
+                typeof parsedJson.subject !== 'string' ||
+                parsedJson.subject === ''
+            ) {
+                throw new ChatApiError(
+                    'invalid_stream',
+                    status,
+                    'Invalid conversation.subject payload structure.',
+                );
+            }
+
+            return {
+                event: 'conversation.subject',
+                data: {
+                    conversationPublicId: parsedJson.conversationPublicId,
+                    subject: parsedJson.subject,
                 },
             };
         }

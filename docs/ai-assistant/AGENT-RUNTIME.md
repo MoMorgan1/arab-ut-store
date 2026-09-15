@@ -68,7 +68,25 @@ The application exposes these server-sent events:
 - `turn.created`;
 - `response.delta`;
 - `response.completed`;
-- `response.failed`.
+- `response.failed`;
+- `conversation.subject` (`{conversationPublicId, subject}`), sent only after
+  the first completed reply of a conversation.
+
+### Conversation title
+
+After the first reply is stored and its `response.completed` frame has been
+flushed, `GenerateConversationSubject` makes one more short, non-streamed-to-the-
+customer model call (`subject-v1` prompt, the reply and the customer's messages
+of that turn, `ai-assistant.subject.max_output_tokens` capped output, its own
+`ai-assistant.subject.timeout_seconds` deadline) and stores the cleaned answer
+in `chat_conversations.subject` when the column is still empty. `SubjectText`
+keeps the first non-empty line, strips quotes, a "Title:" label and trailing
+punctuation with Unicode-aware patterns, and rejects anything longer than 80
+characters. The turn is already terminal by then: a failed or slow title call
+is logged (`chat.subject.failed`) and never fails the turn or the stream. Later
+replies never rename a conversation, and `AI_ASSISTANT_SUBJECT_ENABLED=false`
+turns the call off. Cost is logged per title (`chat.subject.generated`) rather
+than written to `agent_runs`, whose rows are one-per-reply attempt.
 
 The controller sends an initial heartbeat comment, flushes each event, sets
 `X-Accel-Buffering: no`, and continues finalization after client disconnect.

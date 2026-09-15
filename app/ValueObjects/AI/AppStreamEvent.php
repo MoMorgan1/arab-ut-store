@@ -17,6 +17,8 @@ final readonly class AppStreamEvent
         public ?AgentTurn $turn = null,
         public ?ChatMessage $message = null,
         public ?AgentErrorCode $errorCode = null,
+        public ?string $conversationPublicId = null,
+        public ?string $subject = null,
     ) {}
 
     public static function turnCreated(AgentTurn $turn): self
@@ -48,6 +50,24 @@ final readonly class AppStreamEvent
             turnPublicId: (string) $turn->public_id,
             turn: $turn,
             message: $message,
+        );
+    }
+
+    /**
+     * The title the conversation was just given, sent after the reply has
+     * completed so the widget can rename the header without a refetch.
+     */
+    public static function subject(AgentTurn $turn, string $conversationPublicId, string $subject): self
+    {
+        if ($subject === '') {
+            throw new InvalidArgumentException('A subject event cannot be empty.');
+        }
+
+        return new self(
+            type: AppStreamEventType::Subject,
+            turnPublicId: (string) $turn->public_id,
+            conversationPublicId: $conversationPublicId,
+            subject: $subject,
         );
     }
 

@@ -10,9 +10,11 @@ the conversation already has a customer message, a Send-us-a-message call to
 action, four topic cards, and a "Previous conversations" list for authenticated customers).
 
 ### Previous Conversations List (Home View)
+
 - Visible only for authenticated customers with past threads (guests never see this section).
 - Up to 10 rows headed by "محادثاتك السابقة" / "Previous conversations" with a hairline rule.
-- Each row presents subject preview with ellipsis, 11.5px muted relative date, an optional 10.5px gold ticket-number chip (`TKT-XXXXXX`), and a trailing chevron.
+- Each row presents the conversation title with ellipsis, 11.5px muted relative date, an optional 10.5px gold ticket-number chip (`TKT-XXXXXX`), and a trailing chevron. The title is the one the assistant gave the thread after its first reply (see AGENT-RUNTIME.md, Conversation title); a thread without one shows the customer's first message clipped to 160 characters.
+- The chat header carries the same title once it exists, with the brand name ("مساعد عرب التيميت" / "Arab UT Assistant") on the line under it; until then the header shows the brand and "عادة نرد فورًا" / "Usually replies instantly". The title arrives on the open stream as `conversation.subject`, so the header renames itself a few seconds after the first reply without a refetch.
 - Tapping a row opens that thread in read-only inspection mode with a clear control to return or start a fresh active conversation.
 
 ## Support Handoff & Ticketing UX
@@ -20,14 +22,14 @@ action, four topic cards, and a "Previous conversations" list for authenticated 
 When a customer needs human assistance, the chat UI transitions smoothly:
 
 1. **Pinned Ticket Banner (Top of Thread):**
-   - **`requested` state:** Gold tint band (`#f3ead6`) with a 1px `rgb(212 168 67 / 30%)` bottom border, 26px circular white icon chip with clock glyph, bold 13.5px title "طلبك وصل للفريق" / "Your request reached the team", and 12px muted second line with ticket number (`TKT-XXXXXX`).
-   - **`active` state:** Gold band with responder's initial in a gold avatar chip, title naming responder, e.g. "محمد من الفريق يرد عليك" / "Mohamed from the team is replying", and ticket number beneath.
-   - **`resolved` state:** Clean white band with green check chip, title "تم حل التذكرة" / "Ticket resolved", ticket number beneath, and a 44px min-touch-target "Still need help?" / "تحتاج مساعدة أكثر؟" pill button that reopens a support ticket on the same conversation.
+    - **`requested` state:** Gold tint band (`#f3ead6`) with a 1px `rgb(212 168 67 / 30%)` bottom border, 26px circular white icon chip with clock glyph, bold 13.5px title "طلبك وصل للفريق" / "Your request reached the team", and 12px muted second line with ticket number (`TKT-XXXXXX`).
+    - **`active` state:** Gold band with responder's initial in a gold avatar chip, title naming responder, e.g. "محمد من الفريق يرد عليك" / "Mohamed from the team is replying", and ticket number beneath.
+    - **`resolved` state:** Clean white band with green check chip, title "تم حل التذكرة" / "Ticket resolved", ticket number beneath, and a 44px min-touch-target "Still need help?" / "تحتاج مساعدة أكثر؟" pill button that reopens a support ticket on the same conversation.
 2. **Paused Thread Pill:**
-   - Centered inside the thread: "نواف متوقف مؤقتًا — الفريق يتابع محادثتك" / "Nawaf is paused — the team is following your chat".
+    - Centered inside the thread: "نواف متوقف مؤقتًا — الفريق يتابع محادثتك" / "Nawaf is paused — the team is following your chat".
 3. **Staff Bubbles:**
-   - Positioned on the assistant side (`items-start`), visually distinct from Nawaf: crisp white background, 1.5px solid `#d4a843` gold border, soft gold shadow (`rgba(212,168,67,0.15)`), and a dedicated header row with gold circular initial avatar + `:name · فريق عرب التيميت` / `:name · Arab Ultimate Team`.
-   - Nawaf's AI bubbles remain flat cream with hairline borders.
+    - Positioned on the assistant side (`items-start`), visually distinct from Nawaf: crisp white background, 1.5px solid `#d4a843` gold border, soft gold shadow (`rgba(212,168,67,0.15)`), and a dedicated header row with gold circular initial avatar + `:name · فريق عرب التيميت` / `:name · Arab Ultimate Team`.
+    - Nawaf's AI bubbles remain flat cream with hairline borders.
 
 ## Copy Rule (Strict Invariant)
 

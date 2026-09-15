@@ -671,6 +671,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                             <ChatHome
                                 locale={locale}
                                 hasConversation={hasCustomerMessages}
+                                subject={conversation?.subject ?? null}
                                 lastMessage={homeLastMessage}
                                 conversations={historyConversations}
                                 disabled={isLoading || isRestarting}
@@ -715,6 +716,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                                 onRestart={restartChat}
                                 soundEnabled={soundEnabled}
                                 onToggleSound={toggleSound}
+                                subject={conversation?.subject ?? null}
                             />
 
                             {isReadOnly && (

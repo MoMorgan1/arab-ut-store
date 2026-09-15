@@ -60,7 +60,8 @@ test('backlog of 25 messages drains in chunks of default 24 across two turns the
     expect($firstHasPending)->toBeTrue()
         ->and($secondHasPending)->toBeFalse()
         ->and($third->turn)->toBeNull()
-        ->and($resolver->resolutionCalls)->toBe(2)
+        // Two replies plus the one title call that follows the first reply.
+        ->and($resolver->resolutionCalls)->toBe(3)
         ->and(AgentTurn::query()->where('conversation_id', $conversation->id)->count())->toBe(2)
         ->and(AgentRun::query()->count())->toBe(2);
 
@@ -107,7 +108,8 @@ test('backlog chunking honors custom configured max context messages limit of 10
     $fourth = app(CreateOrRecoverAgentTurn::class)->execute($conversation, $owner);
 
     expect($fourth->turn)->toBeNull()
-        ->and($resolver->resolutionCalls)->toBe(3)
+        // Three replies plus the one title call that follows the first reply.
+        ->and($resolver->resolutionCalls)->toBe(4)
         ->and(AgentTurn::query()->where('conversation_id', $conversation->id)->count())->toBe(3)
         ->and(AgentRun::query()->count())->toBe(3);
 

@@ -25,6 +25,8 @@ export type ChatHomeLastMessage = {
 export type ChatHomeProps = {
     locale?: string;
     hasConversation: boolean;
+    /** The title the assistant gave the open conversation, once it has one. */
+    subject?: string | null;
     lastMessage: ChatHomeLastMessage | null;
     conversations?: ChatConversationSummary[];
     disabled?: boolean;
@@ -79,6 +81,7 @@ function relativeTime(iso: string, isEn: boolean): string {
 export const ChatHome: React.FC<ChatHomeProps> = ({
     locale = 'ar',
     hasConversation,
+    subject = null,
     lastMessage,
     conversations = [],
     disabled = false,
@@ -91,6 +94,7 @@ export const ChatHome: React.FC<ChatHomeProps> = ({
     onClose,
 }) => {
     const isEn = locale === 'en';
+    const hasSubject = subject !== null && subject.trim() !== '';
     const dir = isEn ? 'ltr' : 'rtl';
     const Chevron = isEn ? ChevronRight : ChevronLeft;
     const topics = chatTopicsFor(locale);
@@ -182,8 +186,11 @@ export const ChatHome: React.FC<ChatHomeProps> = ({
                         </span>
                         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                             <span className="flex items-baseline justify-between gap-2">
-                                <span className="text-sm font-semibold">
-                                    {copy.continueTitle}
+                                <span
+                                    className="truncate text-sm font-semibold"
+                                    dir={hasSubject ? 'auto' : undefined}
+                                >
+                                    {hasSubject ? subject : copy.continueTitle}
                                 </span>
                                 {lastMessage && (
                                     <span className="text-xs text-[var(--chat-faint)]">

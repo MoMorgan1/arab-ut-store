@@ -8,4 +8,5 @@ enum AppStreamEventType: string
     case Delta = 'response.delta';
     case Completed = 'response.completed';
     case Failed = 'response.failed';
+    case Subject = 'conversation.subject';
 }

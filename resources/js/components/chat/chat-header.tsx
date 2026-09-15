@@ -17,6 +17,7 @@ type ChatHeaderProps = {
     onRestart: () => void;
     soundEnabled: boolean;
     onToggleSound: () => void;
+    subject?: string | null;
 };
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -29,10 +30,19 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     onRestart,
     soundEnabled,
     onToggleSound,
+    subject = null,
 }) => {
     const isEn = locale === 'en';
-    const title = isEn ? 'Arab UT Assistant' : 'مساعد عرب التيميت';
-    const subtitle = isEn ? 'Usually replies instantly' : 'عادة نرد فورًا';
+    const brand = isEn ? 'Arab UT Assistant' : 'مساعد عرب التيميت';
+    const hasSubject = subject !== null && subject.trim() !== '';
+    // Once the conversation has a title it takes the header, and the brand
+    // moves to the line under it.
+    const title = hasSubject ? subject : brand;
+    const subtitle = hasSubject
+        ? brand
+        : isEn
+          ? 'Usually replies instantly'
+          : 'عادة نرد فورًا';
     const backLabel = isEn ? 'Back' : 'رجوع';
     const closeLabel = isEn ? 'Close chat' : 'إغلاق الشات';
     const restartLabel = isRestarting
@@ -83,7 +93,10 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 </div>
 
                 <div className="flex min-w-0 flex-col text-start">
-                    <h2 className="truncate text-[14px] leading-tight font-semibold text-[var(--chat-ink)] sm:text-[15px]">
+                    <h2
+                        className="truncate text-[14px] leading-tight font-semibold text-[var(--chat-ink)] sm:text-[15px]"
+                        dir={hasSubject ? 'auto' : undefined}
+                    >
                         {title}
                     </h2>
                     <p className="truncate text-xs leading-tight text-[var(--chat-muted)]">
