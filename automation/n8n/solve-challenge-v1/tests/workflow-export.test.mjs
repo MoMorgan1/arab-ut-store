@@ -122,6 +122,7 @@ test('the v14 solve calls are the v14 calls, reading the Validate Set node', asy
     assert.equal(submit.parameters.url, 'https://futtransfer.top/newSBCAPI');
     assert.equal(submit.parameters.specifyBody, 'json');
     const body = submit.parameters.jsonBody;
+
     for (const fragment of [
         '"apiUser": $(\'Config\').first().json.FFT_API_USER',
         '"setID": $(\'Validate Set\').first().json.setID',
