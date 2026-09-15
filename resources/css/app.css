@@ -984,7 +984,7 @@ html.admin-document {
         border-radius: 0.55rem;
         color: var(--arabut-muted);
         font-weight: 700;
-        transition: 180ms var(--store-ease-out);
+        transition: 180ms var(--motion-ease);
     }
 
     .auth-login-method__tab-long {
@@ -1173,9 +1173,9 @@ html.admin-document {
         color: var(--arabut-ink);
         font-weight: 700;
         transition:
-            border-color 180ms var(--store-ease-out),
-            background-color 180ms var(--store-ease-out),
-            box-shadow 180ms var(--store-ease-out);
+            border-color 180ms var(--motion-ease),
+            background-color 180ms var(--motion-ease),
+            box-shadow 180ms var(--motion-ease);
     }
 
     .auth-google-action:hover {
@@ -1242,9 +1242,9 @@ html.admin-document {
         font-weight: 700;
         box-shadow: 0 0.6rem 1.5rem -0.9rem rgb(212 168 67 / 75%);
         transition:
-            background-color 180ms var(--store-ease-out),
-            box-shadow 180ms var(--store-ease-out),
-            transform 180ms var(--store-ease-out);
+            background-color 180ms var(--motion-ease),
+            box-shadow 180ms var(--motion-ease),
+            transform 180ms var(--motion-ease);
     }
 
     .auth-shell .auth-form__submit:hover:not(:disabled) {
@@ -1374,7 +1374,6 @@ html.admin-document {
     }
 
     .store-shell {
-        --store-ease-out: var(--motion-ease);
         --store-header-height: 7rem;
         overflow-x: clip;
         background: var(--arabut-navy);
@@ -1481,7 +1480,7 @@ html.admin-document {
         text-decoration: none;
         cursor: pointer;
         transition:
-            background-color 160ms var(--store-ease-out),
+            background-color 160ms var(--motion-ease),
             color 160ms ease,
             border-color 160ms ease;
     }
@@ -1588,9 +1587,9 @@ html.admin-document {
         font-weight: 800;
         text-decoration: none;
         transition:
-            border-color 180ms var(--store-ease-out),
-            background 180ms var(--store-ease-out),
-            transform 180ms var(--store-ease-out);
+            border-color 180ms var(--motion-ease),
+            background 180ms var(--motion-ease),
+            transform 180ms var(--motion-ease);
     }
 
     .store-preferences__language a:hover,
@@ -1677,7 +1676,7 @@ html.admin-document {
         border-radius: 2px 2px 0 0;
         background: var(--arabut-gold);
         transform: scaleX(0);
-        transition: transform 180ms var(--store-ease-out);
+        transition: transform 180ms var(--motion-ease);
     }
 
     .store-primary-nav a:hover,
@@ -1737,8 +1736,8 @@ html.admin-document {
         padding-inline: 0.7rem;
         box-shadow: 0 2px 8px rgb(37 211 102 / 24%);
         transition:
-            filter 160ms var(--store-ease-out),
-            box-shadow 160ms var(--store-ease-out);
+            filter 160ms var(--motion-ease),
+            box-shadow 160ms var(--motion-ease);
     }
 
     .store-primary-nav__whatsapp a::after {
@@ -1797,7 +1796,7 @@ html.admin-document {
         );
         pointer-events: none;
         transform: translate3d(-120%, 0, 0) skewX(-14deg);
-        animation: store-hero-sweep 1100ms var(--store-ease-out) 450ms both;
+        animation: store-hero-sweep 1100ms var(--motion-ease) 450ms both;
     }
 
     .store-hero__glow {
@@ -1813,7 +1812,7 @@ html.admin-document {
             transparent 70%
         );
         pointer-events: none;
-        animation: store-hero-glow 900ms var(--store-ease-out) both;
+        animation: store-hero-glow 900ms var(--motion-ease) both;
     }
 
     .store-hero__content {
@@ -1972,10 +1971,10 @@ html.admin-document {
         text-decoration: none;
         box-shadow: 0 0.8rem 2rem -1.2rem rgb(212 168 67 / 78%);
         transition:
-            transform 180ms var(--store-ease-out),
+            transform 180ms var(--motion-ease),
             background-color 160ms ease,
             border-color 160ms ease,
-            box-shadow 180ms var(--store-ease-out);
+            box-shadow 180ms var(--motion-ease);
     }
 
     .store-hero__cta--primary {
@@ -2026,7 +2025,7 @@ html.admin-document {
         min-width: 0;
         padding-inline: clamp(0.65rem, 2.5vw, 1.5rem);
         text-align: center;
-        animation: store-stat-reveal 560ms var(--store-ease-out) both;
+        animation: store-stat-reveal 560ms var(--motion-ease) both;
     }
 
     .store-hero__stat:nth-child(2) {
@@ -2118,7 +2117,7 @@ html.admin-document {
         max-width: 42rem;
         margin-block-end: 2rem;
         text-align: start;
-        animation: store-section-reveal 700ms var(--store-ease-out) 180ms both;
+        animation: store-section-reveal 700ms var(--motion-ease) 180ms both;
     }
 
     .store-section-heading > p {
@@ -2310,7 +2309,7 @@ html.admin-document {
         /* No fill mode: the resting state already matches the last frame,
            and a retained transform would make every step a containing
            block for fixed/sticky descendants. */
-        animation: coins-step-in 280ms var(--store-ease-out);
+        animation: coins-step-in 280ms var(--motion-ease);
     }
 
     @keyframes coins-step-in {
@@ -2442,7 +2441,7 @@ html.admin-document {
             border-color 160ms ease,
             background-color 160ms ease,
             box-shadow 160ms ease,
-            transform 160ms var(--store-ease-out);
+            transform 160ms var(--motion-ease);
     }
 
     .coins-choice:hover {
@@ -2791,8 +2790,8 @@ html.admin-document {
             0 0 0 4px rgb(212 168 67 / 12%),
             0 3px 8px rgb(0 0 0 / 32%);
         transition:
-            box-shadow 160ms var(--store-ease-out),
-            transform 160ms var(--store-ease-out);
+            box-shadow 160ms var(--motion-ease),
+            transform 160ms var(--motion-ease);
     }
 
     .coins-amount-slider:hover::-webkit-slider-thumb {
@@ -2825,8 +2824,8 @@ html.admin-document {
             0 0 0 4px rgb(212 168 67 / 12%),
             0 3px 8px rgb(0 0 0 / 32%);
         transition:
-            box-shadow 160ms var(--store-ease-out),
-            transform 160ms var(--store-ease-out);
+            box-shadow 160ms var(--motion-ease),
+            transform 160ms var(--motion-ease);
     }
 
     .coins-amount-slider:hover::-moz-range-thumb {
@@ -3736,7 +3735,7 @@ html.admin-document {
         stroke-linecap: round;
         transform: rotate(-90deg);
         transform-origin: center;
-        animation: store-cart-sheet-ring 360ms var(--store-ease-out) forwards;
+        animation: store-cart-sheet-ring 360ms var(--motion-ease) forwards;
     }
 
     .store-cart-sheet--duplicate .store-cart-sheet__ring-circle {
@@ -3854,7 +3853,7 @@ html.admin-document {
         width: 100%;
         height: 100%;
         object-fit: contain;
-        animation: store-cart-sheet-art 320ms var(--store-ease-out) 40ms both;
+        animation: store-cart-sheet-art 320ms var(--motion-ease) 40ms both;
     }
 
     .store-cart-sheet__art--raised img {
@@ -3984,11 +3983,11 @@ html.admin-document {
     }
 
     .store-header__icon-link.is-bumping > svg {
-        animation: store-cart-icon-nudge 620ms var(--store-ease-out);
+        animation: store-cart-icon-nudge 620ms var(--motion-ease);
     }
 
     .store-header__icon-link.is-bumping > span {
-        animation: store-cart-badge-bump 620ms var(--store-ease-out);
+        animation: store-cart-badge-bump 620ms var(--motion-ease);
     }
 
     .store-header__icon-link.is-bumping > span::after {
@@ -3998,7 +3997,7 @@ html.admin-document {
         border-radius: 999px;
         box-shadow: 0 0 0 2px var(--arabut-gold-bright);
         opacity: 0;
-        animation: store-cart-badge-ring 720ms var(--store-ease-out);
+        animation: store-cart-badge-ring 720ms var(--motion-ease);
     }
 
     @keyframes store-cart-icon-nudge {
@@ -4332,9 +4331,9 @@ html.admin-document {
         color: var(--arabut-ink);
         text-decoration: none;
         transition:
-            border-color 180ms var(--store-ease-out),
-            background-color 180ms var(--store-ease-out),
-            transform 180ms var(--store-ease-out);
+            border-color 180ms var(--motion-ease),
+            background-color 180ms var(--motion-ease),
+            transform 180ms var(--motion-ease);
     }
 
     .store-cart-suggestions__service:hover {
@@ -4537,9 +4536,8 @@ html.admin-document {
         /* A base max-height so the collapse actually transitions. */
         max-height: 80rem;
         transition:
-            opacity 200ms var(--store-ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-            max-height 200ms
-                var(--store-ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+            opacity 200ms var(--motion-ease),
+            max-height 200ms var(--motion-ease);
     }
 
     .store-cart-line--removing {
@@ -4964,7 +4962,7 @@ html.admin-document {
         height: 1.15rem;
         flex: 0 0 auto;
         color: var(--arabut-muted);
-        transition: transform 180ms var(--store-ease-out);
+        transition: transform 180ms var(--motion-ease);
     }
 
     .store-cart-credentials__disclosure[aria-expanded='true'] svg {
@@ -5006,8 +5004,7 @@ html.admin-document {
     }
 
     .store-cart-credentials__content {
-        animation: store-cart-credentials-reveal 180ms var(--store-ease-out)
-            both;
+        animation: store-cart-credentials-reveal 180ms var(--motion-ease) both;
     }
 
     .store-cart-credentials h3,
@@ -6045,10 +6042,10 @@ html.admin-document {
         color: var(--arabut-muted);
         text-decoration: none;
         transition:
-            transform 180ms var(--store-ease-out),
-            border-color 180ms var(--store-ease-out),
-            background 180ms var(--store-ease-out),
-            color 180ms var(--store-ease-out);
+            transform 180ms var(--motion-ease),
+            border-color 180ms var(--motion-ease),
+            background 180ms var(--motion-ease),
+            color 180ms var(--motion-ease);
     }
 
     .store-footer__socials a:hover {
@@ -6090,8 +6087,8 @@ html.admin-document {
         line-height: 1.45;
         text-decoration: none;
         transition:
-            transform 180ms var(--store-ease-out),
-            color 180ms var(--store-ease-out);
+            transform 180ms var(--motion-ease),
+            color 180ms var(--motion-ease);
     }
 
     .store-footer__links a:hover {
@@ -6121,10 +6118,10 @@ html.admin-document {
         overflow-wrap: anywhere;
         text-decoration: none;
         transition:
-            transform 180ms var(--store-ease-out),
-            border-color 180ms var(--store-ease-out),
-            background 180ms var(--store-ease-out),
-            color 180ms var(--store-ease-out);
+            transform 180ms var(--motion-ease),
+            border-color 180ms var(--motion-ease),
+            background 180ms var(--motion-ease),
+            color 180ms var(--motion-ease);
     }
 
     .store-footer__contacts a:hover {
@@ -6522,8 +6519,8 @@ html.admin-document {
         font-weight: 700;
         text-decoration: none;
         transition:
-            background-color 180ms var(--store-ease-out),
-            transform 180ms var(--store-ease-out);
+            background-color 180ms var(--motion-ease),
+            transform 180ms var(--motion-ease);
     }
 
     .store-info-page__support a:hover {
@@ -7316,7 +7313,7 @@ html.admin-document {
 }
 
 .account-order-fulfillment__toggle > svg {
-    transition: transform 180ms var(--store-ease-out);
+    transition: transform 180ms var(--motion-ease);
 }
 
 .account-order-fulfillment__toggle[aria-expanded='true'] > svg {
@@ -8616,9 +8613,9 @@ html.admin-document {
     font-weight: 750;
     cursor: pointer;
     transition:
-        border-color 160ms var(--store-ease-out),
-        background-color 160ms var(--store-ease-out),
-        color 160ms var(--store-ease-out);
+        border-color 160ms var(--motion-ease),
+        background-color 160ms var(--motion-ease),
+        color 160ms var(--motion-ease);
 }
 
 .manual-service-tabs__tab:hover {
@@ -8686,7 +8683,7 @@ html.admin-document {
     -webkit-backdrop-filter: var(--manual-glass-blur);
     backdrop-filter: var(--manual-glass-blur);
     padding: clamp(1rem, 2.5vw, 1.5rem);
-    animation: manual-section-in 320ms var(--store-ease-out) both;
+    animation: manual-section-in 320ms var(--motion-ease) both;
 }
 
 .service-reviews-section {
@@ -8819,10 +8816,10 @@ html.admin-document {
     user-select: none;
     text-align: center;
     transition:
-        border-color 160ms var(--store-ease-out),
-        background-color 160ms var(--store-ease-out),
-        color 160ms var(--store-ease-out),
-        box-shadow 160ms var(--store-ease-out);
+        border-color 160ms var(--motion-ease),
+        background-color 160ms var(--motion-ease),
+        color 160ms var(--motion-ease),
+        box-shadow 160ms var(--motion-ease);
 }
 
 .manual-segmented__item input {
@@ -8863,7 +8860,7 @@ html.admin-document {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    animation: manual-fade-slide 200ms var(--store-ease-out);
+    animation: manual-fade-slide 200ms var(--motion-ease);
 }
 
 .manual-pc-launcher__label {
@@ -9022,8 +9019,8 @@ html.admin-document {
         0 2px 8px rgb(0 0 0 / 40%);
     appearance: none;
     transition:
-        box-shadow 160ms var(--store-ease-out),
-        transform 160ms var(--store-ease-out);
+        box-shadow 160ms var(--motion-ease),
+        transform 160ms var(--motion-ease);
 }
 
 .manual-service-slider input[type='range']::-moz-range-thumb {
@@ -9036,8 +9033,8 @@ html.admin-document {
         0 0 0 2px rgb(212 168 67 / 24%),
         0 2px 8px rgb(0 0 0 / 40%);
     transition:
-        box-shadow 160ms var(--store-ease-out),
-        transform 160ms var(--store-ease-out);
+        box-shadow 160ms var(--motion-ease),
+        transform 160ms var(--motion-ease);
 }
 
 .manual-service-slider input[type='range']:hover::-webkit-slider-thumb,
@@ -9074,8 +9071,8 @@ html.admin-document {
     font-weight: 800;
     cursor: pointer;
     transition:
-        color 160ms var(--store-ease-out),
-        background-color 160ms var(--store-ease-out);
+        color 160ms var(--motion-ease),
+        background-color 160ms var(--motion-ease);
 }
 
 .manual-service-slider__tick-btn:hover {
@@ -9095,9 +9092,9 @@ html.admin-document {
     border-radius: 50%;
     background: rgb(237 225 198 / 26%);
     transition:
-        background-color 160ms var(--store-ease-out),
-        transform 160ms var(--store-ease-out),
-        box-shadow 160ms var(--store-ease-out);
+        background-color 160ms var(--motion-ease),
+        transform 160ms var(--motion-ease),
+        box-shadow 160ms var(--motion-ease);
 }
 
 .manual-service-slider__tick-btn[data-passed='true']
@@ -9189,8 +9186,8 @@ html.admin-document {
     cursor: pointer;
     user-select: none;
     transition:
-        border-color 160ms var(--store-ease-out),
-        background-color 160ms var(--store-ease-out);
+        border-color 160ms var(--motion-ease),
+        background-color 160ms var(--motion-ease);
 }
 
 .manual-toggle-row input[type='checkbox'] {
@@ -9347,9 +9344,9 @@ html.admin-document {
     cursor: pointer;
     user-select: none;
     transition:
-        border-color 160ms var(--store-ease-out),
-        background-color 160ms var(--store-ease-out),
-        color 160ms var(--store-ease-out);
+        border-color 160ms var(--motion-ease),
+        background-color 160ms var(--motion-ease),
+        color 160ms var(--motion-ease);
 }
 
 .manual-played-chip:hover {
@@ -9378,7 +9375,7 @@ html.admin-document {
     color: var(--arabut-muted);
     font-size: 0.875rem;
     font-weight: 700;
-    animation: manual-fade-slide 200ms var(--store-ease-out);
+    animation: manual-fade-slide 200ms var(--motion-ease);
 }
 
 .manual-played-matches__count input {
@@ -9748,7 +9745,7 @@ html.admin-document {
     font-size: 1.65rem;
     font-weight: 850;
     font-variant-numeric: tabular-nums;
-    animation: manual-price-pop 200ms var(--store-ease-out);
+    animation: manual-price-pop 200ms var(--motion-ease);
 }
 
 .manual-configurator__submit {
@@ -9881,7 +9878,7 @@ html.admin-document {
         opacity: 0;
         visibility: hidden;
         transition:
-            transform 260ms var(--store-ease-out),
+            transform 260ms var(--motion-ease),
             opacity 200ms ease,
             visibility 0s linear 260ms;
     }
@@ -10042,9 +10039,9 @@ html.admin-document {
     text-decoration: none;
     color: var(--arabut-ink);
     transition:
-        border-color 180ms var(--store-ease-out),
-        background-color 180ms var(--store-ease-out),
-        transform 180ms var(--store-ease-out);
+        border-color 180ms var(--motion-ease),
+        background-color 180ms var(--motion-ease),
+        transform 180ms var(--motion-ease);
 }
 
 .manual-service-other__card:hover {
@@ -10840,7 +10837,7 @@ html.admin-document {
     border-color: rgb(103 232 154 / 55%);
     background: rgb(103 232 154 / 12%);
     color: var(--status-success);
-    animation: store-catalog-added 420ms var(--store-ease-out);
+    animation: store-catalog-added 420ms var(--motion-ease);
     box-shadow: 0 0 0 0.28rem rgb(103 232 154 / 12%);
 }
 
@@ -11003,10 +11000,10 @@ html.admin-document {
         ),
         linear-gradient(152deg, rgb(20 24 38 / 98%), rgb(8 10 17 / 99%));
     transition:
-        border-color 220ms var(--store-ease-out),
-        transform 220ms var(--store-ease-out),
-        box-shadow 220ms var(--store-ease-out),
-        filter 220ms var(--store-ease-out);
+        border-color 220ms var(--motion-ease),
+        transform 220ms var(--motion-ease),
+        box-shadow 220ms var(--motion-ease),
+        filter 220ms var(--motion-ease);
     animation: store-sbc-card-reveal var(--motion-emphasis) var(--motion-ease)
         backwards;
 }
@@ -11081,9 +11078,9 @@ html.admin-document {
     filter: blur(0.7rem);
     transform: translateX(-50%) scale(0.86) rotate(-8deg);
     transition:
-        opacity 320ms var(--store-ease-out),
-        transform 420ms var(--store-ease-out),
-        filter 320ms var(--store-ease-out);
+        opacity 320ms var(--motion-ease),
+        transform 420ms var(--motion-ease),
+        filter 320ms var(--motion-ease);
     animation: store-sbc-artwork-glow 5.2s ease-in-out infinite alternate;
 }
 
@@ -11221,8 +11218,8 @@ html.admin-document {
     filter: drop-shadow(0 0.8rem 1rem rgb(0 0 0 / 46%))
         drop-shadow(0 0 1rem rgb(217 171 58 / 13%));
     transition:
-        transform 320ms var(--store-ease-out),
-        filter 320ms var(--store-ease-out);
+        transform 320ms var(--motion-ease),
+        filter 320ms var(--motion-ease);
     transform: perspective(48rem) rotateX(var(--sbc-tilt-x, 0deg))
         rotateY(var(--sbc-tilt-y, 0deg));
     transform-style: preserve-3d;
@@ -11264,7 +11261,7 @@ html.admin-document {
         opacity: 1;
         transform: translateX(120%);
         transition:
-            transform 680ms var(--store-ease-out),
+            transform 680ms var(--motion-ease),
             opacity 180ms ease;
     }
 
@@ -12273,7 +12270,7 @@ html.admin-document {
 .store-faq__chevron {
     flex: 0 0 auto;
     color: var(--arabut-gold);
-    transition: transform 200ms var(--store-ease-out);
+    transition: transform 200ms var(--motion-ease);
 }
 
 .store-faq details[open] .store-faq__chevron {
@@ -12480,8 +12477,8 @@ html.admin-document {
     color: var(--arabut-gold);
     cursor: pointer;
     transition:
-        border-color 160ms var(--store-ease-out),
-        background-color 160ms var(--store-ease-out);
+        border-color 160ms var(--motion-ease),
+        background-color 160ms var(--motion-ease);
 }
 
 .store-reviews__arrow:hover {
@@ -12509,8 +12506,8 @@ html.admin-document {
     border-radius: 999px;
     background: rgb(255 255 255 / 18%);
     transition:
-        width 200ms var(--store-ease-out),
-        background-color 200ms var(--store-ease-out);
+        width 200ms var(--motion-ease),
+        background-color 200ms var(--motion-ease);
 }
 
 .store-reviews__dots button.is-active {
@@ -12536,10 +12533,10 @@ html.admin-document {
         inset 0 0 0 1px rgb(255 255 255 / 4%),
         0 0.75rem 2rem rgb(0 0 0 / 24%);
     transition:
-        transform 200ms var(--store-ease-out),
+        transform 200ms var(--motion-ease),
         border-color 200ms ease,
         box-shadow 200ms ease;
-    animation: store-review-reveal 480ms var(--store-ease-out) both;
+    animation: store-review-reveal 480ms var(--motion-ease) both;
 }
 
 .store-review-card:hover {
@@ -12687,7 +12684,7 @@ html.admin-document {
 }
 
 .store-reviews__more svg {
-    transition: transform 160ms var(--store-ease-out);
+    transition: transform 160ms var(--motion-ease);
 }
 
 .store-reviews__more:hover svg {
@@ -12725,8 +12722,8 @@ html.admin-document {
     font-weight: 700;
     text-decoration: none;
     transition:
-        background-color 160ms var(--store-ease-out),
-        border-color 160ms var(--store-ease-out);
+        background-color 160ms var(--motion-ease),
+        border-color 160ms var(--motion-ease);
 }
 
 .store-reviews__all {
@@ -12799,9 +12796,9 @@ html.admin-document {
     text-decoration: none;
     white-space: nowrap;
     transition:
-        background-color 160ms var(--store-ease-out),
-        border-color 160ms var(--store-ease-out),
-        color 160ms var(--store-ease-out);
+        background-color 160ms var(--motion-ease),
+        border-color 160ms var(--motion-ease),
+        color 160ms var(--motion-ease);
 }
 
 .store-reviews-chip:hover {
@@ -13880,7 +13877,7 @@ html.admin-document {
     text-decoration: none;
     transition:
         color 150ms ease,
-        transform 150ms var(--store-ease-out);
+        transform 150ms var(--motion-ease);
 }
 
 .account-overview__loyalty-link:hover,
@@ -14097,7 +14094,7 @@ html.admin-document {
         var(--arabut-gold),
         var(--arabut-gold-bright)
     );
-    transition: inline-size 400ms var(--store-ease-out);
+    transition: inline-size 400ms var(--motion-ease);
 }
 
 .account-wallet-loyalty__remaining {
@@ -15826,8 +15823,8 @@ html.admin-document {
 
 .store-shell--reveal-ready [data-reveal].is-revealed {
     transition:
-        opacity 600ms var(--store-ease-out),
-        transform 600ms var(--store-ease-out);
+        opacity 600ms var(--motion-ease),
+        transform 600ms var(--motion-ease);
     transition-delay: var(--reveal-delay, 0ms);
 }
 
