@@ -38,7 +38,65 @@ the unpatched workflow is the only unsafe combination.
   whole riyals — if you ever re-import `workflow.json`, restore that stricter
   pairing or hourly runs will fail closed with `exact override is invalid`.
 
-## REQUIRED SYNC: publish anchors, not the expansion (2026-08-27)
+## v2.5: FFT down carries the last rates forward (2026-09-15)
+
+**`workflow-v2.5.json` is the current artifact.** It is v2.4 with edits in four
+Code nodes and nothing else. Owner decision of 2026-09-15: FFT being down is not
+a reason to stop the store.
+
+### Why
+
+From 2026-09-05 FFT answered every cycle probe with `coverage: "none"`,
+`cycleTotalCoins: 0` on both platforms (game transition). v2.4 stops the run at
+"FFT PS cycle cost is unavailable", so for ten days no run reached Laravel:
+storefront prices froze, and - since B4 - no `observations.tierCosts` reached
+the store, so fulfilment had no budget and no paid order could be placed even
+though UTT was selling normally.
+
+### What v2.5 does
+
+When the FFT PS cycle cost is unavailable and the workflow remembers a
+published run (`lastSuccessfulRates` in the workflow's static data):
+
+- the three rate groups are published **unchanged** - no smoothing, no
+  candidate; a UTT-only basis with no cycle floor is a fulfilment budget, not a
+  price signal;
+- `observations.tierCosts` is still built, from UTT (and FFT targeted when it
+  answers), so the store's supplier cost table stays fresh;
+- `observations.cyclePSUsdPerM` / `cyclePCUsdPerM` carry the last costs FFT
+  really answered, remembered by "Evaluate Publish Result", so slow console
+  delivery keeps a budget;
+- `observations.source` is `utt+carry-forward-v2.5`, and `carryForward` /
+  `carryForwardReason` are on the observations, the audit and the summary.
+
+With nothing remembered, the run stops exactly as v2.4 did, naming the reason.
+
+### Edits
+
+| Node | Change |
+| --- | --- |
+| Prepare Coins Snapshot | the FFT guard becomes the carry-forward branch; `finalRates` and `candidateRates.console_normal` read the remembered rates in that branch; observations carry the remembered cycle costs and the flags |
+| Evaluate Publish Result | remembers `lastCyclePSUsdPerM` / `lastCyclePCUsdPerM` from a run FFT answered (a carry-forward run keeps the remembered ones) |
+| Success Summary | `carryForward`, `carryForwardReason` |
+| Config | version comment |
+
+### Apply it IN PLACE - never import as a new workflow
+
+The carry-forward reads the rates from this workflow's **static data**, which
+belongs to the workflow entity. A fresh import has empty static data and would
+stop on the first FFT-down run with "no published rates exist to carry
+forward". Open the live workflow, paste the four nodes' code from
+`workflow-v2.5.json` over the existing nodes (Config, Prepare Coins Snapshot,
+Evaluate Publish Result, Success Summary), save, done. The static data already
+holds `lastSuccessfulRates` from the last run that succeeded (2026-09-05); the
+cycle costs get remembered from the first run where FFT answers again - until
+then a carry-forward run publishes `cyclePSUsdPerM: null`, which the store
+reads as "no slow-delivery budget", the honest answer.
+
+`npm test` in this directory runs the v2.5 Code nodes out of the JSON with FFT
+up, FFT down without memory, and FFT down with memory.
+
+## v2.4 (superseded by v2.5): publish anchors, not the expansion (2026-08-27)
 
 **`workflow-v2.4.json` is the ready-to-import artifact.** It is derived from
 `workflow-v2.3.1-current.json`, the owner's live export of 2026-08-27
