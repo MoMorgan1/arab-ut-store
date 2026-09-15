@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
+import type { CSSProperties } from 'react';
 import { StorePreferences } from '@/components/store/store-preferences';
+import { useTravellingLens } from '@/hooks/use-travelling-lens';
 
 import type {
     StoreLocale,
@@ -287,6 +295,50 @@ export function StoreHeader(props: StoreHeaderProps) {
         },
     ] as const;
 
+    // One lens travels between the sections instead of each one drawing its
+    // own: the move is a single transition, and a fresh bar picks up where
+    // the last one stopped rather than animating in with the page.
+    const activeKey =
+        navigation.find(
+            (item) => activeState(item.key, liveCurrentUrl) !== undefined,
+        )?.key ?? null;
+    // A bead of liquid does not gain volume when it moves: the lens stretches
+    // along its travel and flattens to match, then settles back.
+    const [lensStretch, setLensStretch] = useState(1);
+    const lensSettle = useRef<number | null>(null);
+    const stretchOverTravel = useCallback((distance: number) => {
+        if (
+            distance < 4 ||
+            (typeof window.matchMedia === 'function' &&
+                window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        ) {
+            return;
+        }
+
+        setLensStretch(Math.min(1 + distance / 320, 1.22));
+
+        if (lensSettle.current !== null) {
+            window.clearTimeout(lensSettle.current);
+        }
+
+        lensSettle.current = window.setTimeout(() => setLensStretch(1), 190);
+    }, []);
+
+    useEffect(
+        () => () => {
+            if (lensSettle.current !== null) {
+                window.clearTimeout(lensSettle.current);
+            }
+        },
+        [],
+    );
+
+    const { container: navList, lens } = useTravellingLens<HTMLUListElement>(
+        'store-primary-nav',
+        activeKey,
+        stretchOverTravel,
+    );
+
     return (
         <header className="store-header" dir={direction}>
             <div className="store-header__top">
@@ -366,7 +418,23 @@ export function StoreHeader(props: StoreHeaderProps) {
                 aria-label={translations.header.primary_navigation}
                 className="store-primary-nav"
             >
-                <ul>
+                <ul ref={navList}>
+                    {lens === null ? null : (
+                        <span
+                            aria-hidden="true"
+                            className="store-primary-nav__lens"
+                            style={
+                                {
+                                    '--lens-x': `${lens.left}px`,
+                                    '--lens-sx': lensStretch,
+                                    // What it gains lengthways it gives up in
+                                    // height, so the bead keeps its volume.
+                                    '--lens-sy': 1 - (lensStretch - 1) * 0.55,
+                                    width: `${lens.width}px`,
+                                } as CSSProperties
+                            }
+                        />
+                    )}
                     {navigation.map((item) => (
                         <li key={item.key}>
                             <a
@@ -374,6 +442,7 @@ export function StoreHeader(props: StoreHeaderProps) {
                                     item.key,
                                     liveCurrentUrl,
                                 )}
+                                data-lens-key={item.key}
                                 href={item.href}
                             >
                                 <NavigationIcon item={item.key} />
