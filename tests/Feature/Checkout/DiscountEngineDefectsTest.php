@@ -14,6 +14,7 @@ use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\CouponTarget;
+use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -342,6 +343,66 @@ test('defect 3: 100 percent off coupon places order with payment_halalah = 0 and
         ->and($order->paid_at)->not->toBeNull()
         ->and($order->payments->sole()->provider)->toBe('wallet')
         ->and($order->payments->sole()->amount_halalah)->toBe(0);
+});
+
+test('defect 3: a 100 percent coupon on a cart under the Paylink minimum still places a paid order', function (): void {
+    // Production 2026-09-15: subtotal 410 halalah, coupon TEST100, payable 0,
+    // refused with cart_changed. Nothing goes to Paylink, so its floor is moot.
+    $user = makeShopper();
+    [$product, $variant] = makeProductWithVariant(priceHalalah: 410);
+    [$cart] = makeCartWithItem($user, $variant);
+
+    $coupon = Coupon::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'code' => 'TEST100',
+        'discount_type' => 'percent',
+        'value' => 100,
+        'minimum_order_halalah' => 0,
+        'is_active' => true,
+    ]);
+
+    app(ApplyCoupon::class)->apply($cart, 'TEST100', $user);
+
+    $checkout = app(PlaceOrder::class)->execute($user, 'ar', 'defect-3-free-small-order');
+    $order = $checkout->order->fresh(['payments']);
+
+    expect($order->status)->toBe(OrderStatus::Received)
+        ->and($order->subtotal_halalah)->toBe(410)
+        ->and($order->discount_halalah)->toBe(410)
+        ->and($order->payment_halalah)->toBe(0)
+        ->and($order->paid_at)->not->toBeNull()
+        ->and($order->payments->sole()->provider)->toBe('wallet')
+        ->and(IntegrationEvent::query()->where('event_type', 'order.paid')->count())->toBe(1)
+        ->and(IntegrationEvent::query()->where('event_type', 'order.paid')->sole()->payload)->toMatchArray([
+            'order_public_id' => $order->public_id,
+            'order_number' => $order->order_number,
+        ]);
+});
+
+test('defect 3: a partial coupon on a cart under the Paylink minimum still gets the gap message', function (): void {
+    $user = makeShopper();
+    // 410 halalah cart, 100 off -> 310 payable, gap 190 halalah.
+    [$product, $variant] = makeProductWithVariant(priceHalalah: 410);
+    [$cart] = makeCartWithItem($user, $variant);
+
+    $coupon = Coupon::query()->create([
+        'public_id' => (string) Str::ulid(),
+        'code' => 'OFF100',
+        'discount_type' => 'fixed',
+        'value' => 100,
+        'minimum_order_halalah' => 0,
+        'is_active' => true,
+    ]);
+
+    app(ApplyCoupon::class)->apply($cart, 'OFF100', $user);
+
+    expect(fn () => app(PlaceOrder::class)->execute($user, 'ar', 'defect-3-small-gap'))
+        ->toThrow(CheckoutUnavailable::class, (string) trans(
+            'store.checkout.paylink_minimum_gap',
+            ['gap' => '1.90'],
+            locale: 'ar',
+        ))
+        ->and(Order::query()->count())->toBe(0);
 });
 
 test('defect 3: payable amount between 1 and 499 halalah is rejected with gap message', function (): void {

@@ -247,12 +247,11 @@ final readonly class PlaceOrder
         }
 
         // Checked after the confirmation gate: a downward reprice can newly trip
-        // these floors, and the customer should meet the new total first rather
-        // than a bare refusal that never mentions the price moved.
-        if ($subtotal < self::PAYLINK_MINIMUM_HALALAH) {
-            throw new CheckoutUnavailable('The order total is below the Paylink minimum.');
-        }
-
+        // this floor, and the customer should meet the new total first rather
+        // than a bare refusal that never mentions the price moved. The floor is
+        // Paylink's, so it applies to what Paylink is asked to collect - never
+        // to the subtotal. A cart fully covered by a coupon or the wallet sends
+        // nothing to Paylink and is placed whatever its subtotal.
         if ($paymentHalalah > 0 && $paymentHalalah < self::PAYLINK_MINIMUM_HALALAH) {
             $gapHalalah = self::PAYLINK_MINIMUM_HALALAH - $paymentHalalah;
             // Integer-only: halalah never becomes a float, and the currency word
