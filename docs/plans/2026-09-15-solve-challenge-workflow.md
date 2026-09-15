@@ -1,7 +1,7 @@
 # F2 — `solve-challenge`: the challenge workflow, adapted from Fulfillment v14
 
-**Status:** drafted 2026-09-15 after the owner asked for the challenge phase ("لازم برضو نظبط
-موضوع التحديات"). One question open at the end; the rest is decided inline.
+**Status:** approved 2026-09-15 after the owner asked for the challenge phase ("لازم برضو نظبط
+موضوع التحديات"); the retry question answered the same day. In build.
 **Reference:** `automation/n8n/fulfillment-v14/workflow-v14-salla.json`, the SBC branch read
 node by node on 2026-09-15; `automation/n8n/ship-coins-v1/` for the shape to copy.
 **Decision it serves:** `docs/plans/2026-09-12-order-tracking-in-store.md`, *The challenge
@@ -24,7 +24,7 @@ the second half:
 | 3 | `SBC: Submit Solve` | `POST futtransfer.top/newSBCAPI`, JSON: `setID`, `account: [eaEmail]`, `accountType: customer`, `timesToSolve`, `fillSBC: 0`, `customName: "Order #<id> - <name>"`, `clubItemHandling: exclude`, `consoleLock: 1` | **Kept as is.** One call per set, exactly the v14 body. |
 | 4 | `SBC: Solve Accepted?` | `data[0].status === 'processed'`, else `WA: SBC Solve Invalid` ("usually no customer with that email") | **Kept.** A rejection fails the run loudly; the error workflow alerts on Telegram. |
 | 5 | `SBC: Log to Sheet1` (`sbcSolveID`s) | the supplier's solve ids | **Replaced** by the placement report: `POST /api/automation/v1/fulfillment/placements` with `delivery_phase: challenge`, `supplier: fft`, `supplier_order_id`, `challenge_ids`. |
-| 6 | `SBC Solve: Prepare Poll` → `Poll Wait` → `Check Status` (`sbcStatusBulkAPI`) → `Evaluate` → stall alerts, Salla pushes, `retrySBCAPI` auto-retry, `Salla: SBC Done` | the poll loop | **Dropped.** D3a polls `sbcStatusBulkAPI` through `FftClient::observeChallenges`, the translator reads `sbcStatus`, the customer sees the challenge card. *Auto-retry of transient statuses: the open question below.* |
+| 6 | `SBC Solve: Prepare Poll` → `Poll Wait` → `Check Status` (`sbcStatusBulkAPI`) → `Evaluate` → stall alerts, Salla pushes, `retrySBCAPI` auto-retry, `Salla: SBC Done` | the poll loop | **Dropped.** D3a polls `sbcStatusBulkAPI` through `FftClient::observeChallenges`, the translator reads `sbcStatus`, the customer sees the challenge card. *Auto-retry of transient statuses: kept, in the store's poll (F2d, owner decision below).* |
 | 7 | `SBC: Log to Sheet`, `Sheet: SBC Actual Cost` (`+ challengeAmount × 0.1`) | estimated and actual cost | **Dropped.** The coins cost is on the job (`actual_cost_halalah`, 2026-09-15). FFT's per-challenge solve fee is not on any API answer v14 read; it stays a sheet-era figure until FFT exposes it. |
 
 Two facts that shape everything else:
@@ -130,17 +130,23 @@ from the challenge placement and calls `sbcStatusBulkAPI`, and the card shows th
 | F2a | store | `challenge.ready` outbox row on coins completion of an SBC item; `ComposeChallengeRequest`; publisher + command + config; docs/api contract section; tests. Inert until `N8N_SOLVE_CHALLENGE_URL` is set. |
 | F2b | n8n | `automation/n8n/solve-challenge-v1/` built the ship-coins way (build script, node sources, tests, README); imported by hand, keys typed into Config. |
 | F2c | ops | Live check of `sbcSolveID`'s shape on one real solve; the four keys on the store and in Config; the first end-to-end challenge on Mohamed's own account, with the coins phase already proven (AUT-1029). |
+| F2d | store | Automatic `retrySBCAPI` on transient solve statuses, on v14's cadence, from the poll (owner decision below). |
 
 v14 keeps its SBC branch until F2c passes; from that day v14 receives no order at all (the store
 sends `order.paid` only to ship-coins), so two solvers never race.
 
-## Open question
+## Transient solve statuses retry on their own — owner decision, 2026-09-15
 
-**Transient solve statuses.** v14 re-fired `retrySBCAPI` on its own for `sessionExpired`,
-`LoginFailed`, `clickFailed`, `noSolutionFound` and the like, every fourth poll up to the
-fourteenth. The store today offers the customer a *retry* button for those statuses
-(`SBC_RETRYABLE_STATUSES`) and does nothing on its own. The owner ruled on 2026-09-15 that an
-`interrupted` coins order is never auto-resumed ("if I stopped it on purpose, auto-resume would
-restart it"). Whether that ruling extends to challenge retries is the owner's call; the plan
-assumes it does (no automatic `retrySBCAPI`; the customer's button and, later, the admin's)
-until told otherwise.
+v14 re-fired `retrySBCAPI` for `sessionExpired`, `LoginFailed`, `clickFailed`,
+`noSolutionFound` and the rest of its transient list, every fourth poll up to the fourteenth.
+Asked whether the coins ruling (no automatic resume, 2026-09-15) extends to challenges, the
+owner answered that a challenge retry should stay automatic: "ايوه نفضل تعيد". The two rulings
+differ for a reason: a stopped coins order may have been stopped by a person, a transient solve
+status is the supplier's own hiccup.
+
+Since the poll loop lives in the store (D3a), so does the retry: **F2d** — when
+`ObserveFulfillmentJob` reads a challenge whose `sbcStatus` is in `SBC_RETRYABLE_STATUSES`, the
+store calls `FftClient::retryChallenge()` on v14's cadence (every fourth read of the same
+transient status, at most three times per challenge), records the attempt on the job, and leaves
+the customer's retry button as it is. Statuses that need a decision (wrong credentials, no
+coins, console logged in) are never retried automatically, as in v14.
