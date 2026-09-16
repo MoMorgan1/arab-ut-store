@@ -161,6 +161,30 @@ it('quotes coins by the million, and says so on the row', function () {
         ->and($row['title'])->toBe('كوينز فيفا 27 - سوني / إكس بوكس - مليون كوين');
 });
 
+it('tells two nameless variants apart by their platform', function () {
+    $product = Product::factory()->create([
+        'service_type' => ServiceType::Sbc,
+        'slug' => 'sbc-nameless',
+        'name_ar' => 'تحدي بلا أسماء',
+    ]);
+
+    foreach ([['PS', Platform::PlayStation], ['PC', Platform::Pc]] as [$suffix, $platform]) {
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'service_type' => ServiceType::Sbc,
+            'platform' => $platform,
+            'sku' => "SBC-NAMELESS-{$suffix}",
+            'name_ar' => null,
+            'price_halalah' => 2_000,
+        ]);
+    }
+
+    $rows = metaCatalogRows();
+
+    expect($rows['SBC-NAMELESS-PS']['title'])->toBe('تحدي بلا أسماء - بلايستيشن وإكسبوكس')
+        ->and($rows['SBC-NAMELESS-PC']['title'])->toBe('تحدي بلا أسماء - بي سي');
+});
+
 it('never advertises what a customer cannot buy', function () {
     $hidden = challengeProduct(
         ['slug' => 'sbc-hidden', 'is_visible' => false],
