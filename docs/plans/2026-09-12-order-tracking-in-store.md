@@ -7,7 +7,7 @@ found twenty-five issues in the first draft; approved and dispatched since.
 (#134, #136, #137, #138, #141), and **B4** - the store composes the placement request itself
 (this branch). Contract: `docs/api/n8n-fulfillment-v1.md`, *The placement request*.
 
-**Not started:** B6, D3b (waits on the cadence numbers D3a's instrumentation produces), E1, E2,
+**Not started:** D3b (waits on the cadence numbers D3a's instrumentation produces), E1, E2,
 F1-F3, G2.
 
 **Blocked on Mohamed:** D3c's sending (copy approved 2026-09-13; nothing may be sent yet), the
@@ -528,6 +528,26 @@ already exists to surface.
 **B6. Silence alarm.** An automated paid item with no placement row after a bounded wait is
 surfaced to Mohamed. Covers "n8n placed successfully and its callback was lost", which n8n cannot
 see and which otherwise leaves a paid order invisible.
+
+**Shipped 2026-09-16.** `fulfillment:alarms` every five minutes writes `fulfillment_alarms`, one
+row per item per kind: `unplaced` for the case above, `silent` for the challenge id a supplier
+stops recognising (`poll_failure_count` past six, which is the better part of an hour of reads
+that landed nothing). Raising and resolving are one pass, so the count is never momentarily
+wrong. Delivery is one digest mail to `ORDER_ALERT_EMAIL` per sweep rather than one per item -
+both silences fail in bulk - plus a line in the admin overview's queue-health panel, which is
+where an operator already looks and which stays silent on a good day.
+
+Two boundaries decided here rather than guessed:
+
+- **The predicate is `AwaitingPlacement`, not a second spelling of it.** The support class gained
+  `stale()`, the store-wide SQL form of the same rule, because an alarm that disagreed with the
+  publisher about what is owed would either wake Mohamed for items nobody meant to place or stay
+  quiet about the ones that vanished.
+- **A new alarm can only be opened for an order paid in the last 48 hours; an alarm already open
+  stays open forever.** Without the window, the first run after deploy would open an alarm for
+  every automated item the store has ever sold through the pipeline that predates this table.
+  Resolution deliberately reads the unwindowed set, so nothing ages out of the panel - an order
+  that stayed lost for three days is still lost.
 
 ---
 

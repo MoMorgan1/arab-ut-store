@@ -74,6 +74,8 @@ test('a quiet queue reports nothing', function (): void {
         'failedEvents' => 0,
         'stalledJobs' => 0,
         'oldestQueuedAt' => null,
+        'silentItems' => 0,
+        'oldestSilenceAt' => null,
     ]);
 });
 
