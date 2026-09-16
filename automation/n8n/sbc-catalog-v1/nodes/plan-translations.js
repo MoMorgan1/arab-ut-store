@@ -73,8 +73,16 @@ const candidates = records.filter(
 );
 
 if (candidates.length === 0) {
+    // Say which of the three reasons it is. "No translatable challenges" sent a
+    // reader looking at the translator on the day the real answer was that FFT
+    // priced nothing in the new season.
+    const active = records.filter((record) => record?.active === true).length;
+    const dated = records.filter((record) =>
+        Number.isInteger(record?.endTime),
+    ).length;
+
     throw new Error(
-        '[translations] merged source produced no translatable challenges',
+        `[translations] nothing is sellable yet: ${records.length} merged record(s), ${active} still listed by the price authority, ${dated} with a usable expiry, 0 far enough from expiry to sell`,
     );
 }
 

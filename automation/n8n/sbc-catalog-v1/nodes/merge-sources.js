@@ -380,7 +380,18 @@ assertHttpOk(FFT_NODE);
 assertHttpOk(META_NODE);
 
 const fftSource = recordsFromNode(FFT_NODE, ['consolePrice', 'pcPrice']);
-const metadataSource = recordsFromNode(META_NODE, ['psPrice', 'pcPrice']);
+// EasySBC's FC27 API dropped psPrice/pcPrice entirely - a set now carries
+// remainingCost instead - so a marker list of price keys alone harvested zero
+// records the day the season turned over, and the run died three nodes later
+// claiming there was nothing to translate. sbcsCount is the honest marker: it
+// is the squad count this node joins on, so a record without it is unusable
+// anyway, and no page envelope carries one.
+const metadataSource = recordsFromNode(META_NODE, [
+    'sbcsCount',
+    'remainingCost',
+    'psPrice',
+    'pcPrice',
+]);
 
 /* --------------------------------------------------------------- FFT side */
 
