@@ -335,12 +335,6 @@ if (records.length === 1 && Array.isArray(records[0]?.body)) {
     records = records[0].body;
 }
 
-if (records.length < settings.sourceMinCount) {
-    fail(
-        `merged source holds ${records.length} records; minimum is ${settings.sourceMinCount}`,
-    );
-}
-
 const allowedCategories = new Set([1, 2, 3, 4, 5, 6]);
 const allowedModes = new Set(['NON_REPEATABLE', 'UNLIMITED', 'REFRESH']);
 
@@ -426,17 +420,6 @@ for (const record of records) {
         fail(`merged source contains duplicate id ${record.id}`);
     ids.add(record.id);
     usableRecords.push(record);
-}
-
-const rejectedRatio = rejectedRecords.length / Math.max(1, records.length);
-if (rejectedRatio > settings.source.maxInvalidMetadataRatio) {
-    const sample = rejectedRecords
-        .slice(0, 10)
-        .map((r) => `${r.id ?? '?'}:${r.reason}`)
-        .join(', ');
-    fail(
-        `${(rejectedRatio * 100).toFixed(1)}% of merged records failed catalog validation (max ${(settings.source.maxInvalidMetadataRatio * 100).toFixed(0)}%); sample: ${sample}`,
-    );
 }
 
 records = usableRecords;
@@ -552,22 +535,7 @@ const baseline = readBaseline(workflowState.lastSuccessfulItems);
 const hasSuccessfulBaseline = baseline.items.length > 0;
 const bootstrapMode = !hasSuccessfulBaseline;
 const baselineDiscardReason = hasSuccessfulBaseline ? null : baseline.reason;
-const lastCounts = workflowState.lastSuccessfulCounts;
 const previousItems = baseline.items;
-
-const priorSourceCount = Number(lastCounts?.sourceCount);
-const sourceSafetyFloor =
-    hasSuccessfulBaseline &&
-    Number.isFinite(priorSourceCount) &&
-    priorSourceCount > 0
-        ? Math.max(settings.sourceMinCount, Math.floor(priorSourceCount * 0.85))
-        : settings.sourceMinCount;
-
-if (records.length < sourceSafetyFloor) {
-    fail(
-        `merged source count ${records.length} is below the safety floor of ${sourceSafetyFloor}`,
-    );
-}
 
 const sourceById = new Map(
     records.map((record) => [String(record.id), record]),
@@ -636,44 +604,16 @@ if (unexpectedMissing.length) {
     );
 }
 
-// A trickle is normal provider lag. A flood means EasySBC is broken and we are
-// about to archive a chunk of the live catalog on the strength of that.
-const metadataOnlyMissingRatio =
-    metadataOnlyMissing.length / Math.max(1, previousItems.length);
-if (metadataOnlyMissingRatio > settings.source.maxMismatchRatio) {
-    fail(
-        `${(metadataOnlyMissingRatio * 100).toFixed(1)}% of previously published SBCs are still listed by FFT but lost their EasySBC metadata (max ${(settings.source.maxMismatchRatio * 100).toFixed(0)}%); ids: ${metadataOnlyMissing.slice(0, 20).join(', ')}`,
-    );
-}
+// An SBC that lost its EasySBC metadata stops being eligible and is archived
+// like any other departure. Owner decision 2026-09-16: a shrinking catalogue
+// applies the same hour, because the alternative is selling what is gone.
 
-const priorEligibleAfterExpectedDepartures = Math.max(
-    0,
-    previousItems.length - expectedDepartures.length,
-);
-const eligibleSafetyFloor = hasSuccessfulBaseline
-    ? Math.max(1, Math.floor(priorEligibleAfterExpectedDepartures * 0.8))
-    : Math.max(1, Number(settings.bootstrapMinimumEligibleCount) || 20);
-
-if (eligible.length < eligibleSafetyFloor) {
-    fail(
-        `eligible SBC count ${eligible.length} is below the safety floor of ${eligibleSafetyFloor}`,
-    );
-}
-
-// The floor above credits every departure, so it collapses as the catalog does:
-// if EA expired 114 of 120 SBCs overnight, all 114 land in expectedDepartures,
-// the floor drops to ~1, and a six-product catalog publishes with
-// completeSnapshot:true -- telling Laravel to archive the rest. This second
-// floor is deliberately NOT departure-credited, so a catastrophic shrink halts
-// for a human even when every individual departure looks explainable.
-const absoluteEligibleFloor = hasSuccessfulBaseline
-    ? Math.max(1, Math.floor(previousItems.length * 0.5))
-    : 1;
-if (eligible.length < absoluteEligibleFloor) {
-    fail(
-        `eligible SBC count ${eligible.length} is less than half the ${previousItems.length} previously published; every departure was individually explainable, which is exactly why this needs a human before Laravel archives the difference`,
-    );
-}
+// A collapse at the provider now empties the catalogue within the hour instead
+// of halting for a human (owner decision 2026-09-16): a challenge FFT no longer
+// sells is a challenge the store cannot deliver, and the two days this floor
+// bought at the FC26 -> FC27 turn were two days of selling last season. The one
+// floor left is downstream: Validate Snapshot refuses a snapshot with no
+// products at all, so both providers going dark leaves the catalogue standing.
 
 const newSourceIds = eligible
     .map((record) => String(record.id))
@@ -995,8 +935,6 @@ return [
             ...config,
             sourceCount: records.length,
             eligibleCount: products.length,
-            sourceSafetyFloor,
-            eligibleSafetyFloor,
             bootstrapMode,
             baselineDiscardReason,
             expectedDepartures,

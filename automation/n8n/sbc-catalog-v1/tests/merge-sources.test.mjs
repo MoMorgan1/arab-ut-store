@@ -28,16 +28,6 @@ async function merge({ fft = fftRecords(), meta = metaRecords() } = {}) {
     return flow.json('Merge Provider Sources');
 }
 
-async function mergeError(options) {
-    try {
-        await merge(options);
-    } catch (error) {
-        return error.message;
-    }
-
-    return null;
-}
-
 test('a few unusable provider rows are counted, never fatal', async () => {
     // v3.2.6 threw on the first invalid EasySBC record. Three cosmetic rows out
     // of fifty-six stopped every price in the store.
@@ -48,10 +38,14 @@ test('a few unusable provider rows are counted, never fatal', async () => {
     assert.equal(audit.identityMismatches, 0);
 });
 
-test('a genuinely broken feed still fails, by ratio', async () => {
-    const message = await mergeError({ meta: metaRecords(120, 40) });
+test('a badly broken feed publishes whatever is still good', async () => {
+    // A quarter of the EasySBC rows are unusable. The usable ones are still
+    // sellable challenges, and withholding them helps nobody.
+    const audit = (await merge({ meta: metaRecords(120, 40) })).sourceAudit;
 
-    assert.match(message, /25\.0% of parsed EasySBC records are invalid/);
+    assert.equal(audit.metadataInvalid, 40);
+    assert.equal(audit.metadataUniqueUsable, 120);
+    assert.ok(audit.exactMatches > 0);
 });
 
 test('EasySBC prices are not required, because FFT prices what it lists', async () => {
@@ -94,17 +88,28 @@ test('join integrity and FFT coverage are measured separately', async () => {
     );
 });
 
-test('a drifted id space is rejected even at full coverage', async () => {
+test('a drifted id is dropped on its own; the rest still publish', async () => {
     // Names are the only thing verifying FFT setID 412 and EasySBC id 412 are
-    // the same challenge. Losing that means prices attach to the wrong product.
+    // the same challenge. Losing that means a price attaching to the wrong
+    // product, so the drifted id must never reach the store - but it is the id
+    // that is withheld, not the catalogue.
     const meta = metaRecords(120).map((record, index) =>
         index < 40 ? { ...record, name: `Completely Different ${index}` } : record,
     );
 
-    assert.match(
-        await mergeError({ meta }),
-        /disagree with FFT on name or squad count/,
-    );
+    const merged = await merge({ meta });
+    const drifted = new Set(merged.sourceAudit.identityMismatchIds.map(String));
+
+    assert.equal(merged.sourceAudit.identityMismatches, 40);
+    assert.equal(drifted.size, 40);
+    assert.ok(merged.sourceAudit.exactMatches > 0);
+
+    const priced = merged.body
+        .filter((record) => record.source === 'fft')
+        .map((record) => String(record.id));
+
+    assert.ok(priced.length > 0);
+    assert.ok(priced.every((id) => !drifted.has(id)));
 });
 
 test('cross-provider drift is tolerated below the ratio', async () => {
@@ -182,16 +187,16 @@ test('an envelope that looks like a record does not swallow its children', async
     );
 });
 
-test('a duplicate flood on the price authority is rejected', async () => {
+test('a duplicate flood is counted, and first-wins still publishes', async () => {
     const fft = fftRecords();
     // Deep-cloned: a provider repeating a page sends distinct objects, and the
     // harvester dedupes by object identity before ids are ever compared.
     const repeated = fft.slice(0, 40).map((record) => ({ ...record }));
 
-    assert.match(
-        await mergeError({ fft: fft.concat(repeated) }),
-        /duplicate ids/,
-    );
+    const merged = await merge({ fft: fft.concat(repeated) });
+
+    assert.equal(merged.sourceAudit.fftDuplicates, 40);
+    assert.ok(merged.sourceAudit.exactMatches > 0);
 });
 
 test('an SBC absent from FFT is archived, not priced', async () => {

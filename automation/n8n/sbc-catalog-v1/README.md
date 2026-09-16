@@ -53,23 +53,29 @@ rotated.** `npm test` asserts it never reappears.
 
 On Hostinger, set `N8N_CATALOG_MEDIA_HOSTS=assets.easysbc.io` before any apply.
 
-## Tolerance policy
+## Eligibility policy
 
-Both providers are third parties that routinely serve a few partial rows. Every
-per-record problem is skipped and counted; the run fails only when a **ratio**
-shows the feed itself is broken. v3 threw on the first invalid EasySBC record —
-three cosmetic rows out of fifty-six stopped every price in the store.
+Both providers are third parties that routinely serve partial rows, and a whole
+season turns over at once. A challenge therefore earns its place on its own, and
+nothing about the size of the batch it arrived in can keep it out or let it in:
 
-Two separate health signals, because one number cannot answer both questions:
+- both providers must list it,
+- they must agree on its name and its squad count,
+- FFT must price it above zero.
 
-- **Join integrity** (`minJoinIntegrity`, 85%) — of the SBCs *both* providers
-  list, how many agree on name and squad count. This is the safety property: it
-  is what verifies FFT's `setID` 412 and EasySBC's `id` 412 are the same
-  challenge. Expect ~100%.
-- **FFT coverage** (`minFftCoverage`, 50%) — what share of EasySBC's catalog FFT
-  sells at all. Structurally well under 100%, because FFT does not sell daily
-  freebie upgrades or OVR Token Swaps; those are not bought with coins. Loose on
-  purpose — it catches FFT's feed collapsing, not the normal overlap gap.
+Anything failing one of those is skipped and counted in `sourceAudit`. A name
+disagreement is the safety property — it is what verifies FFT's `setID` 412 and
+EasySBC's `id` 412 are the same challenge — so that id is withheld, and only
+that id.
+
+There are no batch floors or ratios. Until 2026-09-16 there were eight, and at
+the FC26 to FC27 turn they did exactly the wrong thing: FFT's list collapsed to
+nine starter sets, `minUniqueFftRecords: 100` refused every run for two days,
+and the store went on selling a catalogue of challenges that no longer existed.
+A shrinking catalogue now publishes the same hour and Laravel archives what
+left. The one floor that remains lives downstream in Validate Snapshot: a
+snapshot with no products at all is refused, so both providers going dark leaves
+the last catalogue standing rather than wiping it.
 
 EasySBC prices are **not** required for an SBC that FFT lists, because FFT is the
 price authority. Requiring them discarded sellable ~1M-coin player SBCs whose

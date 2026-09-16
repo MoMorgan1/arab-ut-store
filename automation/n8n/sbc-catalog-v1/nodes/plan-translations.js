@@ -42,12 +42,6 @@ if (records.length === 1 && Array.isArray(records[0]?.body)) {
     records = records[0].body;
 }
 
-if (records.length < settings.sourceMinCount) {
-    throw new Error(
-        `[translations] merged source holds ${records.length} records; minimum is ${settings.sourceMinCount}`,
-    );
-}
-
 // Same clock guard as Build & Price Snapshot. Without it an unparseable
 // generatedAt makes `now` NaN, every `endTime > NaN` comparison is false, and
 // this node reports "no translatable challenges" -- which sends whoever is on

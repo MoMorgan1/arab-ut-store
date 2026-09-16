@@ -411,34 +411,10 @@ for (const record of fftSource.records) {
     }
     fftById.set(id, record);
 }
-
-if (fftById.size < limits.minUniqueFftRecords) {
-    fail(
-        `FFT produced ${fftById.size} unique usable records from ${fftSource.records.length} parsed and ${fftSource.nodeItems.length} n8n item(s); minimum is ${limits.minUniqueFftRecords}; first-item shape: ${firstItemShape(fftSource.nodeItems)}`,
-    );
-}
-
-const fftInvalidRatio =
-    fftInvalidIds.length / Math.max(1, fftSource.records.length);
-if (fftInvalidRatio > limits.maxInvalidFftRatio) {
-    fail(
-        `${(fftInvalidRatio * 100).toFixed(1)}% of parsed FFT records are invalid (max ${(limits.maxInvalidFftRatio * 100).toFixed(0)}%); sample ids: ${fftInvalidIds.slice(0, 10).join(', ')}`,
-    );
-}
-
 // Duplicate FFT ids resolve first-wins, which is arbitrary for the price
 // AUTHORITY. v3 counted them and then never looked at the number. A handful is
 // provider noise; a lot means the feed is repeating pages and whichever copy
-// arrived first is setting prices.
-const fftDuplicateRatio =
-    fftDuplicateIds.length / Math.max(1, fftSource.records.length);
-if (fftDuplicateRatio > limits.maxInvalidFftRatio) {
-    fail(
-        `${(fftDuplicateRatio * 100).toFixed(1)}% of parsed FFT records are duplicate ids (max ${(limits.maxInvalidFftRatio * 100).toFixed(0)}%); sample ids: ${fftDuplicateIds.slice(0, 10).join(', ')}`,
-    );
-}
-
-/* ----------------------------------------------------------- EasySBC side */
+// arrived first is setting prices./* ----------------------------------------------------------- EasySBC side */
 
 const metadataById = new Map();
 const metadataInvalidIds = [];
@@ -467,12 +443,6 @@ for (const record of metadataSource.records) {
     metadataById.set(id, record);
 }
 
-if (metadataById.size < limits.minUniqueMetadataRecords) {
-    fail(
-        `EasySBC produced ${metadataById.size} unique usable metadata records from ${metadataSource.records.length} parsed; minimum is ${limits.minUniqueMetadataRecords}; first-item shape: ${firstItemShape(metadataSource.nodeItems)}`,
-    );
-}
-
 // Check the RAW parsed count, not the post-validation unique count. v3 tested
 // metadataById.size, so a provider returning a full page of 200 that included
 // one bad row read as 199 and the silent truncation went unnoticed.
@@ -485,16 +455,7 @@ if (metadataSource.records.length >= limits.metadataLimit) {
 // THE v3.2.6 OUTAGE: this was `if (invalid > 0 || duplicate > 0) throw`.
 // Three cosmetic metadata rows stopped every price in the store. Invalid rows
 // are already quarantined above and can no longer reach the merge, so the only
-// thing worth failing on is a ratio that says the whole feed is broken.
-const metadataInvalidRatio =
-    metadataInvalidIds.length / Math.max(1, metadataSource.records.length);
-if (metadataInvalidRatio > limits.maxInvalidMetadataRatio) {
-    fail(
-        `${(metadataInvalidRatio * 100).toFixed(1)}% of parsed EasySBC records are invalid (max ${(limits.maxInvalidMetadataRatio * 100).toFixed(0)}%); sample ids: ${metadataInvalidIds.slice(0, 10).join(', ')}`,
-    );
-}
-
-/* -------------------------------------------------------------- Merge */
+// thing worth failing on is a ratio that says the whole feed is broken./* -------------------------------------------------------------- Merge */
 
 const mergedRecords = [];
 const identityMismatchIds = [];
@@ -628,25 +589,11 @@ for (const [id, meta] of metadataById) {
 }
 
 // Cross-provider drift is normal when the two fetches land either side of an EA
-// edit. v3 threw on a single mismatched id; those rows were already skipped, so
-// the throw bought no safety and cost a full outage.
-const mismatchCount = identityMismatchIds.length + challengeMismatchIds.length;
-const mismatchRatio = mismatchCount / Math.max(1, metadataById.size);
-if (mismatchRatio > limits.maxMismatchRatio) {
-    fail(
-        `${(mismatchRatio * 100).toFixed(1)}% of EasySBC ids disagree with FFT on name or squad count (max ${(limits.maxMismatchRatio * 100).toFixed(0)}%); name: ${identityMismatchIds.slice(0, 8).join(', ')}; squads: ${challengeMismatchIds.slice(0, 8).join(', ')}`,
-    );
-}
-
-const exactMatches = mergedRecords.filter(
+// edit. A drifting id is already skipped by the join above, which is the whole
+// protection: a challenge whose two providers disagree never reaches the store.
+const mismatchCount = identityMismatchIds.length + challengeMismatchIds.length;const exactMatches = mergedRecords.filter(
     (record) => record.source === 'fft',
 ).length;
-if (exactMatches < limits.minMatchedRecords) {
-    fail(
-        `Only ${exactMatches} exact FFT/EasySBC matches remained (minimum ${limits.minMatchedRecords}); dropped for mismatch: ${mismatchCount}, no squad count: ${droppedNoChallengeIds.length}, no price: ${droppedNoPriceIds.length}, no expiry: ${droppedNoExpiryIds.length}, FFT missing: ${missingFftIds.length}`,
-    );
-}
-
 // v3 and early v4 had ONE metric here -- exactMatches / all EasySBC metadata --
 // and used it to answer two unrelated questions at once. That conflation is why
 // a healthy feed read as 77.4% and failed an 85% gate.
@@ -669,23 +616,11 @@ const joinable =
     droppedNoPriceIds.length +
     droppedNoExpiryIds.length;
 const joinIntegrity = exactMatches / Math.max(1, joinable);
-if (joinable > 0 && joinIntegrity < limits.minJoinIntegrity) {
-    fail(
-        `Only ${(joinIntegrity * 100).toFixed(1)}% of the ${joinable} SBCs listed by BOTH providers agree on name and squad count (minimum ${(limits.minJoinIntegrity * 100).toFixed(0)}%) -- the two id spaces may no longer refer to the same challenges; name mismatch: ${identityMismatchIds.length}, squad mismatch: ${challengeMismatchIds.length}, no squad count: ${droppedNoChallengeIds.length}, no price: ${droppedNoPriceIds.length}, no expiry: ${droppedNoExpiryIds.length}`,
-    );
-}
-
 // 2) FFT COVERAGE -- business reality, not integrity. What share of EasySBC's
 //    catalog does FFT sell at all? Normal is well under 100% and drifts with
 //    EA's content mix, so the floor here is deliberately loose: it exists to
 //    catch FFT's feed collapsing, not to police the overlap.
 const fftCoverage = joinable / Math.max(1, metadataById.size);
-if (fftCoverage < limits.minFftCoverage) {
-    fail(
-        `FFT lists only ${(fftCoverage * 100).toFixed(1)}% of the ${metadataById.size} unique EasySBC SBCs (minimum ${(limits.minFftCoverage * 100).toFixed(0)}%); FFT missing: ${missingFftIds.length}. If the missing ones are freebies or token swaps this is normal, and the floor needs revisiting rather than the feed.`,
-    );
-}
-
 // Kept for the audit trail and for comparison against previous runs.
 const matchRate = exactMatches / Math.max(1, metadataById.size);
 
