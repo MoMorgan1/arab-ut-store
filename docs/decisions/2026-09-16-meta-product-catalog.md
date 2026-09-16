@@ -28,12 +28,16 @@ id, so with three id spaces nothing would have matched.
 - **One row per variant a customer can buy.** `item_group_id` is the product
   slug, so Meta groups the platforms of one product together.
 - **Every price is the cheapest a customer could actually pay** (Mohamed,
-  2026-09-16): one completion for a challenge, the smallest coin order at
-  today's rate, the cheapest rung of a manual service. Meta compares the feed
-  price against the page it links to, and the page opens on its cheapest
-  option.
+  2026-09-16): one completion for a challenge, the cheapest rung of a manual
+  service. Meta compares the feed price against the page it links to, and the
+  page opens on its cheapest option.
+- **Coins are the exception: the feed quotes the million** (Mohamed,
+  2026-09-16), not the 50,000 floor. A million is the unit the coin market
+  quotes, so it is the number a shopper recognises. The row's title names the
+  quantity, because a price with no quantity reads as the price of the whole
+  service.
 - **A variant whose price cannot be resolved is left out.** When no published
-  rate can price the smallest coin order, coins are absent from the feed
+  rate can price a million coins, the coin rows are absent from the feed
   rather than present at a guess.
 - **Everything the storefront sells is in scope**, not only the challenges
   (Mohamed, 2026-09-16, chosen over a challenges-only feed).

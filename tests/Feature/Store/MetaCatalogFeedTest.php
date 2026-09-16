@@ -2,6 +2,7 @@
 
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Models\PriceRule;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\Feeds\MetaCatalogFeed;
@@ -91,7 +92,7 @@ it('advertises each manual service at its cheapest rung', function () {
         ->and($rows['MANUAL_FUT_CHAMPIONS_PLAYSTATION']['link'])->toEndWith('/fut-champions');
 });
 
-it('leaves coins out while no published rate can price the smallest order', function () {
+it('leaves coins out while no published rate can price a million', function () {
     // A console variant and a PC one: the quote refuses a console without a
     // delivery mode and a PC with one, so asking wrongly would break the file
     // for every other row rather than drop these two.
@@ -116,6 +117,48 @@ it('leaves coins out while no published rate can price the smallest order', func
     );
 
     expect($priced)->toBe([]);
+});
+
+it('quotes coins by the million, and says so on the row', function () {
+    $coins = Product::factory()->create([
+        'service_type' => ServiceType::Coins,
+        'slug' => 'fc-27-coins-priced',
+        'name_ar' => 'كوينز فيفا 27',
+    ]);
+
+    ProductVariant::factory()->create([
+        'product_id' => $coins->id,
+        'service_type' => ServiceType::Coins,
+        'platform' => Platform::PlayStation,
+        'sku' => 'FC27-COINS-PRICED-CONSOLE',
+        'name_ar' => 'سوني / إكس بوكس',
+        'price_halalah' => 0,
+    ]);
+
+    // 5,000 halalah per million, flat, for normal console delivery.
+    PriceRule::create([
+        'product_variant_id' => null,
+        'name' => 'Coins console_normal',
+        'service_type' => ServiceType::Coins,
+        'platform' => null,
+        'configuration' => [
+            'version' => 1,
+            'group' => 'console_normal',
+            'tier_upper_bounds_k' => [100, 500, 1000, 2000, 5000],
+            'multipliers_basis_points' => ['50000' => 10_000],
+            'service_fee_halalah' => 0,
+            'discount_divisor_basis_points' => 10_000,
+            'exact_overrides_halalah' => [],
+            'flat_rate_halalah_per_million' => 5_000,
+        ],
+        'is_active' => true,
+    ]);
+
+    $row = metaCatalogRows()['FC27-COINS-PRICED-CONSOLE'] ?? null;
+
+    expect($row)->not->toBeNull()
+        ->and($row['price'])->toBe('50.00 SAR')
+        ->and($row['title'])->toBe('كوينز فيفا 27 - سوني / إكس بوكس - مليون كوين');
 });
 
 it('never advertises what a customer cannot buy', function () {

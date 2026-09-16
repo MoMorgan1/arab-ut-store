@@ -12,7 +12,6 @@ use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Services\Catalog\CoinsCatalogReader;
 use DomainException;
 use InvalidArgumentException;
 use ValueError;
@@ -53,6 +52,14 @@ final class MetaCatalogFeed
 
     private const DESCRIPTION_LIMIT = 2000;
 
+    /**
+     * Coins are sold by the slider, so the feed quotes the million - the unit
+     * the whole market quotes and the owner's chosen shelf price (2026-09-16).
+     */
+    private const COINS_QUANTITY = 1_000_000;
+
+    private const COINS_QUANTITY_LABEL = 'مليون كوين';
+
     private const RIVALS_LADDER = ['7', '6', '5', '4', '3', '2', '1', 'elite'];
 
     private const CHAMPIONS_RANKS = [1, 2, 3, 4, 5, 6];
@@ -62,7 +69,6 @@ final class MetaCatalogFeed
 
     public function __construct(
         private readonly QuoteCoins $quoteCoins,
-        private readonly CoinsCatalogReader $coinsCatalog,
         private readonly ReadManualServicePricing $manualPricing,
     ) {}
 
@@ -147,7 +153,7 @@ final class MetaCatalogFeed
     }
 
     /**
-     * The smallest coin order a customer may place, at today's rate.
+     * A million coins at today's rate.
      *
      * A quote is only accepted with the delivery mode its platform allows: PC
      * has none, a console must name one, and normal delivery is the cheaper of
@@ -160,7 +166,7 @@ final class MetaCatalogFeed
 
         try {
             return $this->quoteCoins
-                ->execute($variant->platform, $delivery, $this->coinsCatalog->quantityRules()->minimum())
+                ->execute($variant->platform, $delivery, self::COINS_QUANTITY)
                 ->total
                 ->halalah();
         } catch (DomainException|InvalidArgumentException|ValueError) {
@@ -258,6 +264,12 @@ final class MetaCatalogFeed
         $title = $variantName === '' || $variantName === $productName
             ? $productName
             : "{$productName} - {$variantName}";
+
+        // The coin row is priced by the million, so the row has to say so or
+        // the ad reads as the price of the whole service.
+        if ($product->service_type === ServiceType::Coins) {
+            $title .= ' - '.self::COINS_QUANTITY_LABEL;
+        }
 
         return $this->clamp($title, self::TITLE_LIMIT);
     }
