@@ -61,41 +61,24 @@ return [
                     'https://store.arab-ut.com/api/automation/v1/pricing/coins/sbc-bases',
                 pricingPath: '/api/automation/v1/pricing/coins/sbc-bases',
                 sourceEndpoint:
-                    'https://api-fc26.easysbc.io/sbc-sets?page=1&limit=200',
+                    'https://api-fc27.easysbc.io/sbc-sets?page=1&limit=200',
                 catalogEndpoint:
                     'https://store.arab-ut.com/api/automation/v1/catalog/sbc/snapshots',
                 catalogSource: 'n8n-sbc',
 
-                // Every source threshold lives here. v3 scattered these between Config
-                // and hardcoded constants inside three separate Code nodes, where they
-                // drifted out of agreement with each other.
+                // A challenge earns its place on its own, not by the size of the
+                // batch it arrived in. It is published when both providers list
+                // it, they agree on its name and squad count, and FFT prices it
+                // above zero; anything else is skipped and counted in the audit.
+                // Owner decision 2026-09-16: the batch floors and ratios this
+                // block used to hold froze the catalogue for two days at the
+                // FC26 -> FC27 turn, while the store went on selling last
+                // season's challenges.
                 source: {
-                    minUniqueFftRecords: 100,
-                    minUniqueMetadataRecords: 20,
-                    minMatchedRecords: 20,
                     metadataLimit: 200,
-                    // Split from the old single minMatchRate, which asked one number to
-                    // answer two questions and failed a healthy feed at 77.4%.
-                    // Join integrity: of the SBCs BOTH providers list, how many agree on
-                    // name and squad count. This is the safety property -- it verifies the
-                    // two id spaces still mean the same thing. Should be ~100%.
-                    minJoinIntegrity: 0.85,
-                    // FFT coverage: what share of EasySBC's catalog FFT sells at all.
-                    // Structurally well under 100% -- FFT does not sell daily freebies or
-                    // OVR Token Swaps, which are not bought with coins. Loose on purpose:
-                    // it catches FFT's feed collapsing, not the normal overlap gap.
-                    minFftCoverage: 0.5,
-                    // Symmetric tolerances. v3 allowed 10% invalid FFT records but zero
-                    // invalid EasySBC records, so three cosmetic metadata rows took the
-                    // whole catalog down.
-                    maxInvalidFftRatio: 0.1,
-                    maxInvalidMetadataRatio: 0.1,
-                    maxMismatchRatio: 0.1,
                 },
 
-                sourceMinCount: 20,
                 sourceLimit: 200,
-                bootstrapMinimumEligibleCount: 20,
                 minimumExpiryLeadSeconds: 7200,
 
                 eligibility: {
