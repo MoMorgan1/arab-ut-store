@@ -233,7 +233,7 @@ return [
         'price_desc' => 'Price: high to low',
         'from' => 'From',
         'unavailable_price' => 'Price temporarily unavailable',
-        'empty' => 'No matching services are available right now.',
+        'empty' => 'Nothing here yet',
         'previous' => 'Previous',
         'next' => 'Next',
         'pagination' => 'Catalog pages',
