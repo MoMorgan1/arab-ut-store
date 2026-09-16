@@ -261,6 +261,10 @@ final class MetaCatalogFeed
     {
         $productName = trim((string) $product->name_ar);
         $variantName = trim((string) $variant->name_ar);
+
+        if ($variantName === '') {
+            $variantName = $this->platformLabel($variant);
+        }
         $title = $variantName === '' || $variantName === $productName
             ? $productName
             : "{$productName} - {$variantName}";
@@ -286,6 +290,18 @@ final class MetaCatalogFeed
             trim((string) preg_replace('/\s+/u', ' ', $description)),
             self::DESCRIPTION_LIMIT,
         );
+    }
+
+    /**
+     * What tells two rows of one product apart when the variant carries no
+     * name of its own, as the coin rows do: the platform it is sold for.
+     */
+    private function platformLabel(ProductVariant $variant): string
+    {
+        $key = 'store.platform.descriptions.'.$variant->platform->value;
+        $label = trans($key, locale: 'ar');
+
+        return is_string($label) && $label !== $key ? $label : '';
     }
 
     private function clamp(string $value, int $limit): string
