@@ -48,6 +48,25 @@ test('a badly broken feed publishes whatever is still good', async () => {
     assert.ok(audit.exactMatches > 0);
 });
 
+test("EasySBC's FC27 shape carries no price keys at all", async () => {
+    // The FC27 API dropped psPrice and pcPrice and added remainingCost. Marker
+    // keys made of prices alone harvested zero records the day the season
+    // turned over, and the run failed three nodes later blaming the translator.
+    const meta = metaRecords(120).map((record) => {
+        const copy = { ...record, remainingCost: 40_000 };
+        delete copy.psPrice;
+        delete copy.pcPrice;
+
+        return copy;
+    });
+
+    const audit = (await merge({ meta })).sourceAudit;
+
+    assert.equal(audit.metadataParsed, 120);
+    assert.equal(audit.metadataUniqueUsable, 120);
+    assert.ok(audit.exactMatches > 0);
+});
+
 test('EasySBC prices are not required, because FFT prices what it lists', async () => {
     // Production: id 1406 "Marcelo" carries psPrice ~948k and no pcPrice at all.
     // Requiring both discarded a sellable ~1M coin player SBC over a field the
