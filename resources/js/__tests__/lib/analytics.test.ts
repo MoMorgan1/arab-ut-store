@@ -167,13 +167,14 @@ describe('with vendor ids', () => {
             'https://analytics.tiktok.com/i18n/pixel/events.js',
         );
 
-        // Meta: revoke before init, grant after.
+        // Meta: init first. A revoke before it aborts fbevents.js's one pass
+        // over the queue and the pixel is never initialised.
         const fbq = window.fbq as NonNullable<Window['fbq']>;
-        expect(fbq.queue?.slice(0, 3)).toEqual([
-            ['consent', 'revoke'],
+        expect(fbq.queue?.slice(0, 2)).toEqual([
             ['init', '123'],
             ['consent', 'grant'],
         ]);
+        expect(fbq.queue).not.toContainEqual(['consent', 'revoke']);
         expect(fbq.queue).toContainEqual(['track', 'PageView']);
 
         // TikTok: page view recorded on the queue array.

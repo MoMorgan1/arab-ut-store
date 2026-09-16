@@ -194,7 +194,10 @@ function loadMeta(id: string) {
         injectScript('https://connect.facebook.net/en_US/fbevents.js');
     }
 
-    window.fbq('consent', 'revoke');
+    // Never revoke before `init`. fbevents.js drains the stub queue in one
+    // pass, and a revoke it sees before any pixel exists aborts that pass and
+    // leaves the pixel uninitialised, so nothing is ever sent. The store has
+    // no consent banner; a visitor who opts out gets no vendor loaded at all.
     window.fbq('init', id);
     window.fbq('consent', 'grant');
 }
