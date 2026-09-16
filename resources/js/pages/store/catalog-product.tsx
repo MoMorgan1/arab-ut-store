@@ -22,7 +22,8 @@ export default function StoreCatalogProduct() {
 
     useEffect(() => {
         trackViewItem({
-            id: product.id,
+            // The catalogue id, so the view, the ad and the sale agree.
+            id: product.variants[0]?.sku ?? product.id,
             name: product.name,
             quantity: 1,
             ...(product.price !== null && product.price.currency === 'SAR'

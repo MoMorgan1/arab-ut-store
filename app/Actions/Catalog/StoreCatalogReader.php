@@ -283,6 +283,9 @@ final class StoreCatalogReader
 
         return [
             'id' => $variant->public_id,
+            // The id the Meta catalogue feed and the purchase event both use,
+            // so a view, an ad and a sale name the same row.
+            'sku' => (string) $variant->sku,
             'name' => $this->localized($variant, 'name', $locale),
             'platform' => $variant->platform->value,
             'price' => $converter instanceof PreparedDisplayMoneyConverter

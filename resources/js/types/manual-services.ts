@@ -174,6 +174,8 @@ export type ManualServicePageProps = {
         scheduleVersion: number | null;
         platforms: ManualServicePlatform[];
         variantIds: Record<ManualServicePlatform, string | null>;
+        /** The catalogue id per platform, matching the Meta feed. */
+        variantSkus: Record<ManualServicePlatform, string | null>;
         tutorials: { ea: string; playstation: string };
         product: {
             id: string | null;

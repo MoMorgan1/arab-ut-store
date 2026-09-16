@@ -18,6 +18,7 @@ use App\Http\Controllers\Store\CoinsQuoteController;
 use App\Http\Controllers\Store\FutChampionsCartController;
 use App\Http\Controllers\Store\HomeController;
 use App\Http\Controllers\Store\ManualServiceProductController;
+use App\Http\Controllers\Store\MetaCatalogFeedController;
 use App\Http\Controllers\Store\OrderController;
 use App\Http\Controllers\Store\PaylinkCheckoutController;
 use App\Http\Controllers\Store\PaylinkOrderPaymentController;
@@ -179,6 +180,12 @@ $localizedLoginMiddleware = array_filter([
 Route::get('/sitemap.xml', SitemapController::class)->name('store.sitemap');
 Route::get('/sitemap', SitemapPageController::class)->name('store.sitemap-page');
 Route::get('/robots.txt', RobotsController::class)->name('store.robots');
+
+// The product feed Meta's catalogue fetches on a schedule. Public by
+// necessity - Meta reads it unauthenticated - and it carries only what the
+// storefront already shows: names, prices, pages, pictures.
+Route::get('/feeds/meta-catalog.csv', MetaCatalogFeedController::class)
+    ->name('store.feeds.meta-catalog');
 
 foreach ($simpleStorePages as $page => $uri) {
     Route::get($uri, SimpleStorePageController::class)

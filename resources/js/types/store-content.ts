@@ -118,6 +118,8 @@ export type CatalogVariant = {
     platform: string;
     price: CatalogMoney | null;
     promotionBadge: string | null;
+    /** The catalogue id: what the feed lists and the purchase event sends. */
+    sku: string;
 };
 export type CatalogProduct = {
     compareAtPrice: CatalogMoney | null;

@@ -1849,6 +1849,7 @@ describe('cart suggestions', () => {
             {
                 id: '01K00000000000000000000011',
                 name: 'PlayStation',
+                sku: 'SBC-SUGGESTION-PS',
                 platform: 'playstation',
                 price: { amountMinor: 12500, currency: 'SAR' },
                 compareAtPrice: null,

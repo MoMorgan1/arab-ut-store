@@ -29,7 +29,19 @@ final class ItemArtwork
             ? self::safeUrl($product->media->first())
             : null;
 
+        // The item's own service, not the product's: an imported order line
+        // can point at a product that never carried one.
         return $media ?? ServiceArtwork::for($item->service_type);
+    }
+
+    /**
+     * The same picture for a product on its own, which the Meta catalogue feed
+     * needs for rows that never pass through an order.
+     */
+    public static function forProduct(Product $product): string
+    {
+        return self::safeUrl($product->media->first())
+            ?? ServiceArtwork::for($product->service_type);
     }
 
     /**
