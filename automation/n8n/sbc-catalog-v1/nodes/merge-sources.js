@@ -488,6 +488,22 @@ function challengeCount(record, keys) {
     return null;
 }
 
+/**
+ * How many times a set may be completed, or null for "no stated cap".
+ *
+ * FC27 sends `repeats: 0` on every set, where FC26 left the field absent on the
+ * ones with no limit. Downstream, 0 is not a smaller cap - it is the same thing
+ * as absent, and reading it literally makes an UNLIMITED set look like one that
+ * may be completed zero times. The catalogue node then rejects the record as
+ * corrupt and the whole season goes unpublished, which is exactly what happened
+ * on 2026-09-16: all eight FC27 sets were dropped as `bad_repeats`.
+ */
+function repeatCap(value) {
+    const repeats = finiteNumber(value);
+
+    return repeats != null && repeats > 0 ? Math.round(repeats) : null;
+}
+
 for (const [id, meta] of metadataById) {
     const fft = fftById.get(id);
 
@@ -517,6 +533,7 @@ for (const [id, meta] of metadataById) {
                 sbcsCount: metaChallenges,
                 challengeAmount: metaChallenges,
                 endTime: metaExpiry,
+                repeats: repeatCap(meta.repeats),
                 active: false,
                 source: 'fft_missing',
                 fftSetID: id,
@@ -592,6 +609,7 @@ for (const [id, meta] of metadataById) {
         sbcsCount: challenges,
         challengeAmount: challenges,
         endTime,
+        repeats: repeatCap(meta.repeats),
         // FFT is the availability authority. EasySBC's active flag is metadata only.
         active: true,
         source: 'fft',

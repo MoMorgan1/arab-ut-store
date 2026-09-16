@@ -67,6 +67,31 @@ test("EasySBC's FC27 shape carries no price keys at all", async () => {
     assert.ok(audit.exactMatches > 0);
 });
 
+test("FC27's repeats: 0 means no cap, not a cap of zero", async () => {
+    // Every FC27 set carries repeats: 0 where FC26 left the field absent. Read
+    // literally it says "may be completed zero times", which the catalogue node
+    // rejects as bad_repeats - on 2026-09-16 that dropped all eight sets of the
+    // new season and the run failed claiming nothing was eligible.
+    const meta = metaRecords(120).map((record) => ({ ...record, repeats: 0 }));
+
+    const merged = await merge({ meta });
+
+    assert.equal(merged.sourceAudit.metadataUniqueUsable, 120);
+    assert.ok(merged.body.length > 0);
+    assert.ok(
+        merged.body.every(({ repeats }) => repeats === null),
+        'a zero cap must reach the catalogue as no cap at all',
+    );
+});
+
+test('a real repeat cap is carried through untouched', async () => {
+    const meta = metaRecords(120).map((record) => ({ ...record, repeats: 3 }));
+
+    const merged = await merge({ meta });
+
+    assert.ok(merged.body.every(({ repeats }) => repeats === 3));
+});
+
 test('EasySBC prices are not required, because FFT prices what it lists', async () => {
     // Production: id 1406 "Marcelo" carries psPrice ~948k and no pcPrice at all.
     // Requiring both discarded a sellable ~1M coin player SBC over a field the
