@@ -70,6 +70,7 @@ const product: CatalogProduct = {
                 },
             ],
             id: '01K00000000000000000000003',
+            sku: 'SBC-ICON-CHALLENGE-PS',
             name: 'PS / Xbox',
             platform: 'playstation',
             price: { amountMinor: 12500, currency: 'SAR' },

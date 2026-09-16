@@ -39,6 +39,7 @@ final class RobotsController extends Controller
             'Disallow: /dashboard',
             'Disallow: /settings',
             'Disallow: /chat',
+            'Disallow: /feeds/',
             'Disallow: /en/admin',
             'Disallow: /en/account',
             'Disallow: /en/cart',

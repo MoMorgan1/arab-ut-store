@@ -41,7 +41,12 @@ export default function StoreManualService() {
 
     useEffect(() => {
         trackViewItem({
-            id: manual.product.slug,
+            // Both platforms carry one price here, so the first catalogue id
+            // stands for the page; the slug is the fallback when none exists.
+            id:
+                manual.variantSkus.playstation ??
+                manual.variantSkus.pc ??
+                manual.product.slug,
             name: manual.product.name,
             quantity: 1,
             ...(baseAmount !== undefined &&

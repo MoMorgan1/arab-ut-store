@@ -36,6 +36,7 @@ const mockProduct: CatalogProduct = {
             completionTiers: [],
             id: 'var-1',
             name: 'PlayStation',
+            sku: 'SBC-VAR-1-PS',
             platform: 'playstation',
             price: { amountMinor: 5000, currency: 'SAR' },
             promotionBadge: null,

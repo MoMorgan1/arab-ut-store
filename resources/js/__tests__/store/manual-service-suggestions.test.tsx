@@ -45,6 +45,7 @@ function sbcProduct(
             {
                 id: `${id}-ps`,
                 name: 'PlayStation',
+                sku: `SKU-${id}-PS`,
                 platform: 'playstation',
                 price: { amountMinor: priceMinor, currency: 'SAR' },
                 compareAtPrice: null,

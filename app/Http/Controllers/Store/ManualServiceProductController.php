@@ -121,6 +121,7 @@ final class ManualServiceProductController extends Controller
                 'addUrl' => $this->manualServiceCartUrl($request, $service),
                 'platforms' => [Platform::PlayStation->value, Platform::Pc->value],
                 'variantIds' => $this->variantIds($product),
+                'variantSkus' => $this->variantSkus($product),
                 'tutorials' => [
                     'ea' => StoreTutorials::EA,
                     'playstation' => StoreTutorials::PLAYSTATION,
@@ -129,6 +130,33 @@ final class ManualServiceProductController extends Controller
                 'pricing' => $pricingPayload,
             ],
         ]);
+    }
+
+    /**
+     * The catalogue id per platform: what the Meta feed lists and what the
+     * purchase event sends, so a view of this page names the same row.
+     *
+     * @return array{playstation: string|null, pc: string|null}
+     */
+    private function variantSkus(?Product $product): array
+    {
+        $skus = ['playstation' => null, 'pc' => null];
+
+        if (! $product instanceof Product) {
+            return $skus;
+        }
+
+        foreach ($product->variants as $variant) {
+            $platform = $variant->platform->value;
+
+            if (array_key_exists($platform, $skus)
+                && $variant->is_active
+                && (string) $variant->sku !== '') {
+                $skus[$platform] = (string) $variant->sku;
+            }
+        }
+
+        return $skus;
     }
 
     /**
