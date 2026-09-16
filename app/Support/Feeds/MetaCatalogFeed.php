@@ -7,11 +7,14 @@ namespace App\Support\Feeds;
 use App\Account\Presenters\ItemArtwork;
 use App\Actions\Pricing\QuoteCoins;
 use App\Actions\Pricing\ReadManualServicePricing;
+use App\Enums\DeliveryMode;
+use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\Catalog\CoinsCatalogReader;
 use DomainException;
+use InvalidArgumentException;
 use ValueError;
 
 /**
@@ -143,15 +146,24 @@ final class MetaCatalogFeed
         };
     }
 
-    /** The smallest coin order a customer may place, at today's rate. */
+    /**
+     * The smallest coin order a customer may place, at today's rate.
+     *
+     * A quote is only accepted with the delivery mode its platform allows: PC
+     * has none, a console must name one, and normal delivery is the cheaper of
+     * the two. Anything the pricing cannot answer leaves coins out of the feed
+     * rather than breaking the file for every other row.
+     */
     private function coinsFrom(ProductVariant $variant): ?int
     {
+        $delivery = $variant->platform === Platform::Pc ? null : DeliveryMode::Normal;
+
         try {
             return $this->quoteCoins
-                ->execute($variant->platform, null, $this->coinsCatalog->quantityRules()->minimum())
+                ->execute($variant->platform, $delivery, $this->coinsCatalog->quantityRules()->minimum())
                 ->total
                 ->halalah();
-        } catch (DomainException|ValueError) {
+        } catch (DomainException|InvalidArgumentException|ValueError) {
             return null;
         }
     }

@@ -92,12 +92,30 @@ it('advertises each manual service at its cheapest rung', function () {
 });
 
 it('leaves coins out while no published rate can price the smallest order', function () {
-    $coins = array_filter(
+    // A console variant and a PC one: the quote refuses a console without a
+    // delivery mode and a PC with one, so asking wrongly would break the file
+    // for every other row rather than drop these two.
+    $coins = Product::factory()->create([
+        'service_type' => ServiceType::Coins,
+        'slug' => 'fc-27-coins-feed-test',
+    ]);
+
+    foreach ([['CONSOLE', Platform::PlayStation], ['PC', Platform::Pc]] as [$suffix, $platform]) {
+        ProductVariant::factory()->create([
+            'product_id' => $coins->id,
+            'service_type' => ServiceType::Coins,
+            'platform' => $platform,
+            'sku' => "FC27-COINS-FEED-{$suffix}",
+            'price_halalah' => 0,
+        ]);
+    }
+
+    $priced = array_filter(
         array_keys(metaCatalogRows()),
         static fn (string $id): bool => str_starts_with($id, 'FC27-COINS'),
     );
 
-    expect($coins)->toBe([]);
+    expect($priced)->toBe([]);
 });
 
 it('never advertises what a customer cannot buy', function () {
