@@ -2,6 +2,7 @@
 
 namespace App\Admin\Queries;
 
+use App\Models\FulfillmentAlarm;
 use App\Models\IntegrationEvent;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  * integration_events is drained by its own command, not the queue worker, so
  * an event that exhausted every delivery attempt sits there as failed while
  * failed_jobs stays empty. The panel counts those rows too.
+ *
+ * A fourth is quieter still, and is the reason fulfillment_alarms exists: an
+ * item can be paid for, published, acknowledged, and simply never placed - no
+ * failed job, no failed event, nothing waiting anywhere. Only the alarm sweep
+ * knows about those, so the panel reads its open rows here.
  */
 final class ReadQueueHealth
 {
@@ -41,6 +47,8 @@ final class ReadQueueHealth
      *     failedEvents: int,
      *     stalledJobs: int,
      *     oldestQueuedAt: null|string,
+     *     silentItems: int,
+     *     oldestSilenceAt: null|string,
      * }
      */
     public function read(): array
@@ -48,6 +56,10 @@ final class ReadQueueHealth
         // The outbox is the application's own table, read through the model,
         // so its count is honest no matter which queue driver is configured.
         $failedEvents = IntegrationEvent::query()->where('status', 'failed')->count();
+
+        // Also ours, and also honest on every queue driver: an alarm is open
+        // until the sweep sees its silence end.
+        $silence = $this->silence();
 
         $connection = (string) config('queue.default');
 
@@ -63,6 +75,8 @@ final class ReadQueueHealth
                 'failedEvents' => $failedEvents,
                 'stalledJobs' => 0,
                 'oldestQueuedAt' => null,
+                'silentItems' => $silence['total'],
+                'oldestSilenceAt' => $silence['oldest'],
             ];
         }
 
@@ -90,6 +104,8 @@ final class ReadQueueHealth
             'oldestQueuedAt' => $waiting['oldest'] === null
                 ? null
                 : now()->setTimestamp($waiting['oldest'])->toIso8601String(),
+            'silentItems' => $silence['total'],
+            'oldestSilenceAt' => $silence['oldest'],
         ];
     }
 
@@ -129,6 +145,27 @@ final class ReadQueueHealth
         return [
             'total' => (int) ($row->total ?? 0),
             'oldest' => $oldest === null ? null : (int) $oldest,
+        ];
+    }
+
+    /**
+     * Paid items nothing is working on, and how long the oldest has been that
+     * way. One pass, for the same reason the queue scan is one pass.
+     *
+     * @return array{total: int, oldest: string|null}
+     */
+    private function silence(): array
+    {
+        $row = FulfillmentAlarm::query()
+            ->whereNull('resolved_at')
+            ->selectRaw('count(*) as total, min(raised_at) as oldest')
+            ->first();
+
+        $oldest = $row?->getAttribute('oldest');
+
+        return [
+            'total' => (int) ($row?->getAttribute('total') ?? 0),
+            'oldest' => $oldest === null ? null : now()->parse($oldest)->toIso8601String(),
         ];
     }
 

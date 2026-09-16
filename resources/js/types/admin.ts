@@ -124,6 +124,9 @@ export type AdminTranslations = {
             failedHint: string;
             stalledHint: string;
             failedEventsHint: string;
+            silentItems: string;
+            silentSince: string;
+            silentItemsHint: string;
         };
         viewAllOrders: string;
         viewUnresolvedOrders: string;
@@ -1786,6 +1789,9 @@ export type AdminQueueHealth = {
     failedEvents: number;
     stalledJobs: number;
     oldestQueuedAt: null | string;
+    /** Paid items no supplier is working on, per the fulfillment alarm sweep. */
+    silentItems: number;
+    oldestSilenceAt: null | string;
 };
 
 export type AdminMfaPageProps = {

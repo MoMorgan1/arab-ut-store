@@ -55,8 +55,9 @@ export default function AdminQueueHealthBanner({
     const hasFailures = health.failedJobs > 0;
     const isStalled = health.stalledJobs > 0;
     const hasFailedEvents = health.failedEvents > 0;
+    const hasSilence = health.silentItems > 0;
 
-    if (!hasFailures && !isStalled && !hasFailedEvents) {
+    if (!hasFailures && !isStalled && !hasFailedEvents && !hasSilence) {
         return null;
     }
 
@@ -147,6 +148,33 @@ export default function AdminQueueHealthBanner({
                     </p>
                     <p className="max-w-prose text-xs text-muted-foreground">
                         {copy.failedEventsHint}
+                    </p>
+                </div>
+            ) : null}
+
+            {hasSilence ? (
+                <div className="space-y-1">
+                    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-foreground">
+                        <span className="font-bold tabular-nums">
+                            {numberFormatter.format(health.silentItems)}
+                        </span>
+                        <span>{copy.silentItems}</span>
+                        {health.oldestSilenceAt !== null ? (
+                            <span className="text-xs text-muted-foreground">
+                                {copy.silentSince}:{' '}
+                                <time
+                                    className="tabular-nums"
+                                    dateTime={health.oldestSilenceAt}
+                                >
+                                    {dateFormatter.format(
+                                        new Date(health.oldestSilenceAt),
+                                    )}
+                                </time>
+                            </span>
+                        ) : null}
+                    </p>
+                    <p className="max-w-prose text-xs text-muted-foreground">
+                        {copy.silentItemsHint}
                     </p>
                 </div>
             ) : null}

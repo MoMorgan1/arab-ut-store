@@ -8,7 +8,7 @@ test('all expected schedule events are registered with correct frequencies and o
     $schedule = app(Schedule::class);
     $events = collect($schedule->events());
 
-    expect($events)->toHaveCount(12);
+    expect($events)->toHaveCount(13);
 
     $findEvent = function (string $commandSubstring) use ($events): ?Event {
         return $events->first(fn (Event $event): bool => str_contains((string) $event->command, $commandSubstring));
@@ -92,4 +92,12 @@ test('all expected schedule events are registered with correct frequencies and o
         ->and($pollJobs->expression)->toBe('* * * * *')
         ->and($pollJobs->withoutOverlapping)->toBeFalse()
         ->and($pollJobs->runInBackground)->toBeTrue();
+
+    // 12. SweepFulfillmentAlarms - every five minutes, without overlapping. The
+    // shortest silence it can report is fifteen minutes old, so a finer
+    // cadence would only cost table scans.
+    $alarms = $findEvent('fulfillment:alarms');
+    expect($alarms)->not->toBeNull()
+        ->and($alarms->expression)->toBe('*/5 * * * *')
+        ->and($alarms->withoutOverlapping)->toBeTrue();
 });

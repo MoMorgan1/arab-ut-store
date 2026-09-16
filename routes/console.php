@@ -11,6 +11,7 @@ use App\Console\Commands\PurgeGuestCartClaims;
 use App\Console\Commands\PurgeRemovedCartItems;
 use App\Console\Commands\RecoverStaleAgentTurns;
 use App\Console\Commands\RefreshDisplayExchangeRates;
+use App\Console\Commands\SweepFulfillmentAlarms;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -29,6 +30,11 @@ Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapp
 Schedule::command(ExpireAbandonedCheckouts::class)->hourly()->withoutOverlapping();
 Schedule::command(PurgeDeadCancelledOrders::class)->hourly()->withoutOverlapping();
 Schedule::command(PrunePricingHistory::class)->dailyAt('03:20')->withoutOverlapping();
+
+// Every five minutes rather than every minute: the shortest silence it can
+// report is fifteen minutes old, so a minute's resolution would buy nothing
+// and cost three extra table scans a minute on shared hosting.
+Schedule::command(SweepFulfillmentAlarms::class)->everyFiveMinutes()->withoutOverlapping();
 
 // No withoutOverlapping() here on purpose: the command's own Cache::lock is the
 // lease. The default mutex lasts a day, so a tick that was OOM-killed or left

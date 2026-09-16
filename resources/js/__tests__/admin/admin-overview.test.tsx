@@ -398,6 +398,8 @@ describe('Admin operational overview', () => {
                 failedEvents: 0,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
+                silentItems: 0,
+                oldestSilenceAt: null,
             },
         });
         render(<AdminOverviewPage />);
@@ -422,6 +424,8 @@ describe('Admin operational overview', () => {
                 failedEvents: 0,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
+                silentItems: 0,
+                oldestSilenceAt: null,
             },
         });
         render(<AdminOverviewPage />);
@@ -448,6 +452,8 @@ describe('Admin operational overview', () => {
                 failedEvents: 0,
                 stalledJobs: 9,
                 oldestQueuedAt: '2026-08-28T00:40:00.000000Z',
+                silentItems: 0,
+                oldestSilenceAt: null,
             },
         });
         render(<AdminOverviewPage />);
@@ -470,6 +476,8 @@ describe('Admin operational overview', () => {
                 failedEvents: 2,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
+                silentItems: 0,
+                oldestSilenceAt: null,
             },
         });
         render(<AdminOverviewPage />);
@@ -487,6 +495,35 @@ describe('Admin operational overview', () => {
         ).toBeInTheDocument();
     });
 
+    it('names paid items nobody is working on, and how long they have waited', () => {
+        inertia.props = pageProps({
+            queueHealth: {
+                monitored: true,
+                connection: 'database',
+                failedJobs: 0,
+                latestFailure: null,
+                failedEvents: 0,
+                stalledJobs: 0,
+                oldestQueuedAt: null,
+                silentItems: 3,
+                oldestSilenceAt: '2026-09-16T09:00:00+00:00',
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        const banner = screen.getByRole('complementary', {
+            name: 'Background jobs need attention',
+        });
+
+        expect(within(banner).getByText('3')).toBeInTheDocument();
+        expect(
+            within(banner).getByText('Paid items nobody is working on'),
+        ).toBeInTheDocument();
+        expect(
+            within(banner).getByText(/place it by hand/),
+        ).toBeInTheDocument();
+    });
+
     it('says the queue is unmonitored rather than healthy when it cannot see it', () => {
         inertia.props = pageProps({
             queueHealth: {
@@ -497,6 +534,8 @@ describe('Admin operational overview', () => {
                 failedEvents: 0,
                 stalledJobs: 0,
                 oldestQueuedAt: null,
+                silentItems: 0,
+                oldestSilenceAt: null,
             },
         });
         render(<AdminOverviewPage />);

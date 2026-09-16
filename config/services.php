@@ -87,6 +87,27 @@ return [
             'deadline_seconds' => 50,
         ],
 
+        // The silence alarm's thresholds. Literals for the same reason as the
+        // cadences above, and none of them is a number a customer ever feels:
+        // they decide when an operator is told that paid work has stopped.
+        'alarm' => [
+            // A paid automated item with no placement row is only silent once
+            // every ordinary retry has had its turn. The outbox publisher runs
+            // every minute and backs off to at most an hour, so a quarter of an
+            // hour is well past a transient failure and well short of a
+            // customer wondering where their order went.
+            'unplaced_after_minutes' => 15,
+            // Fruitless supplier reads in a row. The poller backs off from its
+            // band cadence to a ten-minute ceiling, so six of them is the better
+            // part of an hour in which no read has landed at all.
+            'silent_after_failures' => 6,
+            // How far back a NEW alarm may be opened. An alarm that is already
+            // open stays open however old it gets; this only stops the first run
+            // after a deploy from opening one for every automated item the store
+            // has ever sold through a pipeline that predates this table.
+            'raise_window_hours' => 48,
+        ],
+
         'fft' => [
             'base_url' => env('SUPPLIER_FFT_BASE_URL', 'https://futtransfer.top'),
             'api_user' => env('SUPPLIER_FFT_API_USER'),
