@@ -152,10 +152,16 @@ final class ApplyCoinsPricingRun
     {
         $kept = [];
 
+        // Both groups are always named, an empty list included: a platform with
+        // no market this hour is a fact the budget should be able to read back,
+        // and a key that is simply absent reads the same as an older run that
+        // never carried the group at all.
         foreach (['console_fast', 'pc'] as $group) {
             $rows = $tiers[$group] ?? null;
 
             if (! is_array($rows)) {
+                $kept[$group] = [];
+
                 continue;
             }
 

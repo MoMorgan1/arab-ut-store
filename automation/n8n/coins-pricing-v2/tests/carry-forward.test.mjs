@@ -127,6 +127,19 @@ test('the snapshot publishes what each group could actually be filled with', asy
     // legalRanges is checked for equality against the store's own settings and
     // must therefore stay exactly as configured, whatever the market says.
     assert.equal(out.snapshot.legalRanges.pc.maximum, 20_000_000);
+
+    // The approval alert quotes these, so they stop where the storefront does.
+    // Quoting a twenty-million-coin price on a market holding three hundred
+    // thousand reads as a pricing disaster and hides the rows for sale.
+    assert.deepEqual(
+        out.pricingAudit.pricePoints.console_fast.map((point) => point.quantity),
+        [10_000, 100_000],
+    );
+    assert.deepEqual(
+        out.pricingAudit.pricePoints.console_normal.map((point) => point.quantity),
+        [10_000, 100_000],
+    );
+    assert.deepEqual(out.pricingAudit.pricePoints.pc, []);
 });
 
 test('a ceiling above what the store sells is clamped, never widened', async () => {
@@ -289,8 +302,10 @@ test('the alert quotes what an order costs, not the rate per million', async () 
     const fft = {
         source: 'fft', failed: false,
         cycle: {
-            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
-            pc: { usdPerM: 240, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            // Deep enough that a million coins is on sale: this case is about
+            // the unit the alert quotes, not about what the market can fill.
+            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 20_000_000, coversTarget: false },
+            pc: { usdPerM: 240, amountCoins: 45_000, poolCoins: 20_000_000, coversTarget: false },
         },
         targeted: {
             ps: { tiers: tiers(caps, null, false), highestAvailable: null },
@@ -344,8 +359,10 @@ test('with no baseline the alert has nothing to compare and says so rather than 
     const fft = {
         source: 'fft', failed: false,
         cycle: {
-            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
-            pc: { usdPerM: 240, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            // Deep enough that a million coins is on sale: this case is about
+            // the unit the alert quotes, not about what the market can fill.
+            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 20_000_000, coversTarget: false },
+            pc: { usdPerM: 240, amountCoins: 45_000, poolCoins: 20_000_000, coversTarget: false },
         },
         targeted: {
             ps: { tiers: tiers(caps, null, false), highestAvailable: null },
