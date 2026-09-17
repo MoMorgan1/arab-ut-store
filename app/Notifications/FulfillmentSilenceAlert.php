@@ -25,7 +25,7 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
     use Queueable;
 
     /**
-     * @param  list<array{kind: string, order: string, detail: string}>  $rows
+     * @param  list<array{kind: string, order: string, detail: string, blocked: bool, pollFailures: int|null}>  $rows
      * @param  int  $total  Every alarm this mail accounts for, listed or not.
      */
     public function __construct(
@@ -63,12 +63,23 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
             ->salutation('متجر عرب التيميت');
     }
 
-    /** @param array{kind: string, order: string, detail: string} $row */
+    /** @param array{kind: string, order: string, detail: string, blocked: bool, pollFailures: int|null} $row */
     private function describe(array $row): string
     {
-        $label = $row['kind'] === 'unplaced'
-            ? 'لم يُرسل لأي مورد'
-            : 'المورد توقف عن الرد عليه';
+        $label = match (true) {
+            // Two sentences for one kind, because they ask for different
+            // things. A request the store cannot compose will read the same
+            // tomorrow, so the line has to say so rather than look like one
+            // more order still on its way.
+            $row['kind'] === 'unplaced' && $row['blocked'] => 'متوقف ولن يُرسل بدون تدخل',
+            $row['kind'] === 'unplaced' => 'لم يُرسل لأي مورد بعد',
+            // The count says how deep the silence is, and it belongs in the
+            // Arabic sentence rather than in the code list beside it: a number
+            // with no word on it is the sort of field that gets read as an
+            // order id at two in the morning.
+            $row['pollFailures'] !== null => "المورد توقف عن الرد عليه بعد {$row['pollFailures']} قراءات فاشلة",
+            default => 'المورد توقف عن الرد عليه',
+        };
 
         $order = $row['order'] === '' ? '-' : $row['order'];
         $detail = trim($row['detail']);

@@ -513,7 +513,7 @@ export const englishAdminUi: AdminTranslations = {
             silentItems: 'Paid items nobody is working on',
             silentSince: 'Oldest since',
             silentItemsHint:
-                'These were paid for and no supplier was ever asked to deliver them, or the supplier stopped answering about them. Open the order and place it by hand.',
+                'These were paid for and no supplier was ever asked to deliver them, or the supplier stopped answering about them. Follow docs/operations/fulfillment-recovery.md.',
         },
         attentionRailTitle: 'Operational focus',
         attentionStripTitle: 'Needs attention',

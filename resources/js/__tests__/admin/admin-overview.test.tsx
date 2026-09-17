@@ -519,8 +519,14 @@ describe('Admin operational overview', () => {
         expect(
             within(banner).getByText('Paid items nobody is working on'),
         ).toBeInTheDocument();
+        // The hint names the runbook rather than describing the recovery: the
+        // steps changed the day a timeout stopped meaning "nothing was placed",
+        // and a banner nobody rewrites is the one that ages into a wrong
+        // instruction.
         expect(
-            within(banner).getByText(/place it by hand/),
+            within(banner).getByText(
+                /docs\/operations\/fulfillment-recovery\.md/,
+            ),
         ).toBeInTheDocument();
     });
 

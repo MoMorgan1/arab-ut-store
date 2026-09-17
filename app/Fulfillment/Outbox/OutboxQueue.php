@@ -4,6 +4,7 @@ namespace App\Fulfillment\Outbox;
 
 use App\Models\IntegrationEvent;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -56,7 +57,15 @@ final class OutboxQueue
                 ->where('attempts', '>=', $ceiling)
                 ->update([
                     'status' => 'failed',
-                    'last_error' => 'max_attempts_exceeded',
+                    // The reason the attempts failed for survives the
+                    // retirement; only a row that never recorded one is
+                    // labelled by the retirement itself. "Failed with ten
+                    // attempts" was already on the row in `status` and
+                    // `attempts`, so overwriting the diagnosis with it threw
+                    // away the only column that said WHY - and that column is
+                    // what the alarm sweep grades a stranded order on
+                    // (`PlacementBlockers`).
+                    'last_error' => DB::raw("COALESCE(last_error, 'max_attempts_exceeded')"),
                     'updated_at' => now(),
                 ]);
 
@@ -73,6 +82,9 @@ final class OutboxQueue
                         ? $payload['order_number']
                         : null,
                     'attempts' => $event->attempts,
+                    // Read before the update, so this is what the last attempt
+                    // actually failed on rather than the retirement's own word.
+                    'reason' => $event->last_error,
                     'requeue' => 'php artisan orders:requeue-paid-event '.$event->event_id,
                 ]);
             }

@@ -97,6 +97,16 @@ return [
             // hour is well past a transient failure and well short of a
             // customer wondering where their order went.
             'unplaced_after_minutes' => 15,
+            // The same silence, when the store has already written down why it
+            // cannot send the order: no applied pricing run to budget against,
+            // a platform no supplier serves, an EA account purged before the
+            // request left. The publisher backs off one, two then four minutes,
+            // so its attempts land at roughly zero, one and three minutes: by
+            // five it has refused three times for the same reason and the
+            // fourth is two minutes away. Waiting the full quarter hour to hear
+            // the same answer a fourth time only delays the person who has to
+            // do something about it.
+            'blocked_after_minutes' => 5,
             // Fruitless supplier reads in a row. The poller backs off from its
             // band cadence to a ten-minute ceiling, so six of them is the better
             // part of an hour in which no read has landed at all.

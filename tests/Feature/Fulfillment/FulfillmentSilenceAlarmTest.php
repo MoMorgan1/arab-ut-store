@@ -1,20 +1,29 @@
 <?php
 
 use App\Actions\Fulfillment\AlertOwnerOfFulfillmentSilence;
+use App\Actions\Fulfillment\EnqueueOrderPlacement;
+use App\Actions\Fulfillment\PublishOrderPaidEvent;
+use App\Actions\Fulfillment\RecordSupplierPlacement;
 use App\Actions\Fulfillment\SweepFulfillmentAlarms;
 use App\Admin\Queries\ReadQueueHealth;
 use App\Enums\FulfillmentAlarmKind;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
+use App\Enums\Supplier;
 use App\Models\FulfillmentAlarm;
 use App\Models\FulfillmentJob;
+use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Notifications\FulfillmentSilenceAlert;
+use App\Support\Orders\PlacementBlockers;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 /** @return array{raised: int, resolved: int, open: int} */
 function sweepAlarms(): array
@@ -49,6 +58,43 @@ function boosterItem(Order $order): OrderItem
         'platform' => Platform::PlayStation,
         'status' => OrderItemStatus::Received,
     ]);
+}
+
+/**
+ * The outbox row a paid order leaves behind, carrying the reason the last
+ * publisher run could not send it. Written the way `SignedOutboxDelivery`
+ * releases a row: back to pending, with the reason in `last_error`.
+ */
+function undeliveredPlacement(Order $order, ?string $reason): IntegrationEvent
+{
+    return IntegrationEvent::query()->create([
+        'event_id' => (string) Str::ulid(),
+        'event_type' => 'order.paid',
+        'aggregate_type' => 'order',
+        'aggregate_id' => $order->public_id,
+        'schema_version' => 2,
+        'payload' => ['order_public_id' => $order->public_id, 'order_number' => $order->order_number],
+        'status' => 'pending',
+        'idempotency_key' => 'order-paid:'.$order->id,
+        'attempts' => 4,
+        'available_at' => now(),
+        'last_error' => $reason,
+    ]);
+}
+
+/**
+ * A job a supplier is working on.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function placedJob(OrderItem $item, array $attributes = []): FulfillmentJob
+{
+    return FulfillmentJob::factory()->live()->create(array_replace([
+        'order_item_id' => $item->id,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => 'FFT-9001',
+        'poll_failure_count' => 0,
+    ], $attributes));
 }
 
 beforeEach(function (): void {
@@ -236,4 +282,343 @@ test('the admin panel counts what is open and how long it has been', function ()
 
     expect($health['silentItems'])->toBe(1)
         ->and($health['oldestSilenceAt'])->not->toBeNull();
+});
+
+// A PC challenge is the case this was written for: `forChallenge(Platform::Pc)`
+// throws because the applied pricing run carries no PC cost tiers, so the
+// request can never be composed and every retry fails the same way. Under one
+// flat wait it looked exactly like an order still on its way to n8n, and the
+// person who had to place it by hand heard at the same time either way.
+test('a paid item the store has already refused to place does not wait the full quarter hour', function () {
+    $order = orderPaidMinutesAgo(6, 'AUT-BLOCKED-1');
+    coinsItem($order);
+    undeliveredPlacement($order, 'budget_unavailable');
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'resolved' => 0, 'open' => 1]);
+
+    $alarm = FulfillmentAlarm::query()->sole();
+    expect($alarm->kind)->toBe(FulfillmentAlarmKind::Unplaced)
+        ->and($alarm->context['reason'] ?? null)->toBe('budget_unavailable')
+        ->and($alarm->context['blocked'] ?? null)->toBeTrue();
+});
+
+test('an order n8n has merely not acknowledged keeps the longer patience', function () {
+    $order = orderPaidMinutesAgo(6, 'AUT-WAITING-1');
+    coinsItem($order);
+    undeliveredPlacement($order, 'delivery_failed');
+
+    expect(sweepAlarms()['raised'])->toBe(0);
+
+    // Past the ordinary wait it is an alarm like any other, and it says the
+    // outbox is the thing that is stuck rather than the order.
+    $this->travel(11)->minutes();
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'open' => 1]);
+    expect(FulfillmentAlarm::query()->sole()->context['blocked'] ?? null)->toBeFalse();
+});
+
+test('a reason nobody has classified is treated as one a retry cannot clear', function () {
+    $order = orderPaidMinutesAgo(6, 'AUT-UNKNOWN-1');
+    coinsItem($order);
+    undeliveredPlacement($order, 'some_reason_added_later');
+
+    expect(sweepAlarms()['raised'])->toBe(1);
+    expect(FulfillmentAlarm::query()->sole()->context['blocked'] ?? null)->toBeTrue();
+});
+
+test('a silence with no recorded reason claims none', function () {
+    $order = orderPaidMinutesAgo(20);
+    coinsItem($order);
+
+    sweepAlarms();
+
+    expect(FulfillmentAlarm::query()->sole()->context)->not->toHaveKey('reason');
+});
+
+test('the short wait begins exactly where the configuration says', function (int $paidMinutesAgo, int $expected) {
+    $order = orderPaidMinutesAgo($paidMinutesAgo, 'AUT-EDGE-1');
+    coinsItem($order);
+    undeliveredPlacement($order, 'budget_unavailable');
+
+    expect(sweepAlarms()['raised'])->toBe($expected);
+})->with([
+    'a minute short of the wait' => [4, 0],
+    'exactly the wait' => [5, 1],
+    'past it' => [6, 1],
+]);
+
+test('a reason the outbox records for its own sake is not the order being stuck', function (?string $reason, bool $blocks) {
+    expect(PlacementBlockers::blocks($reason))->toBe($blocks);
+})->with([
+    // n8n did not answer. The next run may well land.
+    'delivery_failed' => ['delivery_failed', false],
+    // The row raced the order it names; nothing about the order is wrong.
+    'order_missing' => ['order_missing', false],
+    'no reason recorded yet' => [null, false],
+    'an empty reason' => ['', false],
+    'the store refusing to compose' => ['budget_unavailable', true],
+    'a reason added after this was written' => ['something_new', true],
+]);
+
+// Nothing linked the allowlist to the thing that produces reasons, so adding
+// one to `ComposePlacementRequest` broke no test and paged Mohamed five minutes
+// after the next paid order, with nobody having decided that was right. This
+// walks the source for every reason those paths can write and demands somebody
+// have put it in one list or the other.
+test('every reason the outbox can record has been deliberately classified', function () {
+    $reasons = [];
+
+    foreach ([
+        'app/Actions/Fulfillment/ComposePlacementRequest.php' => "/new PlacementRequestIncomplete\(\s*'([a-z_]+)'/",
+        'app/Actions/Fulfillment/PublishOrderPaidEvent.php' => "/->release\(\\\$event, '([a-z_]+)'\)/",
+        'app/Fulfillment/Outbox/OutboxQueue.php' => "/COALESCE\(last_error, '([a-z_]+)'\)/",
+    ] as $file => $pattern) {
+        preg_match_all($pattern, (string) file_get_contents(base_path($file)), $matches);
+        $reasons = [...$reasons, ...$matches[1]];
+    }
+
+    $reasons = array_values(array_unique($reasons));
+
+    // A guard on the guard: a changed spelling in any of those files would
+    // otherwise leave this test quietly enumerating nothing and passing.
+    expect($reasons)->toHaveCount(12);
+
+    $classified = [...PlacementBlockers::CLEARS_ITSELF, ...PlacementBlockers::BLOCKS];
+
+    foreach ($reasons as $reason) {
+        expect($classified)->toContain($reason);
+    }
+});
+
+// The reason on the alarm has to be the one the publisher actually wrote, not
+// a string a test invented: the whole grading rests on that column, and on
+// `markProcessed()` clearing it when a request finally lands.
+test('the publisher writes the reason the alarm grades, and a delivery clears it', function () {
+    config()->set('services.n8n.order_paid_url', 'https://n8n.example.test/webhook/paid');
+    config()->set('services.n8n.order_paid_key', 'checkout-publisher');
+    config()->set('services.n8n.order_paid_secret', str_repeat('s', 48));
+    Http::preventStrayRequests();
+
+    // No applied pricing run, so there is no budget to compose against and
+    // `ReadSupplierCostTable` throws - the PC-challenge shape, reproduced with
+    // the cheapest order that shows it.
+    $order = orderPaidMinutesAgo(20, 'AUT-REAL-1');
+    coinsItem($order, secretPayload: eaAccount());
+    $event = app(EnqueueOrderPlacement::class)->execute($order);
+
+    expect(app(PublishOrderPaidEvent::class)->execute($event))->toBeFalse()
+        ->and($event->fresh()->last_error)->toBe('budget_unavailable');
+
+    expect(sweepAlarms()['raised'])->toBe(1);
+    expect(FulfillmentAlarm::query()->sole()->context['reason'] ?? null)->toBe('budget_unavailable');
+
+    // Now the request can be composed and n8n takes it. The item is still
+    // unplaced - n8n has not reported a reference back - so the alarm stands,
+    // but it must stop claiming a reason that no longer exists.
+    appliedPricingRun();
+    Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);
+
+    // Past the backoff the release put on the row, or the publisher will not
+    // even claim it.
+    $this->travel(2)->minutes();
+
+    expect(app(PublishOrderPaidEvent::class)->execute($event->fresh()))->toBeTrue()
+        ->and($event->fresh()->last_error)->toBeNull();
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 0, 'resolved' => 0, 'open' => 1]);
+
+    $context = FulfillmentAlarm::query()->sole()->context;
+    expect($context)->not->toHaveKey('reason')
+        ->and($context)->not->toHaveKey('blocked');
+});
+
+// A consequence of grading the wait, pinned because it looks like a bug and is
+// not: an order whose blocking reason clears while it is still young goes back
+// to the ordinary patience, so the alarm closes and re-opens at the quarter
+// hour if the placement still has not landed. The first mail said "blocked",
+// the second says "not placed yet", and both were true when they were sent.
+test('an alarm raised on a blocking reason closes when the reason clears', function () {
+    $order = orderPaidMinutesAgo(6, 'AUT-CLEARED-1');
+    coinsItem($order);
+    $event = undeliveredPlacement($order, 'budget_unavailable');
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'open' => 1]);
+
+    $event->forceFill(['last_error' => null, 'status' => 'processed'])->save();
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 0, 'resolved' => 1, 'open' => 0]);
+
+    // And back again on its own once the ordinary wait is up.
+    $this->travel(10)->minutes();
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'resolved' => 0, 'open' => 1]);
+    expect(FulfillmentAlarm::query()->sole()->context)->not->toHaveKey('reason');
+});
+
+// The alarm outlived the order it described. An admin completing or cancelling
+// an order leaves the job row non-terminal, the poller stops reading it because
+// its selection checks the order, and the failure counter freezes above the
+// threshold - so the condition stayed true forever and the panel counted a
+// finished order as silent until somebody edited the table.
+test('a silent alarm closes when the order it describes is finished', function (callable $finish) {
+    $order = orderPaidMinutesAgo(300, 'AUT-CLOSED-1');
+    $item = coinsItem($order);
+    $job = placedJob($item, ['poll_failure_count' => 6]);
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'open' => 1]);
+    expect(alertSilence())->toBe(1);
+
+    // The admin acts on the order; nothing touches the job row, and the
+    // counter stays exactly where it was.
+    $finish($order, $item);
+    expect($job->fresh()->poll_failure_count)->toBe(6);
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 0, 'resolved' => 1, 'open' => 0]);
+    expect(FulfillmentAlarm::query()->sole()->resolved_at)->not->toBeNull();
+})->with([
+    'the order was completed' => [
+        fn (Order $order) => $order->forceFill(['status' => OrderStatus::Completed])->save(),
+    ],
+    'the order was cancelled' => [
+        fn (Order $order) => $order->forceFill(['status' => OrderStatus::Cancelled])->save(),
+    ],
+    'the order was refunded' => [
+        fn (Order $order) => $order->forceFill(['status' => OrderStatus::Refunded])->save(),
+    ],
+    'only that item was refunded' => [
+        fn (Order $order, OrderItem $item) => $item->forceFill(['status' => OrderItemStatus::Refunded])->save(),
+    ],
+]);
+
+// End to end rather than one state at a time: raised, mailed once, and closed
+// by the thing that actually ends the silence - a read landing, which is the
+// poller resetting the counter.
+test('a silence is mailed once, then closed by the read that ends it', function () {
+    $order = orderPaidMinutesAgo(300, 'AUT-CYCLE-1');
+    $job = placedJob(coinsItem($order), ['poll_failure_count' => 6]);
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'resolved' => 0, 'open' => 1]);
+    expect(alertSilence())->toBe(1);
+    Notification::assertSentOnDemand(FulfillmentSilenceAlert::class);
+
+    // A second sweep while it is still silent changes nothing and mails nothing.
+    Notification::fake();
+    expect(sweepAlarms())->toMatchArray(['raised' => 0, 'resolved' => 0, 'open' => 1]);
+    expect(alertSilence())->toBe(0);
+    Notification::assertNothingSent();
+
+    $job->forceFill(['poll_failure_count' => 0, 'observed_at' => now()])->save();
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 0, 'resolved' => 1, 'open' => 0]);
+    expect(alertSilence())->toBe(0);
+    Notification::assertNothingSent();
+
+    // And it is one row reused, not a new one per episode: the table is state,
+    // not a log.
+    expect(FulfillmentAlarm::query()->count())->toBe(1);
+});
+
+// `RecordSupplierPlacement` is the only writer of a job row, and it writes the
+// supplier and the reference together on both of its paths - so "a job with no
+// reference" is not a shape the store can produce. The silence pass is not
+// filtered on the reference for that reason: it watches a counter that only
+// rises when a read was attempted, so it catches such a row anyway if one ever
+// appears, while the item itself is out of the unplaced pass the moment a job
+// exists at all.
+test('a recorded placement always carries the reference the poller needs', function () {
+    $order = paidOrder('AUT-SHAPE-1');
+    $item = coinsItem($order);
+
+    $result = app(RecordSupplierPlacement::class)->execute([
+        'order_item_public_id' => (string) $item->public_id,
+        'supplier' => 'fft',
+        'supplier_order_id' => 'FFT-7788',
+        'delivery_phase' => 'coins',
+    ]);
+
+    expect($result['outcome'])->toBe('recorded');
+
+    $job = FulfillmentJob::query()->where('order_item_id', $item->id)->sole();
+    expect($job->supplier)->toBe(Supplier::Fft)
+        ->and($job->supplier_order_id)->toBe('FFT-7788');
+});
+
+test('a hand-made job with no reference is still caught by its failure count', function () {
+    $order = orderPaidMinutesAgo(300, 'AUT-SHAPE-2');
+    $item = coinsItem($order);
+    placedJob($item, [
+        'supplier' => null,
+        'supplier_order_id' => null,
+        'poll_failure_count' => 6,
+    ]);
+
+    expect(sweepAlarms())->toMatchArray(['raised' => 1, 'open' => 1]);
+    expect(FulfillmentAlarm::query()->sole()->kind)->toBe(FulfillmentAlarmKind::Silent);
+});
+
+// The mail is what the owner has at two in the morning. A field that reaches
+// only the database row is a field nobody has: the reference and the failed-read
+// count were both in the context and neither was rendered, so no line could be
+// acted on without opening tinker first.
+test('the mail says which silence each line is, and carries what recovery needs', function () {
+    $blocked = orderPaidMinutesAgo(6, 'AUT-MAIL-1');
+    $blockedItem = coinsItem($blocked);
+    undeliveredPlacement($blocked, 'credentials_purged');
+
+    $waiting = orderPaidMinutesAgo(20, 'AUT-MAIL-2');
+    coinsItem($waiting);
+
+    $silent = orderPaidMinutesAgo(300, 'AUT-MAIL-3');
+    $silentItem = coinsItem($silent);
+    placedJob($silentItem, ['poll_failure_count' => 6, 'supplier_order_id' => 'FFT-9002']);
+
+    expect(sweepAlarms()['raised'])->toBe(3);
+    expect(alertSilence())->toBe(3);
+
+    Notification::assertSentOnDemand(
+        FulfillmentSilenceAlert::class,
+        function (FulfillmentSilenceAlert $notification) use ($blockedItem, $silentItem): bool {
+            $body = implode("\n", $notification->toMail(new stdClass)->introLines);
+
+            expect($body)->toContain('AUT-MAIL-1: متوقف ولن يُرسل بدون تدخل')
+                // The publisher's own word for it, not a translation of it: an
+                // operator searching the log wants one spelling, not two.
+                ->toContain('credentials_purged')
+                ->toContain((string) $blockedItem->public_id)
+                ->toContain('AUT-MAIL-2: لم يُرسل لأي مورد بعد')
+                // The reference to look up at the supplier, the count that says
+                // how deep the silence is, and the item to report against.
+                ->toContain('AUT-MAIL-3: المورد توقف عن الرد عليه بعد 6 قراءات فاشلة')
+                ->toContain('FFT-9002')
+                ->toContain((string) $silentItem->public_id);
+
+            return true;
+        },
+    );
+});
+
+// One order, two items, one stored reason between them - the reason is written
+// per order and the alarms are per item. Without the item id the two lines were
+// byte-identical, and for a per-item cause like a purged EA account neither said
+// which item held it.
+test('two items on one order are told apart in the mail', function () {
+    $order = orderPaidMinutesAgo(6, 'AUT-TWIN-1');
+    $first = coinsItem($order);
+    $second = coinsItem($order);
+    undeliveredPlacement($order, 'credentials_purged');
+
+    expect(sweepAlarms()['raised'])->toBe(2);
+    expect(alertSilence())->toBe(2);
+
+    Notification::assertSentOnDemand(
+        FulfillmentSilenceAlert::class,
+        function (FulfillmentSilenceAlert $notification) use ($first, $second): bool {
+            $lines = $notification->toMail(new stdClass)->introLines;
+
+            expect(implode("\n", $lines))->toContain((string) $first->public_id)
+                ->toContain((string) $second->public_id);
+
+            return true;
+        },
+    );
 });
