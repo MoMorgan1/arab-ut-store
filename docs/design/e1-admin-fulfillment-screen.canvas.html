@@ -1125,6 +1125,250 @@
                 line-height: 1.6;
             }
 
+            /* ---------- row action, dialog, states ---------- */
+
+            .rowaction {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.375rem;
+                min-height: 36px;
+                padding: 0.35rem 0.6rem;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--input);
+                background: var(--background);
+                color: var(--foreground);
+                font-family: inherit;
+                font-size: 0.75rem;
+                font-weight: 500;
+                white-space: nowrap;
+                cursor: pointer;
+                box-shadow: var(--shadow-xs);
+            }
+
+            .rowaction--primary {
+                border-color: transparent;
+                background: var(--primary);
+                color: var(--primary-foreground);
+                font-weight: 600;
+            }
+
+            .rowaction svg {
+                width: 0.875rem;
+                height: 0.875rem;
+                flex: 0 0 auto;
+            }
+
+            .spinner {
+                width: 0.875rem;
+                height: 0.875rem;
+                flex: 0 0 auto;
+                border-radius: 999px;
+                border: 2px solid currentColor;
+                border-inline-start-color: transparent;
+                display: inline-block;
+            }
+
+            .dialog-stage {
+                position: relative;
+                width: 1440px;
+                min-height: 620px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--background);
+                overflow: hidden;
+            }
+
+            .dialog-stage__scrim {
+                position: absolute;
+                inset: 0;
+                background: rgb(0 0 0 / 80%);
+            }
+
+            .dialog {
+                position: relative;
+                width: 32rem;
+                max-width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border);
+                background: var(--background);
+                padding: 1.5rem;
+                box-shadow: var(--shadow-lg);
+            }
+
+            .dialog__header {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .dialog__header h2 {
+                margin: 0;
+                font-size: 1.125rem;
+                line-height: 1;
+                font-weight: 600;
+                color: var(--foreground);
+            }
+
+            .dialog__header p {
+                margin: 0;
+                font-size: 0.875rem;
+                line-height: 1.6;
+                color: var(--muted-foreground);
+            }
+
+            .dialog__footer {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.5rem;
+            }
+
+            .dialog label {
+                display: block;
+                margin-bottom: 0.375rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--foreground);
+            }
+
+            .dialog .hint {
+                margin: 0.375rem 0 0;
+                font-size: 0.75rem;
+                line-height: 1.55;
+                color: var(--muted-foreground);
+            }
+
+            .callout {
+                display: flex;
+                gap: 0.625rem;
+                border-radius: var(--radius-md);
+                border: 1px solid rgb(228 183 86 / 30%);
+                background: rgb(228 183 86 / 8%);
+                padding: 0.625rem 0.75rem;
+                font-size: 0.8125rem;
+                line-height: 1.55;
+                color: var(--foreground);
+            }
+
+            .callout svg {
+                width: 1rem;
+                height: 1rem;
+                flex: 0 0 auto;
+                margin-top: 0.1rem;
+                color: var(--status-warning);
+            }
+
+            .alert {
+                display: flex;
+                gap: 0.625rem;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--border);
+                background: var(--card);
+                padding: 0.625rem 0.75rem;
+                font-size: 0.8125rem;
+                line-height: 1.5;
+            }
+
+            .alert svg {
+                width: 1rem;
+                height: 1rem;
+                flex: 0 0 auto;
+                margin-top: 0.1rem;
+            }
+
+            .alert strong {
+                display: block;
+                font-size: 0.8125rem;
+                font-weight: 600;
+            }
+
+            .alert p {
+                margin: 0.15rem 0 0;
+                color: var(--muted-foreground);
+            }
+
+            .alert--danger {
+                border-color: rgb(255 180 169 / 30%);
+                background: rgb(255 180 169 / 5%);
+            }
+
+            .alert--danger svg,
+            .alert--danger strong {
+                color: var(--status-danger);
+            }
+
+            .alert--info {
+                border-color: rgb(212 168 67 / 30%);
+                background: rgb(212 168 67 / 6%);
+            }
+
+            .alert--info svg,
+            .alert--info strong {
+                color: var(--status-info);
+            }
+
+            .alert--neutral svg,
+            .alert--neutral strong {
+                color: var(--status-neutral);
+            }
+
+            /* a single table row shown on its own, for the after-states */
+            .rowstrip {
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border);
+                background: var(--card);
+                box-shadow: var(--shadow-xs);
+                width: 1104px;
+            }
+
+            .states {
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+                background: var(--background);
+                padding: 1.75rem;
+                width: 1440px;
+            }
+
+            .states__item {
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+
+            .states__label {
+                display: flex;
+                align-items: baseline;
+                gap: 0.6rem;
+                font-size: 0.8125rem;
+                font-weight: 700;
+                color: var(--foreground);
+            }
+
+            .states__label span {
+                font-weight: 400;
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+            }
+
+            .viewpair {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                align-items: center;
+                font-size: 0.8rem;
+                color: #a89880;
+            }
+
+            .viewpair b {
+                color: #e4b756;
+            }
+
             .absent td code,
             .absent th code {
                 font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
@@ -1165,42 +1409,49 @@
 
         <main class="canvas">
             <header class="canvas__intro">
-                <h1>E1 · Admin fulfillment screen</h1>
+                <h1>E1 &middot; Admin fulfillment screen</h1>
                 <p>
-                    Slice E1 of <code>docs/plans/2026-09-12-order-tracking-in-store.md</code> (lines 997–1001).
-                    Every paid item a supplier still owes, inside the existing Admin, with its permission,
-                    its server-side filter and sort allowlists, and its staff audit. The findings note beside
-                    this file — <code>docs/design/e1-admin-fulfillment-screen.md</code> — carries the evidence
-                    for every claim below, with file paths and line numbers.
+                    Slice E1 of <code>docs/plans/2026-09-12-order-tracking-in-store.md</code> (lines
+                    997&ndash;1001). Every paid item a supplier still owes, inside the existing Admin, with its
+                    permissions, its server-side filter and sort allowlists, and its staff audit. The findings
+                    note beside this file &mdash; <code>docs/design/e1-admin-fulfillment-screen.md</code>
+                    &mdash; carries the evidence for every claim below, with file paths and line numbers.
                 </p>
                 <p>
-                    <strong style="color: #ede4d0">This canvas shows only columns the database can fill.</strong>
-                    The plan names six things — supplier, age, stall, failure, actual cost, retry. Four have
-                    writers. <em>Failure</em> and <em>retry</em>, as the plan words them, do not: see the last
-                    panel on this page. A mock showing a column the store cannot fill is worse than one that
-                    omits it, so those two are absent here, deliberately, and the panel says why.
+                    <strong style="color: #ede4d0">Revised 2026-09-17 against your six answers.</strong> The
+                    re-send button is real and drawn working, with its confirm step and the four states that
+                    follow it (artboards 5&ndash;7). Staff get their own view without the cost column
+                    (artboard 3). The bold age is time since paid. No <code>failed</code> filter, no manual
+                    alarm resolve, and <code>last_error</code> is left alone and recorded as owed work.
+                </p>
+                <p>
+                    <strong style="color: #ede4d0">The screen still shows only columns the database can
+                    fill.</strong> Of the plan&rsquo;s six, <em>failure</em> has no writer anywhere and is
+                    replaced by the Signal column. The last panel on this page says exactly what is missing
+                    and why.
                 </p>
                 <div class="gate">
-                    Nothing has been built. This is the UI gate in CLAUDE.md: inspect, canvas, approve, then
-                    code. Six questions need your answer before E1 is implementable — they are numbered Q1–Q6
-                    in the findings note, and the ones this canvas can show are marked on the artboards.
+                    Still nothing built &mdash; this canvas needs your approval before any code. One decision
+                    in here is mine rather than yours and is marked on artboard 3: I made the re-send
+                    Admin-only, which narrows what you granted Staff in Q5. Three reasons in the note,
+                    &sect;4.2, and it is a one-line change if you disagree.
                 </div>
             </header>
 
-            <!-- ============================ 1440 · LIST AT REST ============================ -->
+            <!-- ==================== 1 - ADMIN LIST ==================== -->
             <section class="art">
                 <div class="art__caption">
-                    <b>1 · The list at rest</b>
+                    <b>1 &middot; The list at rest &mdash; Admin</b>
                     <span class="art__tag">desktop 1440</span>
                     <span class="art__tag">English LTR</span>
                     <span class="art__tag">extends /admin/orders</span>
                 </div>
                 <p class="art__notes">
                     Same shell, same table primitive, same badge, same pagination as
-                    <code>/admin/orders</code> — only the columns differ. Sorted by <em>Waiting</em> ascending:
-                    the customer who has waited longest is first. That is the default because
-                    <code>orders.paid_at</code> is the only clock <em>every</em> row has — an unplaced item
-                    (row 4) has no placement and therefore no <code>placed_at</code> to sort on.
+                    <code>/admin/orders</code> &mdash; only the columns differ. Sorted by <em>Waiting</em>
+                    ascending, longest-waiting customer first. <strong style="color: #ede4d0">The bold number
+                    is time since paid</strong> (your Q2), with time at the supplier beneath it; the reading
+                    age moved into Signal, where it sits next to what the supplier last said.
                 </p>
                 <div class="frame">
                     <div class="shell admin-document">
@@ -1214,7 +1465,7 @@
                                     <li><a href="#"><svg><use href="#i-dash" /></svg>Overview</a></li>
                                     <li><a href="#"><svg><use href="#i-bag" /></svg>Orders</a></li>
                                     <li>
-                                        <a href="#" aria-current="page"
+                                        <a aria-current="page" href="#"
                                             ><svg><use href="#i-truck" /></svg>Fulfillment</a
                                         >
                                     </li>
@@ -1282,29 +1533,25 @@
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th style="width: 15%">Order</th>
-                                                <th style="width: 17%">Service</th>
-                                                <th style="width: 16%">Supplier</th>
-                                                <th style="width: 15%">
+                                                <th style="width: 13%">Order</th>
+                                                <th style="width: 14%">Service</th>
+                                                <th style="width: 13%">Supplier</th>
+                                                <th style="width: 13%">
                                                     <button class="sort sort--active" type="button">
                                                         Waiting <svg><use href="#i-arrowup" /></svg>
                                                     </button>
                                                 </th>
-                                                <th style="width: 18%">State</th>
-                                                <th style="width: 12%">
-                                                    <button class="sort" type="button">
-                                                        Signal <svg><use href="#i-arrowupdown" /></svg>
-                                                    </button>
-                                                </th>
-                                                <th style="width: 12%; text-align: end">
+                                                <th style="width: 16%">State</th>
+                                                <th style="width: 12%">Signal</th>
+                                                <th style="width: 10%; text-align: end">
                                                     <button class="sort" type="button">
                                                         Cost <svg><use href="#i-arrowupdown" /></svg>
                                                     </button>
                                                 </th>
+                                                <th style="width: 9%"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <!-- silent alarm -->
                                             <tr>
                                                 <td>
                                                     <div class="cell-stack">
@@ -1326,12 +1573,12 @@
                                                 </td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="num">5h 02m</span>
-                                                        <span class="sub">read 41m ago</span>
+                                                        <span class="num">5h 08m</span>
+                                                        <span class="sub">at supplier 5h 02m</span>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                    <div class="cell-stack" style="gap: 0.25rem">
                                                         <span class="badge badge--danger"
                                                             ><svg><use href="#i-alert" /></svg>Silent</span
                                                         >
@@ -1340,16 +1587,18 @@
                                                 </td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="dash">—</span>
+                                                        <span class="dash">&mdash;</span>
                                                         <span class="sub">8 failed reads</span>
                                                     </div>
                                                 </td>
+                                                <td style="text-align: end"><span class="num">SAR 96.25</span></td>
                                                 <td style="text-align: end">
-                                                    <span class="num">SAR 96.25</span>
+                                                    <button class="rowaction" type="button">
+                                                        <svg><use href="#i-radio" /></svg>Resume
+                                                    </button>
                                                 </td>
                                             </tr>
 
-                                            <!-- waiting for customer -->
                                             <tr>
                                                 <td>
                                                     <div class="cell-stack">
@@ -1371,12 +1620,12 @@
                                                 </td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="num">3h 38m</span>
-                                                        <span class="sub">read 2m ago</span>
+                                                        <span class="num">3h 41m</span>
+                                                        <span class="sub">at supplier 3h 38m</span>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                    <div class="cell-stack" style="gap: 0.25rem">
                                                         <span class="badge badge--warning"
                                                             ><svg><use href="#i-hourglass" /></svg>Backup codes</span
                                                         >
@@ -1386,15 +1635,14 @@
                                                 <td>
                                                     <div class="cell-stack">
                                                         <span class="mono">LoginFailed2FA</span>
+                                                        <span class="sub">read 2m ago</span>
                                                     </div>
                                                 </td>
-                                                <td style="text-align: end">
-                                                    <span class="num">SAR 63.75</span>
-                                                </td>
+                                                <td style="text-align: end"><span class="num">SAR 63.75</span></td>
+                                                <td style="text-align: end"><span class="dash">&mdash;</span></td>
                                             </tr>
 
-                                            <!-- healthy, hovered -->
-                                            <tr class="is-hovered">
+                                            <tr>
                                                 <td>
                                                     <div class="cell-stack">
                                                         <a class="link" href="#">AUT-1041</a>
@@ -1415,12 +1663,12 @@
                                                 </td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="num">1h 12m</span>
-                                                        <span class="sub">read 24s ago</span>
+                                                        <span class="num">1h 16m</span>
+                                                        <span class="sub">at supplier 1h 12m</span>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                    <div class="cell-stack" style="gap: 0.25rem">
                                                         <span class="badge badge--info"
                                                             ><svg><use href="#i-clock" /></svg>Transferring</span
                                                         >
@@ -1430,15 +1678,14 @@
                                                 <td>
                                                     <div class="cell-stack">
                                                         <span class="mono">Processing</span>
+                                                        <span class="sub">read 24s ago</span>
                                                     </div>
                                                 </td>
-                                                <td style="text-align: end">
-                                                    <span class="num">SAR 118.40</span>
-                                                </td>
+                                                <td style="text-align: end"><span class="num">SAR 118.40</span></td>
+                                                <td style="text-align: end"><span class="dash">&mdash;</span></td>
                                             </tr>
 
-                                            <!-- unplaced: no job row at all -->
-                                            <tr>
+                                            <tr class="is-hovered">
                                                 <td>
                                                     <div class="cell-stack">
                                                         <a class="link" href="#">AUT-1042</a>
@@ -1448,29 +1695,38 @@
                                                 <td>
                                                     <div class="cell-stack">
                                                         <span class="tag">SBC</span>
-                                                        <span class="sub">—</span>
+                                                        <span class="sub">&mdash;</span>
                                                     </div>
                                                 </td>
-                                                <td><span class="dash">—</span></td>
+                                                <td><span class="dash">&mdash;</span></td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="dash">never placed</span>
-                                                        <span class="sub">no reading</span>
+                                                        <span class="num">38m</span>
+                                                        <span class="sub">never placed</span>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                    <div class="cell-stack" style="gap: 0.25rem">
                                                         <span class="badge badge--danger"
                                                             ><svg><use href="#i-alert" /></svg>Unplaced</span
                                                         >
                                                         <span class="sub">No fulfillment job</span>
                                                     </div>
                                                 </td>
-                                                <td><span class="dash">—</span></td>
-                                                <td style="text-align: end"><span class="dash">—</span></td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="dash">&mdash;</span>
+                                                        <span class="sub">no reading</span>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: end"><span class="dash">&mdash;</span></td>
+                                                <td style="text-align: end">
+                                                    <button class="rowaction rowaction--primary" type="button">
+                                                        <svg><use href="#i-truck" /></svg>Send
+                                                    </button>
+                                                </td>
                                             </tr>
 
-                                            <!-- challenge phase, held, no cost -->
                                             <tr>
                                                 <td>
                                                     <div class="cell-stack">
@@ -1490,17 +1746,17 @@
                                                 <td>
                                                     <div class="cell-stack">
                                                         <span class="tag tag--outline">FFT</span>
-                                                        <span class="mono mono--muted">882390 · 3 ids</span>
+                                                        <span class="mono mono--muted">882390 &middot; 3 ids</span>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="num">22m</span>
-                                                        <span class="sub">read 1m ago</span>
+                                                        <span class="num">26m</span>
+                                                        <span class="sub">at supplier 22m</span>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                    <div class="cell-stack" style="gap: 0.25rem">
                                                         <span class="badge badge--info"
                                                             ><svg><use href="#i-clock" /></svg>EA servers</span
                                                         >
@@ -1510,14 +1766,19 @@
                                                 <td>
                                                     <div class="cell-stack">
                                                         <span class="mono">EAServersDown</span>
+                                                        <span class="sub">read 1m ago</span>
                                                     </div>
                                                 </td>
                                                 <td style="text-align: end">
                                                     <span class="dash">not reported</span>
                                                 </td>
+                                                <td style="text-align: end">
+                                                    <button class="rowaction" type="button">
+                                                        <svg><use href="#i-radio" /></svg>Retry
+                                                    </button>
+                                                </td>
                                             </tr>
 
-                                            <!-- healthy UTT -->
                                             <tr>
                                                 <td>
                                                     <div class="cell-stack">
@@ -1539,12 +1800,12 @@
                                                 </td>
                                                 <td>
                                                     <div class="cell-stack">
-                                                        <span class="num">12m</span>
-                                                        <span class="sub">read 18s ago</span>
+                                                        <span class="num">14m</span>
+                                                        <span class="sub">at supplier 12m</span>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                    <div class="cell-stack" style="gap: 0.25rem">
                                                         <span class="badge badge--success"
                                                             ><svg><use href="#i-check" /></svg>Finishing</span
                                                         >
@@ -1554,11 +1815,11 @@
                                                 <td>
                                                     <div class="cell-stack">
                                                         <span class="mono">Sending</span>
+                                                        <span class="sub">read 18s ago</span>
                                                     </div>
                                                 </td>
-                                                <td style="text-align: end">
-                                                    <span class="num">SAR 121.05</span>
-                                                </td>
+                                                <td style="text-align: end"><span class="num">SAR 121.05</span></td>
+                                                <td style="text-align: end"><span class="dash">&mdash;</span></td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1566,7 +1827,8 @@
 
                                 <div class="pagination">
                                     <div class="pagination__count">
-                                        Showing <strong>1</strong> to <strong>6</strong> of <strong>6</strong> items
+                                        Showing <strong>1</strong> to <strong>6</strong> of
+                                        <strong>6</strong> items
                                     </div>
                                     <div class="pagination__controls">
                                         <div style="display: flex; align-items: center; gap: 0.5rem">
@@ -1581,10 +1843,18 @@
                                             <strong style="margin: 0 0.25rem">1</strong>
                                         </div>
                                         <div class="pager">
-                                            <button disabled type="button"><svg><use href="#i-chevsleft" /></svg></button>
-                                            <button disabled type="button"><svg><use href="#i-chevleft" /></svg></button>
-                                            <button disabled type="button"><svg><use href="#i-chevright" /></svg></button>
-                                            <button disabled type="button"><svg><use href="#i-chevsright" /></svg></button>
+                                            <button disabled type="button">
+                                                <svg><use href="#i-chevsleft" /></svg>
+                                            </button>
+                                            <button disabled type="button">
+                                                <svg><use href="#i-chevleft" /></svg>
+                                            </button>
+                                            <button disabled type="button">
+                                                <svg><use href="#i-chevright" /></svg>
+                                            </button>
+                                            <button disabled type="button">
+                                                <svg><use href="#i-chevsright" /></svg>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1593,32 +1863,42 @@
                     </div>
                 </div>
                 <p class="art__notes">
-                    <span class="mark">Q2</span> <em>Waiting</em> is the customer's clock
-                    (<code>orders.paid_at</code>); the bold number under <em>Waiting</em> is time at the
-                    supplier (<code>fulfillment_placements.placed_at</code>) and the grey line is the age of
-                    the last reading (<code>fulfillment_jobs.observed_at</code>). Three real clocks, and the
-                    plan names one. Say which you want bold.
-                    &nbsp;·&nbsp; <span class="mark">§1.1</span> Supplier is read from the
-                    <em>placement</em>, not the job mirror — row 5's challenge phase can sit at a different
-                    supplier than the job column advertises.
-                    &nbsp;·&nbsp; <span class="mark">§3</span> Row 4 is an <code>unplaced</code> alarm: a paid
-                    item with <em>no fulfillment job row at all</em>. A jobs-only screen cannot show it, and
-                    it is the one silence nothing else in the store reports.
+                    <span class="mark">Q1</span>
+                    <strong style="color: #ede4d0">Three action labels, because they are three different
+                    writes.</strong>
+                    <em>Send</em> appears only on a row with <em>no</em> fulfillment job &mdash; it re-opens
+                    the order&rsquo;s outbox row so the placement request goes out again.
+                    <em>Resume</em> and <em>Retry</em> appear only when the job&rsquo;s own
+                    <code>allowed_actions</code> lists them, and they instruct a supplier about work it
+                    already holds. <strong style="color: #ffb4a9">A row that already has a placement is never
+                    offered &ldquo;Send&rdquo;</strong> &mdash; that is the double-spend, and the defence is
+                    that the control does not exist, not that the server returns a 409. AUT-1036 shows a dash
+                    because its only allowed action is the customer&rsquo;s, not ours.
+                </p>
+                <p class="art__notes">
+                    <span class="mark">&sect;1.1</span> Supplier is read from the <em>placement</em>, not the
+                    job mirror &mdash; AUT-1039&rsquo;s challenge phase can sit at a different supplier than
+                    the job column advertises. &nbsp;&middot;&nbsp;
+                    <span class="mark">&sect;3</span> AUT-1042 is an <code>unplaced</code> alarm: a paid item
+                    with <em>no fulfillment job row at all</em>. A jobs-only screen could not show it, and it
+                    is the one silence nothing else in the store reports. &nbsp;&middot;&nbsp;
+                    <span class="mark">Q4</span> There is no <em>Failed</em> chip in the state filter.
+                    <code>FulfillmentStatus::Failed</code> is never assigned anywhere in the codebase, so it
+                    could never match a row.
                 </p>
             </section>
 
-            <!-- ============================ PHONE · LIST ============================ -->
+            <!-- ==================== 2 - PHONE LIST ==================== -->
             <section class="art">
                 <div class="art__caption">
-                    <b>2 · The list on a phone</b>
+                    <b>2 &middot; The list on a phone</b>
                     <span class="art__tag">390</span>
                     <span class="art__tag">compact record summary</span>
                 </div>
                 <p class="art__notes">
-                    The table is replaced, not squeezed — the same swap
+                    The table is replaced, not squeezed &mdash; the same swap
                     <code>admin-orders-table.tsx</code> already makes below <code>md</code>. Nothing critical
-                    is hidden: alarm, supplier, both ages and cost all survive. Filters move behind the
-                    bottom sheet the orders toolbar already uses.
+                    is hidden: alarm, supplier, both ages, cost and the action all survive.
                 </p>
                 <div class="row">
                     <div class="frame frame--phone">
@@ -1636,7 +1916,10 @@
                                 <div class="toolbar__row">
                                     <div class="search" style="flex-basis: 100%">
                                         <svg><use href="#i-search" /></svg>
-                                        <div class="field" style="display: flex; align-items: center; font-size: 1rem">
+                                        <div
+                                            class="field"
+                                            style="display: flex; align-items: center; font-size: 1rem"
+                                        >
                                             <span class="placeholder">Order or reference</span>
                                         </div>
                                     </div>
@@ -1654,13 +1937,19 @@
                                             >
                                         </div>
                                         <div class="card__mid">
-                                            <span style="font-size: 0.875rem; font-weight: 600">FFT · 882344</span>
+                                            <span style="font-size: 0.875rem; font-weight: 600">FFT &middot; 882344</span>
                                             <strong class="num">SAR 96.25</strong>
                                         </div>
                                         <div class="card__foot">
                                             <span class="tag">Coins</span>
                                             <span class="tag tag--outline">310K / 600K</span>
-                                            <span class="ms-auto">5h 02m · read 41m ago</span>
+                                            <span class="ms-auto">5h 08m &middot; read 41m ago</span>
+                                        </div>
+                                        <div class="card__mid">
+                                            <span class="sub">8 failed reads</span>
+                                            <button class="rowaction" type="button">
+                                                <svg><use href="#i-radio" /></svg>Resume
+                                            </button>
                                         </div>
                                     </article>
 
@@ -1672,31 +1961,13 @@
                                             >
                                         </div>
                                         <div class="card__mid">
-                                            <span style="font-size: 0.875rem; font-weight: 600">UTT · 55120</span>
+                                            <span style="font-size: 0.875rem; font-weight: 600">UTT &middot; 55120</span>
                                             <strong class="num">SAR 63.75</strong>
                                         </div>
                                         <div class="card__foot">
                                             <span class="tag">Coins</span>
                                             <span class="mono mono--muted">LoginFailed2FA</span>
-                                            <span class="ms-auto">3h 38m · read 2m ago</span>
-                                        </div>
-                                    </article>
-
-                                    <article class="card">
-                                        <div class="card__top">
-                                            <a class="link" href="#">AUT-1041</a>
-                                            <span class="badge badge--info"
-                                                ><svg><use href="#i-clock" /></svg>Transferring</span
-                                            >
-                                        </div>
-                                        <div class="card__mid">
-                                            <span style="font-size: 0.875rem; font-weight: 600">FFT · 882417</span>
-                                            <strong class="num">SAR 118.40</strong>
-                                        </div>
-                                        <div class="card__foot">
-                                            <span class="tag">Coins</span>
-                                            <span class="tag tag--outline">240K / 600K</span>
-                                            <span class="ms-auto">1h 12m · read 24s ago</span>
+                                            <span class="ms-auto">3h 41m &middot; read 2m ago</span>
                                         </div>
                                     </article>
 
@@ -1708,15 +1979,23 @@
                                             >
                                         </div>
                                         <div class="card__mid">
-                                            <span style="font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground)"
+                                            <span
+                                                style="
+                                                    font-size: 0.875rem;
+                                                    font-weight: 600;
+                                                    color: var(--muted-foreground);
+                                                "
                                                 >No supplier</span
                                             >
-                                            <span class="dash">—</span>
+                                            <span class="dash">&mdash;</span>
                                         </div>
                                         <div class="card__foot">
                                             <span class="tag">SBC</span>
-                                            <span class="ms-auto">paid 38m ago · never placed</span>
+                                            <span class="ms-auto">38m &middot; never placed</span>
                                         </div>
+                                        <button class="btn btn--primary" type="button">
+                                            <svg><use href="#i-truck" /></svg><span>Send to supplier</span>
+                                        </button>
                                     </article>
 
                                     <article class="card">
@@ -1727,14 +2006,38 @@
                                             >
                                         </div>
                                         <div class="card__mid">
-                                            <span style="font-size: 0.875rem; font-weight: 600">FFT · 882390</span>
+                                            <span style="font-size: 0.875rem; font-weight: 600">FFT &middot; 882390</span>
                                             <span class="dash">not reported</span>
                                         </div>
                                         <div class="card__foot">
                                             <span class="tag">SBC</span>
                                             <span class="tag tag--outline">Challenge</span>
                                             <span class="tag tag--outline">1 / 3</span>
-                                            <span class="ms-auto">22m · read 1m ago</span>
+                                            <span class="ms-auto">26m &middot; read 1m ago</span>
+                                        </div>
+                                        <div class="card__mid">
+                                            <span class="sub">EAServersDown</span>
+                                            <button class="rowaction" type="button">
+                                                <svg><use href="#i-radio" /></svg>Retry
+                                            </button>
+                                        </div>
+                                    </article>
+
+                                    <article class="card">
+                                        <div class="card__top">
+                                            <a class="link" href="#">AUT-1040</a>
+                                            <span class="badge badge--success"
+                                                ><svg><use href="#i-check" /></svg>Finishing</span
+                                            >
+                                        </div>
+                                        <div class="card__mid">
+                                            <span style="font-size: 0.875rem; font-weight: 600">UTT &middot; 55118</span>
+                                            <strong class="num">SAR 121.05</strong>
+                                        </div>
+                                        <div class="card__foot">
+                                            <span class="tag">Coins</span>
+                                            <span class="tag tag--outline">600K / 600K</span>
+                                            <span class="ms-auto">14m &middot; read 18s ago</span>
                                         </div>
                                     </article>
                                 </div>
@@ -1744,18 +2047,17 @@
 
                     <div style="flex: 1 1 320px; min-width: 300px">
                         <p class="art__notes">
-                            <strong style="color: #ede4d0">Why the phone card drops the Signal column.</strong>
-                            It does not — it moves. The supplier's own code
-                            (<code>observed_state</code>) sits in the foot row where it exists, and the alarm
-                            takes the badge slot because an alarm is the only thing on this screen that is
-                            worth waking someone for. Where both are present, the alarm wins the badge and the
-                            code stays in the foot.
+                            <strong style="color: #ede4d0">The action gets its own row on a card, not a
+                            corner.</strong> A 44px control crammed beside a badge is a mis-tap that spends
+                            money. The unplaced card gets the full-width primary button because it is the
+                            only one whose action is a purchase; Resume and Retry sit inline at the
+                            secondary weight, since they instruct work already paid for.
                         </p>
                         <p class="art__notes" style="margin-top: 1rem">
                             <strong style="color: #ede4d0">Touch and input rules already in force.</strong>
                             Every control is 44px (<code>min-h-11</code>), and the phone search field is
-                            <code>1rem</code> rather than the desktop's <code>text-xs</code> so iOS never
-                            zooms — the owner rule from 2026-09-03, which
+                            <code>1rem</code> rather than the desktop&rsquo;s <code>text-xs</code> so iOS
+                            never zooms &mdash; the owner rule from 2026-09-03, which
                             <code>admin-orders-toolbar.tsx:260</code> already implements as
                             <code>text-sm md:text-xs</code>.
                         </p>
@@ -1769,10 +2071,390 @@
                 </div>
             </section>
 
-            <!-- ============================ EMPTY STATE ============================ -->
+            <!-- ==================== 3 - STAFF VIEW ==================== -->
             <section class="art">
                 <div class="art__caption">
-                    <b>3 · The empty state</b>
+                    <b>3 &middot; The same screen, as Staff sees it</b>
+                    <span class="art__tag">desktop 1440</span>
+                    <span class="art__tag">Q5</span>
+                    <span class="art__tag">no Cost, no action</span>
+                </div>
+                <p class="art__notes">
+                    Your Q5: Staff may see the screen but not the cost, so it is two views of one screen. Six
+                    columns instead of seven, and the action column is gone. Drawn as its own artboard
+                    precisely so the difference is reviewed here rather than discovered in production.
+                </p>
+                <div class="viewpair">
+                    <span><b>Admin</b> &mdash; Order &middot; Service &middot; Supplier &middot; Waiting &middot; State &middot; Signal &middot; <b>Cost</b> &middot; <b>Action</b></span>
+                    <span><b>Staff</b> &mdash; Order &middot; Service &middot; Supplier &middot; Waiting &middot; State &middot; Signal</span>
+                </div>
+                <div class="frame">
+                    <div class="shell admin-document">
+                        <aside class="sidebar">
+                            <div class="sidebar__brand">
+                                <div class="sidebar__mark">AUT</div>
+                                <div class="sidebar__wordmark">Arab UT</div>
+                            </div>
+                            <nav>
+                                <ul class="nav">
+                                    <li><a href="#"><svg><use href="#i-dash" /></svg>Overview</a></li>
+                                    <li><a href="#"><svg><use href="#i-bag" /></svg>Orders</a></li>
+                                    <li>
+                                        <a aria-current="page" href="#"
+                                            ><svg><use href="#i-truck" /></svg>Fulfillment</a
+                                        >
+                                    </li>
+                                    <li><a href="#"><svg><use href="#i-msg" /></svg>Conversations</a></li>
+                                </ul>
+                            </nav>
+                            <div class="sidebar__foot">
+                                <div class="avatar">K</div>
+                                <div>
+                                    <div style="font-size: 0.875rem; font-weight: 600; line-height: 1.4">
+                                        Khalid
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: rgb(237 228 208 / 70%)">Staff</div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <div class="main">
+                            <article class="page">
+                                <header class="page__header">
+                                    <div>
+                                        <h1>Fulfillment</h1>
+                                        <p>Paid items a supplier still owes. Longest wait first.</p>
+                                    </div>
+                                </header>
+
+                                <div class="toolbar">
+                                    <div class="toolbar__row">
+                                        <div class="search">
+                                            <svg><use href="#i-search" /></svg>
+                                            <div class="field" style="display: flex; align-items: center">
+                                                <span class="placeholder">Order number or supplier reference</span>
+                                            </div>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All suppliers</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All states</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All alarms</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All services</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <button class="btn btn--outline btn--xs" type="button">
+                                            <svg><use href="#i-filter" /></svg><span>Columns</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="table-shell">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 15%">Order</th>
+                                                <th style="width: 16%">Service</th>
+                                                <th style="width: 16%">Supplier</th>
+                                                <th style="width: 15%">
+                                                    <button class="sort sort--active" type="button">
+                                                        Waiting <svg><use href="#i-arrowup" /></svg>
+                                                    </button>
+                                                </th>
+                                                <th style="width: 20%">State</th>
+                                                <th style="width: 18%">Signal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1033</a>
+                                                        <span class="sub">paid 5h 08m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">310K / 600K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">FFT</span>
+                                                        <span class="mono mono--muted">882344</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">5h 08m</span>
+                                                        <span class="sub">at supplier 5h 02m</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem">
+                                                        <span class="badge badge--danger"
+                                                            ><svg><use href="#i-alert" /></svg>Silent</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="dash">&mdash;</span>
+                                                        <span class="sub">8 failed reads</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1036</a>
+                                                        <span class="sub">paid 3h 41m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">0 / 250K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">UTT</span>
+                                                        <span class="mono mono--muted">55120</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">3h 41m</span>
+                                                        <span class="sub">at supplier 3h 38m</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem">
+                                                        <span class="badge badge--warning"
+                                                            ><svg><use href="#i-hourglass" /></svg>Backup codes</span
+                                                        >
+                                                        <span class="sub">Waiting for customer</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">LoginFailed2FA</span>
+                                                        <span class="sub">read 2m ago</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1041</a>
+                                                        <span class="sub">paid 1h 16m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">240K / 600K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">FFT</span>
+                                                        <span class="mono mono--muted">882417</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">1h 16m</span>
+                                                        <span class="sub">at supplier 1h 12m</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem">
+                                                        <span class="badge badge--info"
+                                                            ><svg><use href="#i-clock" /></svg>Transferring</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">Processing</span>
+                                                        <span class="sub">read 24s ago</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1042</a>
+                                                        <span class="sub">paid 38m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">SBC</span>
+                                                        <span class="sub">&mdash;</span>
+                                                    </div>
+                                                </td>
+                                                <td><span class="dash">&mdash;</span></td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">38m</span>
+                                                        <span class="sub">never placed</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem">
+                                                        <span class="badge badge--danger"
+                                                            ><svg><use href="#i-alert" /></svg>Unplaced</span
+                                                        >
+                                                        <span class="sub">No fulfillment job</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="dash">&mdash;</span>
+                                                        <span class="sub">no reading</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1039</a>
+                                                        <span class="sub">paid 26m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span>
+                                                            <span class="tag">SBC</span>
+                                                            <span class="tag tag--outline">Challenge</span>
+                                                        </span>
+                                                        <span class="sub">1 / 3 solves</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">FFT</span>
+                                                        <span class="mono mono--muted">882390 &middot; 3 ids</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">26m</span>
+                                                        <span class="sub">at supplier 22m</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem">
+                                                        <span class="badge badge--info"
+                                                            ><svg><use href="#i-clock" /></svg>EA servers</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">EAServersDown</span>
+                                                        <span class="sub">read 1m ago</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1040</a>
+                                                        <span class="sub">paid 14m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">600K / 600K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">UTT</span>
+                                                        <span class="mono mono--muted">55118</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">14m</span>
+                                                        <span class="sub">at supplier 12m</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem">
+                                                        <span class="badge badge--success"
+                                                            ><svg><use href="#i-check" /></svg>Finishing</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">Sending</span>
+                                                        <span class="sub">read 18s ago</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="pagination">
+                                    <div class="pagination__count">
+                                        Showing <strong>1</strong> to <strong>6</strong> of
+                                        <strong>6</strong> items
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <strong style="color: #ede4d0">The cost is withheld by the server, not hidden by the
+                    browser.</strong> The Query does not select <code>actual_cost_halalah</code> for a Staff
+                    actor and the Presenter never emits the key &mdash; not <code>null</code>,
+                    <em>absent</em> &mdash; so a Staff payload read in the network tab contains no trace of
+                    it. <code>sort=actual_cost</code> is removed from that actor&rsquo;s allowlist and
+                    <strong>fails validation</strong> rather than falling back silently: a silent fallback is
+                    an oracle that tells the caller the column exists.
+                </p>
+                <p class="art__notes">
+                    <span class="mark">my call</span>
+                    <strong style="color: #ede4d0">I made the re-send Admin-only, and you should
+                    overrule me if you disagree.</strong> Three reasons. It spends money, and
+                    <code>permissions.md</code> already draws the Admin/Staff line exactly there &mdash; Staff
+                    hold <code>orders.cancel</code> but not <code>orders.refund</code>, not
+                    <code>payments.refund</code>, not <code>wallet.adjust</code>. The actor cannot see what it
+                    costs, by your own Q5 answer, so they could not tell a 60-riyal re-send from a
+                    600-riyal one. And pressing it decrypts the customer&rsquo;s EA credentials
+                    (artboard 6). You expanded Staff to <em>seeing</em> the screen; reading that as also
+                    granting a spending action would be inventing a decision you did not make. The sidebar
+                    here also shows fewer sections, because Staff already hold none of the catalog, marketing
+                    or settings permissions.
+                </p>
+            </section>
+
+            <!-- ==================== 4 - EMPTY STATE ==================== -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>4 &middot; The empty state</b>
                     <span class="art__tag">desktop 1440 + phone 390</span>
                     <span class="art__tag">the ordinary day</span>
                 </div>
@@ -1794,7 +2476,7 @@
                                     <li><a href="#"><svg><use href="#i-dash" /></svg>Overview</a></li>
                                     <li><a href="#"><svg><use href="#i-bag" /></svg>Orders</a></li>
                                     <li>
-                                        <a href="#" aria-current="page"
+                                        <a aria-current="page" href="#"
                                             ><svg><use href="#i-truck" /></svg>Fulfillment</a
                                         >
                                     </li>
@@ -1862,22 +2544,23 @@
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th style="width: 15%">Order</th>
-                                                <th style="width: 17%">Service</th>
-                                                <th style="width: 16%">Supplier</th>
-                                                <th style="width: 15%">
+                                                <th style="width: 13%">Order</th>
+                                                <th style="width: 14%">Service</th>
+                                                <th style="width: 13%">Supplier</th>
+                                                <th style="width: 13%">
                                                     <button class="sort sort--active" type="button">
                                                         Waiting <svg><use href="#i-arrowup" /></svg>
                                                     </button>
                                                 </th>
-                                                <th style="width: 18%">State</th>
+                                                <th style="width: 16%">State</th>
                                                 <th style="width: 12%">Signal</th>
-                                                <th style="width: 12%; text-align: end">Cost</th>
+                                                <th style="width: 10%; text-align: end">Cost</th>
+                                                <th style="width: 9%"></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td colspan="7">
+                                                <td colspan="8">
                                                     <div class="empty">
                                                         <p>No supplier owes anything right now.</p>
                                                     </div>
@@ -1888,9 +2571,7 @@
                                 </div>
 
                                 <div class="pagination">
-                                    <div class="pagination__count">
-                                        Showing <strong>0</strong> items
-                                    </div>
+                                    <div class="pagination__count">Showing <strong>0</strong> items</div>
                                 </div>
                             </article>
                         </div>
@@ -1912,7 +2593,10 @@
                                 <div class="toolbar__row">
                                     <div class="search" style="flex-basis: 100%">
                                         <svg><use href="#i-search" /></svg>
-                                        <div class="field" style="display: flex; align-items: center; font-size: 1rem">
+                                        <div
+                                            class="field"
+                                            style="display: flex; align-items: center; font-size: 1rem"
+                                        >
                                             <span class="placeholder">Order or reference</span>
                                         </div>
                                     </div>
@@ -1941,7 +2625,10 @@
                                 <div class="toolbar__row">
                                     <div class="search" style="flex-basis: 100%">
                                         <svg><use href="#i-search" /></svg>
-                                        <div class="field" style="display: flex; align-items: center; font-size: 1rem">
+                                        <div
+                                            class="field"
+                                            style="display: flex; align-items: center; font-size: 1rem"
+                                        >
                                             <span style="color: var(--foreground)">AUT-1099</span>
                                         </div>
                                     </div>
@@ -1972,7 +2659,9 @@
                                             padding: 0.125rem 0.5rem;
                                         "
                                         >Search: "AUT-1099"
-                                        <svg style="width: 0.75rem; height: 0.75rem; color: var(--muted-foreground)">
+                                        <svg
+                                            style="width: 0.75rem; height: 0.75rem; color: var(--muted-foreground)"
+                                        >
                                             <use href="#i-x" /></svg
                                     ></span>
                                     <span
@@ -1986,7 +2675,9 @@
                                             padding: 0.125rem 0.5rem;
                                         "
                                         >Supplier: UTT
-                                        <svg style="width: 0.75rem; height: 0.75rem; color: var(--muted-foreground)">
+                                        <svg
+                                            style="width: 0.75rem; height: 0.75rem; color: var(--muted-foreground)"
+                                        >
                                             <use href="#i-x" /></svg
                                     ></span>
                                 </div>
@@ -2007,9 +2698,9 @@
                         </p>
                         <p class="art__notes" style="margin-top: 1rem">
                             <strong style="color: #ede4d0">Right: nothing matching.</strong> Different
-                            sentence, and a reset — because here the operator has done something and the
-                            screen has to give it back. The active-filter chips stay visible above the empty
-                            so it is obvious <em>why</em> it is empty.
+                            sentence, and a reset &mdash; because here the operator has done something and
+                            the screen has to give it back. The active-filter chips stay visible above the
+                            empty so it is obvious <em>why</em> it is empty.
                         </p>
                         <p class="art__notes" style="margin-top: 1rem">
                             Both strings are new; they follow the two the orders table already ships
@@ -2019,21 +2710,22 @@
                 </div>
             </section>
 
-            <!-- ============================ ROW DETAIL ============================ -->
+            <!-- ==================== 5 - ROW DETAIL ==================== -->
             <section class="art">
                 <div class="art__caption">
-                    <b>4 · Row detail — an item that failed to place</b>
+                    <b>5 &middot; Row detail &mdash; an item that failed to place</b>
                     <span class="art__tag">desktop 1440</span>
                     <span class="art__tag">Sheet, side=right</span>
                     <span class="art__tag">AUT-1042</span>
                 </div>
                 <p class="art__notes">
                     The established admin drawer (<code>ui/sheet.tsx</code>, as used by the coupon and manual
-                    order drawers) rather than an expanding table row — admin has no expandable-row pattern
-                    and this is not the place to invent one. The row opened here is the
-                    <code>unplaced</code> alarm: <strong style="color: #ede4d0">an item with no
-                    fulfillment job at all</strong>, which is why most of this panel is honest emptiness
-                    rather than diagnostics.
+                    order drawers) rather than an expanding table row &mdash; admin has no expandable-row
+                    pattern and this is not the place to invent one. The row opened here is the
+                    <code>unplaced</code> alarm:
+                    <strong style="color: #ede4d0">an item with no fulfillment job at all</strong>, which is
+                    why most of this panel is honest emptiness, and why it is the one row whose action is a
+                    purchase.
                 </p>
                 <div class="frame">
                     <div class="sheet-stage admin-document">
@@ -2042,7 +2734,7 @@
                             <button class="sheet__close" type="button"><svg><use href="#i-x" /></svg></button>
                             <div class="sheet__header">
                                 <h2>AUT-1042</h2>
-                                <p>SBC · Console · paid 38m ago. No supplier has been asked for this item.</p>
+                                <p>SBC &middot; Console &middot; paid 38m ago. No supplier has been asked for this item.</p>
                             </div>
 
                             <div class="sheet__body">
@@ -2058,8 +2750,8 @@
                                     </div>
                                     <p class="note">
                                         Paid, automated, and no placement was ever recorded. n8n cannot report
-                                        this one — from its side the placement succeeded and the callback was
-                                        lost.
+                                        this one &mdash; from its side the placement succeeded and the
+                                        callback was lost.
                                     </p>
                                 </div>
 
@@ -2083,15 +2775,15 @@
                                         <h3>At the supplier</h3>
                                     </div>
                                     <div class="fields">
-                                        <div><span class="k">Supplier</span><span class="v dash">—</span></div>
-                                        <div><span class="k">Reference</span><span class="v dash">—</span></div>
-                                        <div><span class="k">Placed at</span><span class="v dash">—</span></div>
-                                        <div><span class="k">Last reading</span><span class="v dash">—</span></div>
-                                        <div><span class="k">Actual cost</span><span class="v dash">—</span></div>
+                                        <div><span class="k">Supplier</span><span class="v dash">&mdash;</span></div>
+                                        <div><span class="k">Reference</span><span class="v dash">&mdash;</span></div>
+                                        <div><span class="k">Placed at</span><span class="v dash">&mdash;</span></div>
+                                        <div><span class="k">Last reading</span><span class="v dash">&mdash;</span></div>
+                                        <div><span class="k">Actual cost</span><span class="v dash">&mdash;</span></div>
                                     </div>
                                     <p class="note">
                                         There is no fulfillment job row for this item, so there is nothing to
-                                        read, nothing to poll, and nothing to retry. Every field above is
+                                        read, nothing to poll and nothing to resume. Every field above is
                                         absent rather than unknown.
                                     </p>
                                 </div>
@@ -2101,41 +2793,315 @@
                                 <button class="btn btn--outline" type="button">
                                     <svg><use href="#i-external" /></svg><span>Open order</span>
                                 </button>
-                                <button class="btn btn--primary" disabled type="button">
-                                    <span>Place with supplier</span>
+                                <button class="btn btn--primary" type="button">
+                                    <svg><use href="#i-truck" /></svg><span>Send to supplier</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <p class="art__notes">
-                    <span class="mark">Q1</span> <strong style="color: #ede4d0">The gold button is
-                    disabled and that is the question.</strong> The plan promised the admin's own resume
-                    button — "the customer's button on the card, and the admin's when the admin surface
-                    exists" (<code>2026-09-12-order-tracking-in-store.md:1032-1035</code>). No admin route,
-                    permission or audit event for it exists today, and pressing it would spend money at a
-                    supplier and change what a customer sees, so it is yours to decide. Read-only E1 ships
-                    sooner; the control is drawn here so "yes" does not cost a second canvas.
-                    &nbsp;·&nbsp; <span class="mark">Q6</span> There is no "mark resolved" control.
-                    <code>fulfillment_alarms.resolved_at</code> is written only by the sweep when the
-                    condition actually ends, so an item you fixed outside the store stays listed until the
-                    sweep agrees. A manual resolve is a write that can lie, and it needs an audit event.
+                    <span class="mark">Q6</span> There is no &ldquo;mark resolved&rdquo; control, per your
+                    answer. <code>fulfillment_alarms.resolved_at</code> is written only by the sweep when the
+                    condition itself ends, so an item you fix outside the store stays listed until the sweep
+                    agrees. That is the behaviour, not a gap.
                 </p>
             </section>
 
-            <!-- ============================ ABSENT COLUMNS ============================ -->
+            <!-- ==================== 6 - CONFIRM ==================== -->
             <section class="art">
                 <div class="art__caption">
-                    <b>5 · What is deliberately not on these artboards</b>
+                    <b>6 &middot; The confirm step</b>
+                    <span class="art__tag">desktop 1440</span>
+                    <span class="art__tag">Q1</span>
+                    <span class="art__tag">spends money</span>
+                </div>
+                <p class="art__notes">
+                    <code>forms.md:17-18</code> &mdash; "Destructive confirmations name the record and
+                    consequence. Buttons say the actual action, not &lsquo;Yes&rsquo; or
+                    &lsquo;Submit&rsquo;." So the dialog names the order, says plainly that a supplier will
+                    be asked and we will be charged, and its button says <em>Send to supplier</em>.
+                </p>
+                <div class="frame">
+                    <div class="dialog-stage admin-document">
+                        <div class="dialog-stage__scrim"></div>
+                        <div class="dialog">
+                            <button class="sheet__close" type="button"><svg><use href="#i-x" /></svg></button>
+                            <div class="dialog__header">
+                                <h2>Send AUT-1042 to a supplier</h2>
+                                <p>
+                                    One SBC item, paid 38 minutes ago, never placed. Sending asks a supplier
+                                    to deliver it, and we are charged for what it delivers.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label for="reason">Reason</label>
+                                <div class="select" style="width: 100%">
+                                    <div class="field" style="min-height: 44px; font-size: 0.875rem">
+                                        Callback never arrived
+                                    </div>
+                                    <svg><use href="#i-chevdown" /></svg>
+                                </div>
+                                <p class="hint">
+                                    Never placed &middot; Callback never arrived &middot; Supplier stopped
+                                    reporting &middot; Customer reported it
+                                </p>
+                            </div>
+
+                            <div class="callout">
+                                <svg><use href="#i-key" /></svg>
+                                <span>
+                                    The request carries the customer&rsquo;s EA account, decrypted for this
+                                    send only and written to the secret access log. You will be asked for
+                                    your password.
+                                </span>
+                            </div>
+
+                            <div class="dialog__footer">
+                                <button class="btn btn--outline" type="button">Cancel</button>
+                                <button class="btn btn--primary" type="button">
+                                    <svg><use href="#i-truck" /></svg><span>Send to supplier</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <strong style="color: #ede4d0">Reason is a fixed list, not a text box.</strong>
+                    <code>forms.md:37-41</code> requires an allowlisted reason code and
+                    <code>audit-logging.md:14-16</code> forbids copying free-text reasons into audit
+                    metadata. Four codes cover what actually happens:
+                    <code>never_placed</code>, <code>callback_lost</code>, <code>supplier_stalled</code>,
+                    <code>customer_report</code>.
+                </p>
+                <p class="art__notes">
+                    <strong style="color: #ede4d0">The credential line is not boilerplate.</strong>
+                    <code>ComposePlacementRequest</code> decrypts the customer&rsquo;s EA account when the
+                    request is built and writes a <code>SecretAccessLog</code> row for each read. The
+                    operator never sees the credentials, but the press is what triggers the read &mdash; so
+                    the route carries <code>EnsureAdminPassword</code>, the same recent-password middleware
+                    already wrapping settings and MFA, and the dialog says so before the press rather than
+                    surprising them with a password prompt after it.
+                </p>
+            </section>
+
+            <!-- ==================== 7 - AFTER ==================== -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>7 &middot; What the row does next</b>
+                    <span class="art__tag">four states</span>
+                    <span class="art__tag">Failures rule 3</span>
+                </div>
+                <p class="art__notes">
+                    <code>AGENTS.md</code> Failures rule 3 &mdash; "say what was written, not what was
+                    attempted" &mdash; governs every one of these, and it is the part most likely to be got
+                    wrong. The row is the same row from artboard 1, shown on its own.
+                </p>
+                <div class="frame">
+                    <div class="states admin-document">
+                        <div class="states__item">
+                            <div class="states__label">
+                                A &middot; In flight
+                                <span>the control disables itself and the row is untouched</span>
+                            </div>
+                            <div class="rowstrip">
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 13%">
+                                                <div class="cell-stack">
+                                                    <a class="link" href="#">AUT-1042</a>
+                                                    <span class="sub">paid 38m ago</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 27%">
+                                                <div class="cell-stack">
+                                                    <span class="tag">SBC</span>
+                                                    <span class="sub">never placed</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 13%">
+                                                <div class="cell-stack">
+                                                    <span class="num">38m</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 28%">
+                                                <div class="cell-stack" style="gap: 0.25rem">
+                                                    <span class="badge badge--danger"
+                                                        ><svg><use href="#i-alert" /></svg>Unplaced</span
+                                                    >
+                                                    <span class="sub">No fulfillment job</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 19%; text-align: end">
+                                                <button class="rowaction rowaction--primary" disabled type="button">
+                                                    <span class="spinner"></span>Sending&hellip;
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="states__item">
+                            <div class="states__label">
+                                B &middot; Sent
+                                <span>the outbox row is pending again &mdash; nothing is placed yet</span>
+                            </div>
+                            <div class="rowstrip">
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 13%">
+                                                <div class="cell-stack">
+                                                    <a class="link" href="#">AUT-1042</a>
+                                                    <span class="sub">paid 38m ago</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 27%">
+                                                <div class="cell-stack">
+                                                    <span class="tag">SBC</span>
+                                                    <span class="sub">never placed</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 13%">
+                                                <div class="cell-stack">
+                                                    <span class="num">38m</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 28%">
+                                                <div class="cell-stack" style="gap: 0.25rem">
+                                                    <span class="badge badge--danger"
+                                                        ><svg><use href="#i-alert" /></svg>Unplaced</span
+                                                    >
+                                                    <span class="badge badge--neutral"
+                                                        ><svg><use href="#i-clock" /></svg>Queued 10:42</span
+                                                    >
+                                                </div>
+                                            </td>
+                                            <td style="width: 19%; text-align: end">
+                                                <span class="dash">&mdash;</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="alert alert--info" style="width: 1104px">
+                                <svg><use href="#i-check" /></svg>
+                                <div>
+                                    <strong>Queued. Nothing is placed yet.</strong>
+                                    <p>
+                                        The alarm stays open until a supplier reference actually arrives.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="states__item">
+                            <div class="states__label">
+                                C &middot; Refused
+                                <span>the supplier said no, or nothing was requeued</span>
+                            </div>
+                            <div class="rowstrip">
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 13%">
+                                                <div class="cell-stack">
+                                                    <a class="link" href="#">AUT-1033</a>
+                                                    <span class="sub">paid 5h 08m ago</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 27%">
+                                                <div class="cell-stack">
+                                                    <span class="tag tag--outline">FFT</span>
+                                                    <span class="mono mono--muted">882344</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 13%">
+                                                <div class="cell-stack">
+                                                    <span class="num">5h 08m</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 28%">
+                                                <div class="cell-stack" style="gap: 0.25rem">
+                                                    <span class="badge badge--danger"
+                                                        ><svg><use href="#i-alert" /></svg>Silent</span
+                                                    >
+                                                    <span class="sub">In progress</span>
+                                                </div>
+                                            </td>
+                                            <td style="width: 19%; text-align: end">
+                                                <button class="rowaction" type="button">
+                                                    <svg><use href="#i-radio" /></svg>Resume
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="alert alert--danger" style="width: 1104px">
+                                <svg><use href="#i-alert" /></svg>
+                                <div>
+                                    <strong>Not sent. Nothing changed.</strong>
+                                    <p>Try again in a few minutes.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="states__item">
+                            <div class="states__label">
+                                D &middot; Already running
+                                <span>a second press while the first is in flight</span>
+                            </div>
+                            <div class="alert alert--neutral" style="width: 1104px">
+                                <svg><use href="#i-clock" /></svg>
+                                <div>
+                                    <strong>Already running.</strong>
+                                    <p>This item is being sent right now. Nothing was sent twice.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <strong style="color: #ede4d0">B is the one that matters.</strong> A successful press
+                    re-opens an outbox row; it does not place anything. So the row says
+                    <em>Queued</em>, never <em>Placed</em>, and
+                    <strong style="color: #ffb4a9">the Unplaced alarm stays on the row</strong> until the
+                    sweep sees a job appear. Clearing the alarm at the moment of pressing would be the screen
+                    lying about what the database holds. Resume is the same shape: the row keeps its status
+                    and carries "Resume sent 10:42" until the next reading lands &mdash; only
+                    <code>ApplySupplierObservation</code> may move a status.
+                </p>
+                <p class="art__notes">
+                    <strong style="color: #ede4d0">C says what was not done, and does not explain
+                    itself.</strong> <code>ResumeItemDelivery</code> already returns the same
+                    <code>refused</code> for a supplier that is unreachable and for a missing API key,
+                    logging the second at error level because it is ours to fix. The operator gets one
+                    sentence either way, because the difference is not theirs to act on.
+                    &nbsp;&middot;&nbsp; <strong style="color: #ede4d0">D is not an error.</strong> The
+                    per-item lock is refused rather than queued (Failures rule 5), so a double press cannot
+                    become a second send that merely waits its turn.
+                </p>
+            </section>
+
+            <!-- ==================== 8 - ABSENT ==================== -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>8 &middot; What is deliberately not on these artboards</b>
                     <span class="art__tag">read this before approving</span>
                 </div>
                 <div class="absent">
-                    <h2>Two of the plan's six columns have no data behind them</h2>
+                    <h2>One of the plan&rsquo;s six columns has no data behind it</h2>
                     <p>
-                        The plan asks for supplier, age, stall, failure, actual cost and retry. Four are
-                        drawn above. The other two are listed here instead of being drawn empty, because a
+                        The plan asks for supplier, age, stall, failure, actual cost and retry. Five are
+                        drawn above. <em>Failure</em> is listed here instead of being drawn empty, because a
                         mock showing a column the store cannot fill is a promise the code will not keep. Full
-                        evidence with line numbers is in <code>docs/design/e1-admin-fulfillment-screen.md</code>.
+                        evidence with line numbers is in
+                        <code>docs/design/e1-admin-fulfillment-screen.md</code>.
                     </p>
                     <table>
                         <thead>
@@ -2151,54 +3117,71 @@
                                 <td>A stored error per item.</td>
                                 <td>
                                     <code>fulfillment_jobs.last_error</code> and
-                                    <code>last_error_code</code> are <strong style="color: #ffb4a9">never written
-                                    non-null</strong> — the only writers set them to <code>null</code>
+                                    <code>last_error_code</code> are
+                                    <strong style="color: #ffb4a9">never written non-null</strong> &mdash; the
+                                    only writers set them to <code>null</code>
                                     (<code>RecordSupplierPlacement.php:227,242</code>). The
                                     <code>fulfillment_attempts</code> table has a model, a relation and
                                     <strong style="color: #ffb4a9">no writer anywhere</strong>.
                                     <code>attempt_count</code> is never incremented.
                                     <code>FulfillmentStatus::Failed</code> is
                                     <strong style="color: #ffb4a9">never assigned</strong> in app, database or
-                                    tests — a "Failed" filter would return zero rows forever. What exists
-                                    instead is the <em>Signal</em> column drawn above:
-                                    <code>observed_state</code> (the supplier's own code, "carried for
-                                    diagnosis only"), <code>poll_failure_count</code>, and the alarm.
-                                    The read-failure <em>reason</em> lives only in memory and the log.
+                                    tests. Your Q3: leave it alone in this slice, so the
+                                    <em>Signal</em> column carries what exists today &mdash;
+                                    <code>observed_state</code> (the supplier&rsquo;s own code, "carried for
+                                    diagnosis only"), <code>poll_failure_count</code>, and the alarm. The read
+                                    failure <em>reason</em> exists in memory and is discarded after the log
+                                    line; persisting it is owed work for a later fulfillment slice.
                                 </td>
                             </tr>
                             <tr>
                                 <th>retry</th>
-                                <td>An operator retry, with a count.</td>
+                                <td>One column, one action.</td>
                                 <td>
-                                    <code>ResumeItemDelivery</code> and <code>RetryItemChallenge</code> are
-                                    <strong style="color: #ffb4a9">customer</strong> actions — their only
-                                    routes are storefront routes, and both fail closed unless the job's own
-                                    <code>allowed_actions</code> lists the action.
-                                    <code>challenge_retries</code> is not an operator log: it counts the
-                                    <em>automatic</em> challenge retry, per challenge id. There is no admin
-                                    route, no permission and no audit event. See Q1.
+                                    Built (your Q1), but as
+                                    <strong style="color: #ede4d0">three actions, not one</strong>.
+                                    <em>Send</em> re-opens the order&rsquo;s outbox row &mdash; it is the only
+                                    one that spends new money, and it exists only where there is no job.
+                                    <em>Resume</em> and <em>Retry</em> instruct a supplier about work it
+                                    already holds, and appear only when the job&rsquo;s
+                                    <code>allowed_actions</code> lists them. A second
+                                    <code>order.paid</code> event cannot even be created &mdash; its
+                                    idempotency key is <code>'order-paid:'.$order-&gt;id</code> and the column
+                                    is unique &mdash; which is why the re-send re-opens the existing row
+                                    rather than writing a new one, and why the request that goes out can only
+                                    contain items that still have no job.
                                 </td>
                             </tr>
                             <tr>
                                 <th>actual cost</th>
-                                <td>A number on every row.</td>
+                                <td>A number on every row, for everyone.</td>
                                 <td>
-                                    Real writer, conditional data. <code>actual_cost_halalah</code> is written
-                                    only when the supplier payload carries a cost <em>and</em> an applied
-                                    pricing run carries <code>ratioEuroUsd</code> — "a cost we cannot convert
-                                    is not a cost we should invent". With pricing runs currently failing,
-                                    expect many nulls. Rows 5 and 4 above show the null rendering:
-                                    <em>not reported</em> and <em>—</em>, never <code>SAR 0.00</code>.
+                                    Real writer, conditional data, and now Admin-only.
+                                    <code>actual_cost_halalah</code> is written only when the supplier payload
+                                    carries a cost <em>and</em> an applied pricing run carries
+                                    <code>ratioEuroUsd</code> &mdash; "a cost we cannot convert is not a cost
+                                    we should invent". With pricing runs currently failing, expect many
+                                    nulls; artboards 1 and 5 show the null rendering as
+                                    <em>not reported</em> and <em>&mdash;</em>, never <code>SAR 0.00</code>.
                                 </td>
                             </tr>
                             <tr>
                                 <th>customer name</th>
-                                <td>—</td>
+                                <td>&mdash;</td>
                                 <td>
                                     Left off on purpose. This screen answers "what is stuck", not "whose".
-                                    The order number is a link, and the customer is one click away on the
-                                    order. Adding a name column widens every row for information the operator
-                                    does not act on here.
+                                    The order number is a link and the customer is one click away. A name
+                                    column widens every row for information the operator does not act on
+                                    here.
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>manual alarm resolve</th>
+                                <td>&mdash;</td>
+                                <td>
+                                    Your Q6: no. <code>resolved_at</code> is written only by the sweep, when
+                                    the condition ends. An alarm a human can dismiss without the item
+                                    changing is an alarm nobody trusts.
                                 </td>
                             </tr>
                         </tbody>

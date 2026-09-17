@@ -6,6 +6,7 @@
 | ------------------------- | ----- | ----- |
 | `dashboard.view`          | yes   | yes   |
 | `orders.view`             | yes   | yes   |
+| `orders.create`           | yes   | yes   |
 | `orders.update`           | yes   | yes   |
 | `orders.cancel`           | yes   | yes   |
 | `orders.refund`           | yes   | no    |
@@ -48,8 +49,9 @@ Customer and ServiceAccount receive none.
 
 - v1 roles are fixed and code-defined; do not install a dynamic permission
   package or add direct per-user permission editing.
-- The Admin-first near-MVP limits Staff to the five approved overview, order
-  operation, and credential-reveal permissions above. Any Staff expansion
-  requires a new explicit owner decision before code or documentation changes.
+- The Admin-first near-MVP limits Staff to the six approved overview, order
+  operation, and credential-reveal permissions above, which are the six listed
+  in `AdminAccess::STAFF`. Any Staff expansion requires a new explicit owner
+  decision before code or documentation changes.
 - Role changes are Admin-only, require recent password confirmation, prevent the
   acting Admin from removing the last active Admin, and are audited.
