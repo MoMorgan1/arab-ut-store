@@ -21,7 +21,7 @@ All exports in this directory use placeholder credential identifiers
 (`CONFIGURE_ARABUT_PRICING_API_CREDENTIAL_ID`, `CONFIGURE_TELEGRAM_CREDENTIAL_ID`)
 and environment expressions (`$env.OPS_TELEGRAM_CHAT_ID`).
 
-Import `workflow-v2.6.json` instead; its steps are at the end of this file.
+Import `workflow-v2.7.json` instead; its steps are at the end of this file.
 
 Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
 the unpatched workflow is the only unsafe combination.
@@ -38,9 +38,30 @@ the unpatched workflow is the only unsafe combination.
   whole riyals — if you ever re-import `workflow.json`, restore that stricter
   pairing or hourly runs will fail closed with `exact override is invalid`.
 
+## v2.7: one dead platform does not stop the other (2026-09-17)
+
+**`workflow-v2.7.json` is the current artifact.** It is v2.6 with edits in one
+Code node, `Prepare Coins Snapshot`.
+
+v2.6 got past the price and stopped at "A supplier cost basis could not be
+built for every platform". That was true and it was PC: FFT's targeted book was
+uncovered, UTT's lots were empty, and a cycle price is deliberately not a valid
+floor for a targeted-priced tier. Console had a real market the whole time and
+was stopped with it.
+
+Each platform now carries its own last published rates forward when no supplier
+quotes it, and only a platform with nothing to carry can stop the run. The
+carried rates are not smoothed and are not a price signal - they are the last
+thing known, held steady so fulfilment keeps a budget.
+
+**The rule that makes that safe:** a group publishing carried rates publishes
+`availableCoins: 0`. A price no supplier stands behind today reaches fulfilment
+and never reaches a customer. `console_normal` goes dark with `console_fast`,
+because both are priced from the same PlayStation book.
+
 ## v2.6: the price comes from the fill size, not the word (2026-09-17)
 
-**`workflow-v2.6.json` is the current artifact.** It is v2.5 with edits in two
+**`workflow-v2.7.json` is the current artifact.** It is v2.5 with edits in two
 Code nodes - `Probe FFT` and `Prepare Coins Snapshot` - and nothing else.
 
 ### Why

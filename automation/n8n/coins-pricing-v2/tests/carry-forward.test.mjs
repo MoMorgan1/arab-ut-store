@@ -1,4 +1,4 @@
-// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.6.json the
+// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.7.json the
 // way n8n would - once with FFT answering, once with FFT down - and pins the
 // v2.5 rule: FFT down carries last time's rates forward and still publishes a
 // UTT cost table; with nothing to carry forward it stops as v2.4 did.
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.6.json', import.meta.url), 'utf8'));
+const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.7.json', import.meta.url), 'utf8'));
 const source = (name) => workflow.nodes.find((node) => node.name === name).parameters.jsCode;
 const configSrc = source('Config');
 const prepareSrc = source('Prepare Coins Snapshot');
@@ -155,4 +155,84 @@ test('a ceiling above what the store sells is clamped, never widened', async () 
         console_fast: 20_000_000,
         pc: 20_000_000,
     });
+});
+
+test('a platform nobody quoted keeps the other one selling, and sells nothing itself', async () => {
+    // FC27 opening: FFT's targeted book uncovered on PC, UTT's lots empty on
+    // both, console with a real cycle price. v2.6 stopped the whole run over
+    // PC and the store stayed on last season's rates for twelve days.
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+    };
+    const fft = {
+        source: 'fft', failed: false,
+        cycle: {
+            ps: { usdPerM: 220, amountCoins: 45_000, coversTarget: false },
+            pc: { usdPerM: null, amountCoins: 0, coversTarget: false },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    };
+    const memory = {
+        lastSuccessfulRates: {
+            console_normal: 722,
+            console_fast: [722, 722, 722, 914, 1000, 1100],
+            pc: [1777, 1836, 1836, 2132, 3968, 3968],
+        },
+    };
+
+    const out = await runPrepare(config, fft, utt, memory);
+
+    assert.equal(out.valid, true, out.failureReason ?? '');
+    assert.deepEqual(out.pricingAudit.missingBasisGroups, ['pc']);
+
+    // PC publishes last time's rates unchanged - fulfilment still has a budget.
+    assert.deepEqual(
+        out.snapshot.rules.pc.tier_rates_halalah_per_million,
+        memory.lastSuccessfulRates.pc,
+    );
+
+    // And it is unsellable, which is the only thing that makes that safe: a
+    // price no supplier stands behind today must never reach a customer.
+    assert.equal(out.snapshot.observations.availableCoins.pc, 0);
+
+    // Console priced from its real market and stays on sale.
+    assert.equal(out.snapshot.observations.availableCoins.console_fast, 45_000);
+    assert.ok(
+        out.snapshot.rules.console_fast.tier_rates_halalah_per_million[0] >
+            memory.lastSuccessfulRates.console_fast[0],
+        'console repriced against a market 300x last season',
+    );
+});
+
+test('a run with nothing to carry forward still stops rather than guessing', async () => {
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+    };
+    const fft = {
+        source: 'fft', failed: false,
+        cycle: {
+            ps: { usdPerM: 220, amountCoins: 45_000, coversTarget: false },
+            pc: { usdPerM: null, amountCoins: 0, coversTarget: false },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    };
+
+    await assert.rejects(
+        () => runPrepare(config, fft, utt, {}),
+        /no supplier cost basis for pc/,
+    );
 });
