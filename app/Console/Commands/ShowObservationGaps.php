@@ -20,12 +20,19 @@ use Illuminate\Database\Eloquent\Builder;
  *     ssh arabut-prod "cd /home/u372356793/domains/store.arab-ut.com/current \
  *         && php artisan fulfillment:observation-gaps --days=14"
  *
- * Two scopes per phase, because they answer two different questions and the
- * cadence table needs the second one. "every reading" is the interval between
- * supplier reads, which is largely our own poll cadence read back to us.
- * "readings that moved" is the interval a job actually went before its state
- * changed - which is what "an open job whose newest observation is older than
- * the cadence expected for its phase" is really asking about.
+ * Both scopes measure the same thing - the interval between two consecutive
+ * readings - and neither measures how long a job sat in a state. "the reading
+ * that brought news" is that same interval, restricted to the readings where
+ * the state came back different, so it says what the poll interval happened to
+ * be at the moment news arrived and nothing at all about how long the news took
+ * to arrive. A job polled every three minutes that finally moves after two
+ * hours contributes a three-minute row, not a two-hour one.
+ *
+ * Read it that way and it is still worth having: it is the sample of intervals
+ * during which the store was demonstrably being told things, so a threshold
+ * above it cannot be firing on a job a supplier is actively answering about.
+ * Measuring time-in-state needs a different table - the transitions, not the
+ * gaps between reads - and this is not it.
  */
 final class ShowObservationGaps extends Command
 {
@@ -78,17 +85,21 @@ final class ShowObservationGaps extends Command
 
         $this->line('');
         $this->components->info(
-            'A cadence threshold belongs above the "readings that moved" p99 of its phase, not at its p50: '
-            .'the table is here to say how long normal is, and the alarm fires past normal.'
+            'Set a phase threshold above its "every reading" p99, with room over it. That column is how long '
+            .'a healthy job goes between readings, so a threshold under it fires on jobs the supplier is '
+            .'answering about. Neither column measures how long a job sat in one state.'
         );
 
-        $configured = config('services.suppliers.alarm.stalled_after_minutes');
-        $unset = ! is_array($configured) || array_filter($configured, static fn ($value): bool => is_numeric($value) && (int) $value > 0) === [];
+        $byPhase = config('services.suppliers.alarm.stalled_after_minutes');
 
-        if ($unset) {
-            $this->components->warn(
-                'services.suppliers.alarm.stalled_after_minutes is still entirely unset, so no stall alarm is armed.'
-            );
+        if (! is_array($byPhase) || $byPhase === []) {
+            $fallback = config('services.suppliers.alarm.stalled_fallback_minutes');
+
+            $this->components->warn(sprintf(
+                'No phase has a measured threshold yet, so every phase is on the %s-minute fallback. '
+                .'A measured one goes in services.suppliers.alarm.stalled_after_minutes.',
+                is_numeric($fallback) && (int) $fallback > 0 ? (string) (int) $fallback : 'unset',
+            ));
         }
 
         return self::SUCCESS;
@@ -126,7 +137,7 @@ final class ShowObservationGaps extends Command
 
         return [
             $label,
-            $movedOnly ? 'readings that moved' : 'every reading',
+            $movedOnly ? 'the reading that brought news' : 'every reading',
             $samples,
             $percentile(50),
             $percentile(90),

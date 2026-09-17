@@ -44,8 +44,14 @@ enum FulfillmentAlarmKind: string
      * cron, a lease that leaked, a job selection that quietly stopped matching
      * - where the failure counter never moves because nothing ever fails.
      *
-     * How old is too old is a per-phase number, and it is not in this codebase
-     * yet. See the cadence table in `config/services.php`.
+     * The two do overlap, and the sweep makes the boundary exclusive rather
+     * than letting one item carry both: below `silent_after_failures` this
+     * kind owns it, at or above it Silent does.
+     *
+     * How old is too old is a per-phase number nobody has measured yet, so it
+     * runs on a global interim fallback until one exists. See
+     * `services.suppliers.alarm.stalled_fallback_minutes` and
+     * `stalled_after_minutes` in `config/services.php`.
      */
     case Stalled = 'stalled';
 }

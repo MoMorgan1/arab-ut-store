@@ -130,29 +130,28 @@ return [
             // has ever sold through a pipeline that predates this table.
             'raise_window_hours' => 48,
 
-            // D3b's phase cadence table: the longest a placed job in each
-            // delivery phase may go without a reading landing before an
-            // operator is told it has stopped moving. Minutes. The key 'none'
-            // is a job carrying no phase at all.
+            // D3b's stall detection: the longest a placed job may go without a
+            // reading landing before an operator is told it has stopped moving.
             //
-            // Every entry is deliberately unset, and unset means that phase is
-            // not watched - never that everything in it is stalled. The only
-            // honest source for these numbers is measured per-phase
-            // observation gaps, and on 2026-09-17 there were none to measure:
-            // D3a's instrumentation is a single Log::info line per tick and
-            // production runs at LOG_LEVEL=warning, so not one tick has ever
-            // been written, and nothing durable records an observation gap
-            // either - `fulfillment_jobs.observed_at` is one column that is
-            // overwritten on every read, not a history.
+            // What a phase with no entry of its own uses, so detection works
+            // from the day it deploys rather than waiting on a measurement.
+            // Sixty minutes is six times the poller's worst healthy gap - the
+            // ten-minute backoff ceiling plus a minute of circuit cooldown -
+            // which is interim reasoning, not a number anyone measured.
+            'stalled_fallback_minutes' => 60,
+
+            // The per-phase table that replaces the fallback once
+            // `fulfillment:observation-gaps` has something to say. Minutes,
+            // keyed by delivery phase, with 'none' for a job carrying no phase.
             //
-            // Setting a number here turns the alarm on for that phase, so it
-            // is a decision, not a default. A guessed threshold would mail
-            // Mohamed about healthy orders until he stopped reading the mail.
-            'stalled_after_minutes' => [
-                'coins' => null,
-                'challenge' => null,
-                'none' => null,
-            ],
+            // A phase named here with a null is deliberately NOT watched. A
+            // phase absent from here has no opinion recorded and falls back to
+            // the number above. That difference is the off switch, so it is
+            // the presence of the key that matters, not its value.
+            //
+            // Empty on purpose: nothing has measured a per-phase gap yet, and
+            // a guessed per-phase number is worse than the honest global one.
+            'stalled_after_minutes' => [],
         ],
 
         'fft' => [

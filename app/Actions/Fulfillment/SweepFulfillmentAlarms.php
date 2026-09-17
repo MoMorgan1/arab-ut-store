@@ -261,6 +261,16 @@ final class SweepFulfillmentAlarms
      * work closed by an admin would raise an alarm no observation could ever
      * resolve.
      *
+     * The failure count hands the job over to {@see self::silent()} at the
+     * count that alarm opens on. The two conditions genuinely overlap - reads
+     * that keep failing also stop advancing `observed_at` - and an item that
+     * appeared under both would be counted twice on the panel and described
+     * two ways in one mail. So the boundary is exclusive: below the count this
+     * alarm owns it, at or above it the other one does, and crossing the
+     * boundary resolves this one as the other opens. An operator reads a
+     * failure count either way, and "reads are failing" is the more specific
+     * of the two things to be told.
+     *
      * @return Collection<int, FulfillmentJob>
      */
     private function stalledInPhase(string $phase, CarbonImmutable $cutoff): Collection
@@ -270,6 +280,7 @@ final class SweepFulfillmentAlarms
             ->whereNotNull('supplier_order_id')
             ->where('supplier_order_id', '!=', '')
             ->whereNotNull('next_poll_at')
+            ->where('poll_failure_count', '<', $this->silentAfterFailures())
             ->when(
                 $phase === self::PHASELESS,
                 fn ($query) => $query->whereNull('delivery_phase'),
@@ -429,46 +440,76 @@ final class SweepFulfillmentAlarms
     }
 
     /**
-     * The phase cadence table, reduced to the phases that carry a real number.
+     * How long each watched phase may go without a reading landing.
      *
-     * An entry that is unset, unreadable or not positive is not a threshold,
-     * it is an unanswered question - and the answer to an unanswered question
-     * is to watch nothing. The inverse, letting a missing number fall through
-     * to zero the way `(int) null` would, calls every open job in that phase
-     * stalled the moment it ships. There is no default argument to `config()`
-     * here for the same reason: a default is a guess with a hiding place.
+     * Two settings, and the difference between them is the whole design. The
+     * fallback is what a phase nobody has measured uses, so detection works
+     * from the day it ships instead of waiting on numbers that do not exist
+     * yet. The per-phase table is how a measured number replaces it - and how
+     * a phase is switched off, because a phase named in the table with a null
+     * is an answer ("do not watch this") while a phase missing from it is the
+     * absence of one.
      *
-     * A key the enum does not name is ignored, so a typo in the table turns
-     * its phase off rather than on.
+     * So the lookup is `array_key_exists`, not `??`. With `??` a null entry
+     * and a missing key would be the same thing, the fallback would answer for
+     * both, and the off switch would quietly stop existing.
+     *
+     * A key the enum does not name is ignored, so a typo in the table leaves
+     * its phase on the fallback rather than turning it into a threshold.
      *
      * @return array<string, int>
      */
     private function stallCadence(): array
     {
         $configured = config('services.suppliers.alarm.stalled_after_minutes');
+        $configured = is_array($configured) ? $configured : [];
+        $fallback = $this->positiveMinutes(config('services.suppliers.alarm.stalled_fallback_minutes'));
 
-        if (! is_array($configured)) {
-            return [];
+        $cadence = [];
+
+        foreach ($this->watchablePhases() as $phase) {
+            $minutes = array_key_exists($phase, $configured)
+                ? $this->positiveMinutes($configured[$phase])
+                : $fallback;
+
+            if ($minutes !== null) {
+                $cadence[$phase] = $minutes;
+            }
         }
 
+        return $cadence;
+    }
+
+    /**
+     * Every phase the cadence table may name.
+     *
+     * @return list<string>
+     */
+    private function watchablePhases(): array
+    {
         $phases = array_map(
             static fn (DeliveryPhase $phase): string => $phase->value,
             DeliveryPhase::cases(),
         );
+
         $phases[] = self::PHASELESS;
 
-        $cadence = [];
+        return $phases;
+    }
 
-        foreach ($phases as $phase) {
-            $minutes = $configured[$phase] ?? null;
-
-            if (! is_numeric($minutes) || (int) $minutes <= 0) {
-                continue;
-            }
-
-            $cadence[$phase] = (int) $minutes;
+    /**
+     * A threshold, or null for "there isn't one".
+     *
+     * Null, a word, an empty string, zero and a negative are all the same
+     * answer: not a duration. Letting any of them fall through to zero the way
+     * `(int) null` would calls every open job stalled the moment it ships.
+     */
+    private function positiveMinutes(mixed $value): ?int
+    {
+        if (! is_numeric($value) || (int) $value <= 0) {
+            return null;
         }
 
-        return $cadence;
+        return (int) $value;
     }
 }

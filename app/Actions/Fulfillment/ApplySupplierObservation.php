@@ -8,6 +8,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\Supplier;
 use App\Enums\SupplierAction;
 use App\Fulfillment\SupplierCostInHalalah;
 use App\Loyalty\Actions\AccrueOrderCashback;
@@ -36,12 +37,20 @@ final class ApplySupplierObservation
      * Applies a supplier observation to canonical order and fulfillment state.
      *
      * @param  array<string, mixed>  $rawPayload
+     * @param  Supplier|null  $observedBy  Which supplier answered this read.
+     *                                     Only the reading path knows: a
+     *                                     challenge read goes to the challenge
+     *                                     placement's supplier while the job
+     *                                     row keeps the first placement's, so
+     *                                     it is passed in rather than derived
+     *                                     here from a second copy of that rule.
      */
     public function execute(
         FulfillmentJob $job,
         TranslatedState $state,
         CarbonImmutable $observedAt,
         array $rawPayload,
+        ?Supplier $observedBy = null,
     ): void {
         // Rule 4: A supplier can never produce Refunded.
         // Refunded is a store-owned financial status that only refund flows can set.
@@ -62,7 +71,7 @@ final class ApplySupplierObservation
 
         $orderId = $item->order_id;
 
-        DB::transaction(function () use ($job, $state, $observedAt, $rawPayload, $orderId): void {
+        DB::transaction(function () use ($job, $state, $observedAt, $rawPayload, $orderId, $observedBy): void {
             // Lock order first, then items ordered by ID, then the fulfillment job.
             // Consistent lock acquisition order prevents deadlocks between concurrent writers.
             /** @var Order $order */
@@ -108,6 +117,7 @@ final class ApplySupplierObservation
                     rawPayload: $rawPayload,
                     withheldDueToAdmin: false,
                     orderIsTerminal: true,
+                    observedBy: $observedBy,
                 );
 
                 return;
@@ -222,6 +232,7 @@ final class ApplySupplierObservation
                 rawPayload: $rawPayload,
                 withheldDueToAdmin: $isAdminHold,
                 orderIsTerminal: false,
+                observedBy: $observedBy,
             );
 
             // A challenge whose coins have just landed is handed to the solve
@@ -280,6 +291,7 @@ final class ApplySupplierObservation
         array $rawPayload,
         bool $withheldDueToAdmin,
         bool $orderIsTerminal,
+        ?Supplier $observedBy = null,
     ): void {
         // Read before the overwrite, because the overwrite is what destroys
         // them. How long this job went between readings exists as a computable
@@ -307,7 +319,7 @@ final class ApplySupplierObservation
 
         // After the phase is settled, so a gap is filed under the phase this
         // reading put the job in rather than the one it was leaving.
-        $this->recordObservationGap->execute($job, $previousObservedAt, $previousState);
+        $this->recordObservationGap->execute($job, $previousObservedAt, $previousState, $observedBy);
 
         // What the supplier has charged us so far, read from the raw payload
         // before the allowlist drops it, and kept on its own column: the

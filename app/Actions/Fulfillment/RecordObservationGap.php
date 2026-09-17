@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fulfillment;
 
+use App\Enums\Supplier;
 use App\Models\FulfillmentJob;
 use App\Models\FulfillmentObservationGap;
 use Carbon\CarbonImmutable;
@@ -34,11 +35,15 @@ final class RecordObservationGap
      *                               reading put the job in.
      * @param  CarbonImmutable|null  $previousObservedAt  Null on a job's first
      *                                                    observation.
+     * @param  Supplier|null  $observedBy  The supplier this reading was
+     *                                     actually taken from, when the caller
+     *                                     knows it.
      */
     public function execute(
         FulfillmentJob $job,
         ?CarbonImmutable $previousObservedAt,
         ?string $previousState,
+        ?Supplier $observedBy = null,
     ): void {
         $observedAt = $job->observed_at;
 
@@ -50,19 +55,30 @@ final class RecordObservationGap
             return;
         }
 
-        // An observation older than the one stored is discarded by the caller
-        // before it gets here, so this is defence rather than a branch anyone
-        // reaches. It matters because the column is unsigned: an absolute
-        // difference would silently turn a clock that went backwards into a
-        // plausible-looking gap.
-        if ($observedAt->lessThan($previousObservedAt)) {
+        // Equal counts as no gap, not as a gap of zero, and this is a real
+        // branch rather than defence. The caller discards an observation
+        // strictly older than the stored one, so a reading replayed after its
+        // own commit - the same payload with the same `fetchedAt`, which is
+        // exactly what a retried delivery is - passes that guard and arrives
+        // here carrying an interval of nothing. One such row per replay drags
+        // every percentile down, and the table exists to be taken percentiles
+        // of. The strictly-older case is folded in for the unsigned column's
+        // sake: an absolute difference would turn a clock that went backwards
+        // into a plausible-looking gap.
+        if ($observedAt->lessThanOrEqualTo($previousObservedAt)) {
             return;
         }
 
         FulfillmentObservationGap::query()->create([
             'fulfillment_job_id' => $job->id,
             'delivery_phase' => $job->delivery_phase,
-            'supplier' => $job->supplier,
+            // The supplier that answered, which is not always the one on the
+            // job. `RecordSupplierPlacement` keeps the first placement's
+            // supplier on the job row on purpose, while a challenge read goes
+            // to the challenge placement's supplier - so a job that bought
+            // coins from UTT and solves challenges at FFT would file every FFT
+            // reading under UTT, and the report's supplier filter would lie.
+            'supplier' => $observedBy ?? $job->supplier,
             'gap_seconds' => (int) $previousObservedAt->diffInSeconds($observedAt, true),
             'state_changed' => $job->observed_state !== $previousState,
             'observed_at' => $observedAt,

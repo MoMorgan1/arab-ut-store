@@ -10,12 +10,13 @@ found twenty-five issues in the first draft; approved and dispatched since.
 **Not started:** E1, F1-F3.
 
 **E2 shipped** (2026-09-17, #205): a paid item nobody placed, and a placed item whose reads keep
-coming back empty, are both said out loud - with the wait graded by why the item is stuck.
+coming back empty, are both said out loud - with the wait graded by why the item is stuck. Its
+`Stale` alarm was dropped: D3b owns that concept under the name `Stalled`.
 
-**D3b's mechanism is built and switched off** - its phase cadence table is unset because nothing
-had measured an observation gap. The measuring now exists (`fulfillment_observation_gaps`, owner
-decision 2026-09-17: persist it, do not log it); the table stays unset until it has something to
-be written from. See the D3b section below.
+**D3b is built and armed on an interim threshold** - one global 60 minutes, because nothing had
+measured a per-phase observation gap. The measuring now exists (`fulfillment_observation_gaps`,
+owner decision 2026-09-17: persist it, do not log it); the per-phase table stays empty until it
+has something to be written from. See the D3b section below.
 
 **G2's repository half is done** (2026-09-17): every reference in the store that sent a customer or
 a reader to `track.arab-ut.com` now names the in-store page, and the cutover procedure is written
@@ -930,10 +931,23 @@ Three findings, checked against production:
   while FIFA 26 winds down. Six supplier-sourced `order_status_history` rows exist in total. Even a
   perfect recorder would have a sample size of one.
 
-So D3b ships as **the mechanism with the table unset**: a `stalled` alarm kind alongside B6's
-`unplaced` and `silent`, driven by `services.suppliers.alarm.stalled_after_minutes`, whose every
-entry is null. Unset means that phase is not watched; it never means everything in it is stalled.
-Setting a number is a decision for whoever has the numbers.
+So D3b ships as a `stalled` alarm kind alongside B6's `unplaced` and `silent`, with **an interim
+threshold and no measured one**. Two settings, and the difference between them is the design:
+
+- `services.suppliers.alarm.stalled_fallback_minutes` (**60**) is what a phase nobody has measured
+  uses, so detection works from the day it deploys. Sixty minutes is six times the poller's worst
+  healthy gap - the ten-minute backoff ceiling plus a minute of circuit cooldown. That is interim
+  reasoning, not a measurement, and it came from the E2 branch, which had independently built the
+  same alarm under the name `Stale`; E2 dropped its version and kept the placement-reason work.
+- `services.suppliers.alarm.stalled_after_minutes` is the per-phase table that replaces it, and is
+  **empty**. A phase named in it with a null is deliberately not watched; a phase absent from it
+  falls back. The lookup is `array_key_exists`, not `??`, because with `??` a null entry and a
+  missing key would be the same thing and the off switch would quietly stop existing.
+
+**`stalled` and `silent` do not overlap.** They genuinely could - reads that keep failing also stop
+advancing `observed_at` - so the boundary is exclusive at `silent_after_failures`: below that count
+`stalled` owns the item, at or above it `silent` does, and crossing it resolves one as the other
+opens. An item under both would be counted twice on the panel and described two ways in one mail.
 
 **Owner decision, 2026-09-17: persist the gap, do not raise the log level.** The numbers are to be
 queryable. A log line is not something anyone takes a percentile of in a month's time, and raising
@@ -947,15 +961,25 @@ previous reading happened. The row carries `fulfillment_job_id`, the `delivery_p
 while it runs, and joining a month later would file every coins gap under challenge),
 `gap_seconds`, `state_changed`, and `observed_at`.
 
-Three things it deliberately does not record. A job's **first** observation, which has nothing to
+**The supplier is the one that answered, not the one on the job.** `RecordSupplierPlacement` keeps
+the first placement's supplier on the job row on purpose, while a challenge read goes to the
+challenge placement's supplier - so a job that funds its coins at UTT and solves at FFT would file
+every FFT reading under UTT and the report's supplier filter would lie. The reading path passes the
+supplier it actually called down to the recorder rather than a second copy of that rule being
+derived here.
+
+Four things it deliberately does not record. A job's **first** observation, which has nothing to
 measure from - a zero there would drag every distribution below the truth. A **failed** read, which
 never reaches the reconciler at all, because a gap is time between two readings and there is no
-second reading. And an observation **older** than the one already stored, which the reconciler
-discards.
+second reading. An observation **older** than the one already stored, which the reconciler
+discards. And a reading **replayed after its own commit**, which carries the same `fetchedAt` and
+so is neither newer nor older: equal is no gap, not a gap of zero, and rollback protection does not
+cover it because the first write committed.
 
-`state_changed` is the column that makes the table worth having. Without it the answer is "how
-often does a reading arrive", which is our own poll cadence read back to us; with it, it also
-answers "how long does a job go before it moves", which is what the alarm is really asking.
+`state_changed` marks whether a reading was news. It does **not** measure how long a job sat in a
+state: a job polled every three minutes that finally moves after two hours contributes a
+three-minute row, not a two-hour one. Time-in-state needs a table of transitions, and this is not
+it.
 
 **Retention: 14 days**, `services.suppliers.poll.gap_retention_days`, pruned in chunks nightly at
 03:30 by `fulfillment:prune-observation-gaps` - the same shape as `pricing-history:prune`, for the
@@ -972,16 +996,21 @@ ssh arabut-prod "cd /home/u372356793/domains/store.arab-ut.com/current \
 ```
 
 It prints samples and p50/p90/p95/p99/max per phase, twice: over every reading, and over the
-readings that moved. `--supplier=fft|utt` narrows it. Percentiles are nearest-rank, computed by one
-`OFFSET` into the ordered column rather than by pulling the table into PHP, and it is the same
-definition `PollFulfillmentJobs::percentile()` uses so two places cannot report a p95 that means two
-different things.
+reading that brought news. `--supplier=fft|utt` narrows it. Percentiles are nearest-rank, computed
+by one `OFFSET` into the ordered column rather than by pulling the table into PHP, and it is the
+same definition `PollFulfillmentJobs::percentile()` uses so two places cannot report a p95 that
+means two different things.
 
-**The cadence table is still unwritten, and stays unwritten until the numbers exist.** The recorder
-shipped on an empty table: nothing had been measured when it was written, and production holds one
-open job. A threshold belongs above its phase's "readings that moved" p99, not at its p50 - the
-distribution says how long normal is, and the alarm fires past normal. The command prints a warning
-on every run while every entry is still unset.
+Both columns measure the same thing - the interval between two consecutive readings - and **neither
+measures time-in-state**. So a phase threshold goes **above its "every reading" p99, with room over
+it**: that column is how long a healthy job goes between readings, and a threshold under it fires
+on jobs the supplier is actively answering about. The second column is the sample of intervals
+during which the store was demonstrably being told things, which is a floor, not a duration.
+
+**The per-phase table is still unwritten, and stays unwritten until the numbers exist.** The
+recorder shipped on an empty table: nothing had been measured when it was written, and production
+holds one open job. Until then every phase runs on the 60-minute fallback, and the command says so
+on every run.
 
 **D3c — notification.** Blocked on Mohamed, not on code: every message is customer-visible
 WhatsApp copy, and the catalogue ported from `Customer Notifier` has to be read and approved before
