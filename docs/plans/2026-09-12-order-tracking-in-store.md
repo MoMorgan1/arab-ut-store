@@ -8,7 +8,11 @@ found twenty-five issues in the first draft; approved and dispatched since.
 (this branch). Contract: `docs/api/n8n-fulfillment-v1.md`, *The placement request*.
 
 **Not started:** D3b (waits on the cadence numbers D3a's instrumentation produces), E1, E2,
-F1-F3, G2.
+F1-F3.
+
+**G2's repository half is done** (2026-09-17): every reference in the store that sent a customer or
+a reader to `track.arab-ut.com` now names the in-store page, and the cutover procedure is written
+at `docs/operations/retire-legacy-tracker.md`. What is left there is the owner's — see *G2* below.
 
 **Blocked on Mohamed:** D3c's sending (copy approved 2026-09-13; nothing may be sent yet), the
 FFT/UTT key rotation (deferred again 2026-09-14, and now consequential: the store calls the
@@ -339,6 +343,9 @@ a support matter. This belongs to slice F, and it needs:
 - Review of the changed hold-reason texts (task C2).
 - Confirmation from the supplier dashboards that no unresolved job is outstanding, before the
   Sheet writer is switched off.
+- The `track.arab-ut.com` cutover itself: the pre-flight, the 301, the waiting period and the
+  takedown. The procedure is `docs/operations/retire-legacy-tracker.md`; the store's half of G2 is
+  merged.
 
 ## Ordering
 
@@ -993,6 +1000,63 @@ earns cashback and loyalty spend. It should not, by the same reasoning that excl
 job is outstanding, redirect `track.arab-ut.com` at the store, update the assistant prompts
 (`support-v6..v9` still send customers there) and the knowledge file that points at a nonexistent
 `/orders` path, then take the site down. That closes the `admin-links.php` exposure by removing it.
+
+*2026-09-17 — the repository half is done.* The procedure, with the real routes, queries and
+screens, is `docs/operations/retire-legacy-tracker.md`, linked from `docs/README.md`.
+
+Changed in the store:
+
+- `support-v6`..`support-v9` name `https://store.arab-ut.com/my-account/orders` instead of the
+  tracker. Only `support-v9` is reachable at runtime — `AgentRuntimeConfig::promptVersion()` goes
+  through `fixedString('prompt_version', 'support-v9')`, which throws on any other value — so the
+  older three are hygiene against a future version bump, not a live fix.
+- The knowledge topics `order-tracking` and `issue-paused` carried `"url": "/orders"`, which is not
+  a route; both now carry `/my-account/orders`. That field is validated on load
+  (`SupportKnowledgeTopic::fromArray`) and asserted in `SupportKnowledgeFileTest`, but it is never
+  rendered into the prompt or into a card, so this was a latent wrong fact rather than a live link.
+- `track.arab-ut.com` left the chat linkifier's allowlist (`resources/js/lib/chat-format.ts`). The
+  allowlist decides what model-authored text becomes a tap target; a retired address should not be
+  one. Stale transcripts still holding it render it as readable plain text.
+
+Three findings the plan did not anticipate, all recorded in the runbook:
+
+1. **`IssueOrderTrackingLink` has no caller in application code** — only tests. The store can mint
+   the signed link and has no screen that shows it and no message that sends it, so
+   `admin-links.php` is still the only way to hand a customer a link outside checkout. This blocks
+   the takedown, not the redirect.
+2. **Two live n8n workflows still build `track.arab-ut.com/?id=` into a WhatsApp message** —
+   `Fulfillment v14`'s `WA: Build Confirmation` and `Customer Notifier v2`'s
+   `Build Customer Message`. Neither may be active when the site comes down. The committed JSON is
+   the Salla baseline and is not edited; this is a check against the live instance.
+3. **A `?id=` link cannot be deep-linked.** It carries a Salla order number the store has no route
+   for, so those customers land on the account orders list and pick the order themselves.
+
+The prompts name the account page rather than the sessionless `/orders/track/{token}` because the
+model has no tools, cannot look up an order, and would have to invent the 48-character token, which
+the linkifier would then render clickable. That stands. What does **not** stand is the first
+version of this note, which said no customer is stranded because they can always sign in.
+
+**A fourth finding, and the one that matters most.** The tracker was public; `/my-account/orders`
+is not, and for the Salla-imported cohort *having* an account is not *reaching* it.
+`App\Imports\Salla\ImportSallaCustomers` writes `password => null` (line 274) and sets
+`phone_verified_at` only when the row carried a phone (line 284); it never sets `email_verified_at`.
+So the password-reset door is bolted for every one of them **and lies about it** —
+`EnsureVerifiedPasswordRecoveryEmail:25-36` returns the `RESET_LINK_SENT` success screen without
+calling `$next()` — and the WhatsApp door fails the same silent way for a phoneless or deactivated
+account (`SendWhatsAppLoginCode:20-23` returns while `WhatsAppLoginController:32` still answers
+`sent: true`). Only Google works unconditionally, and only by claiming the account by email
+(`GoogleAuthenticationController:74-104`). A phoneless imported customer with a non-Google email
+cannot sign in at all, and is told twice that help is on the way.
+
+This does not change the prompts — there is no address that fixes it — but it makes finding 1 above
+a customer-facing blocker rather than an operational one: until the store can hand out a signed
+link, every such customer is a manual operation, and after the takedown there is no public link to
+fall back on. The runbook routes them to a human and to the tinker command, and says plainly not to
+repeat the advice that silently does nothing.
+
+Left for the owner: the pre-flight confirmations (including the supplier dashboards), the 301 —
+which must carry `QSD`, or it copies a live tracking token into store URLs and logs — the waiting
+period, the takedown, the key rotation, and archiving `MoMorgan1/ArabUT-Track`.
 
 ## Slice E — operations (later)
 

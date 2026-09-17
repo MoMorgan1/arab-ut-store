@@ -34,6 +34,7 @@ Remaining planned areas are fulfillment-secret retrieval and supplier automation
 | [Paylink operations](operations/paylink-checkout.md)                     | Hostinger/Paylink setup, pilot, scheduler, and failure procedures                                        | Ready for operator configuration                    |
 | [Hostinger deployment](operations/hostinger-deployment.md)               | Release, scheduler, maintenance, and post-deploy procedures                                              | Active                                              |
 | [Hostinger rollback](operations/hostinger-rollback.md)                   | Automatic and manual Laravel release rollback                                                            | Active                                              |
+| [Retiring the legacy tracker](operations/retire-legacy-tracker.md)       | Pre-flight, redirect, takedown and rollback for `track.arab-ut.com`                                      | Store half done; redirect and takedown are the owner's |
 | [AI Assistant](ai-assistant/README.md)                                   | Canonical assistant handbook; read the [live status](ai-assistant/STATUS.md) first                       | Phases 1–3 and human handoff implemented; see STATUS.md |
 
 ## Decision precedence

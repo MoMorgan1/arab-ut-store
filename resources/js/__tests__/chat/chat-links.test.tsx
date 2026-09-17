@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { isLinkableUrl, parseInlineTokens } from '@/lib/chat-format';
-import type { LinkToken } from '@/lib/chat-format';
+import type { InlineToken, LinkToken } from '@/lib/chat-format';
 
 function linksIn(text: string): LinkToken[] {
     return parseInlineTokens(text).filter(
         (token): token is LinkToken => token.type === 'link',
     );
+}
+
+/** Everything the reader actually sees, in order, whatever each token is. */
+function textIn(tokens: InlineToken[]): string {
+    return tokens
+        .map((token) =>
+            token.type === 'bold' ? textIn(token.children) : token.value,
+        )
+        .join('');
 }
 
 describe('assistant links', () => {
@@ -19,9 +28,44 @@ describe('assistant links', () => {
             }),
         ]);
 
-        expect(linksIn('Track it at https://track.arab-ut.com')).toHaveLength(
-            1,
+        expect(
+            linksIn('Track it at https://store.arab-ut.com/my-account/orders'),
+        ).toHaveLength(1);
+    });
+
+    /**
+     * The legacy tracker is retired (G2), so its address is no longer one tap
+     * away. Old transcripts still hold it, and the promise is that they stay
+     * readable: not linkified, but not swallowed either. Asserting only that no
+     * link token appears would also pass if the URL vanished from the message.
+     */
+    it('keeps the retired tracker address readable as plain text', () => {
+        const message =
+            'Track it at https://track.arab-ut.com/?id=12345 please';
+        const tokens = parseInlineTokens(message);
+
+        expect(linksIn(message)).toHaveLength(0);
+        expect(textIn(tokens)).toBe(message);
+        expect(isLinkableUrl('https://track.arab-ut.com')).toBe(false);
+    });
+
+    /**
+     * The shape a real transcript produces: a retired tracker address and a
+     * live store address in one message. `findNextLink` loops past non-linkable
+     * matches, so a regression there would silently stop linkifying everything
+     * that follows the first skipped URL — and the single-URL cases above would
+     * all still pass.
+     */
+    it('still linkifies a store address that follows a retired one', () => {
+        const message =
+            'Not https://track.arab-ut.com/?id=12345 any more — use https://store.arab-ut.com/my-account/orders';
+        const links = linksIn(message);
+
+        expect(links).toHaveLength(1);
+        expect(links[0].href).toBe(
+            'https://store.arab-ut.com/my-account/orders',
         );
+        expect(textIn(parseInlineTokens(message))).toBe(message);
     });
 
     /**
