@@ -23,6 +23,8 @@ use App\Http\Controllers\Admin\DeleteFaqEntryController;
 use App\Http\Controllers\Admin\DuplicateCouponController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\FaqEntryVisibilityController;
+use App\Http\Controllers\Admin\FulfillmentController;
+use App\Http\Controllers\Admin\FulfillmentResendController;
 use App\Http\Controllers\Admin\LoyaltyController;
 use App\Http\Controllers\Admin\LoyaltyTierController;
 use App\Http\Controllers\Admin\ManualOrderController;
@@ -212,6 +214,42 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $refund->defaults('locale', $locale);
+                }
+
+                $fulfillment = Route::get('/fulfillment', FulfillmentController::class)
+                    ->middleware('can:fulfillment.view')
+                    ->name('fulfillment');
+
+                if ($locale !== null) {
+                    $fulfillment->defaults('locale', $locale);
+                }
+
+                // Under /api. Composing the placement request decrypts the
+                // customer's EA account and writes a secret access log row for
+                // the read, so this is a credential path as much as a money
+                // one.
+                //
+                // `EnsureAdminPassword` is what the repository actually has for
+                // that, and it is NOT recent-password confirmation - it only
+                // refuses an account with no password at all. `forms.md` asks
+                // for a recent confirmation on exactly this shape of action;
+                // nothing in the Admin implements one today, including the
+                // credential-reveal route, so adding a real gate is its own
+                // piece of work rather than something to half-build here.
+                //
+                // Its own limiter rather than `staff-writes`: that budget is
+                // for rows in our database, and this one reaches a supplier.
+                $fulfillmentResend = Route::post('/api/fulfillment/{item}/resend', FulfillmentResendController::class)
+                    ->whereUlid('item')
+                    ->middleware([
+                        'can:fulfillment.act',
+                        EnsureAdminPassword::class,
+                        'throttle:staff-fulfillment-action',
+                    ])
+                    ->name('fulfillment.resend');
+
+                if ($locale !== null) {
+                    $fulfillmentResend->defaults('locale', $locale);
                 }
 
                 $customers = Route::get('/customers', CustomersController::class)

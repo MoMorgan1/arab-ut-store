@@ -31,6 +31,7 @@ test('AdminShell emits the grouped navigation tree with catalog, marketing, and 
     expect($keys)->toBe([
         'overview',
         'orders',
+        'fulfillment',
         'customers',
         'conversations',
         'catalog',
@@ -77,13 +78,16 @@ test('AdminShell filters grouped navigation based on individual permissions', fu
     $shell = app(AdminShell::class)->for($staff, 'en');
     $keys = array_column($shell['adminNavigation'], 'key');
 
-    // Staff with only order permissions sees no catalog or marketing groups
-    expect($keys)->toBe(['overview', 'orders', 'settings', 'more'])
+    // Staff with only order permissions sees no catalog or marketing groups.
+    // Fulfillment is there because Staff hold `fulfillment.view` (owner
+    // decision, 2026-09-17) - they work that queue, they just cannot see its
+    // cost column or press its re-send button.
+    expect($keys)->toBe(['overview', 'orders', 'fulfillment', 'settings', 'more'])
         ->and($keys)->not->toContain('catalog')
         ->and($keys)->not->toContain('marketing');
 });
 
-test('Admin more page renders all six permission-filtered tiles for Admin actor', function (string $url, string $expectedLocale, string $expectedDirection): void {
+test('Admin more page renders all seven permission-filtered tiles for Admin actor', function (string $url, string $expectedLocale, string $expectedDirection): void {
     $admin = adminMoreActor(UserRole::Admin, $expectedLocale);
 
     $response = $this->actingAs($admin)->get($url);
@@ -102,9 +106,13 @@ test('Admin more page renders all six permission-filtered tiles for Admin actor'
             ->where('groups.1.tiles.1.key', 'promotions')
             ->where('groups.1.tiles.2.key', 'loyalty')
             ->where('groups.2.key', 'system')
-            ->has('groups.2.tiles', 2)
-            ->where('groups.2.tiles.0.key', 'conversations')
-            ->where('groups.2.tiles.1.key', 'settings')
+            ->has('groups.2.tiles', 3)
+            // First in the group, and the only way to reach the fulfillment
+            // queue on a phone: the tab bar carries a fixed five keys and the
+            // sidebar is desktop-only.
+            ->where('groups.2.tiles.0.key', 'fulfillment')
+            ->where('groups.2.tiles.1.key', 'conversations')
+            ->where('groups.2.tiles.2.key', 'settings')
         );
 })->with([
     // Both admin route families register locale 'en' (routes/admin.php), so the

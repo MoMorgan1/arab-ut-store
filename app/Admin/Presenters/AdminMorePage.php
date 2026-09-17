@@ -97,8 +97,22 @@ final readonly class AdminMorePage
             ];
         }
 
-        // 3. Support & System group (Conversations, Settings tiles)
+        // 3. Support & System group (Fulfillment, Conversations, Settings tiles)
         $systemTiles = [];
+
+        // First in the group, and here rather than nowhere: the mobile tab bar
+        // carries a fixed five keys and the sidebar is desktop-only, so this
+        // tile is the ONLY way to reach the fulfillment queue on a phone.
+        // Staff hold this permission, and it is their daily screen.
+        if ($actor->can(AdminPermission::FulfillmentView->value)) {
+            $systemTiles[] = [
+                'key' => 'fulfillment',
+                'label' => (string) trans('admin.more.tiles.fulfillment.title', locale: $locale),
+                'description' => (string) trans('admin.more.tiles.fulfillment.description', locale: $locale),
+                'url' => route($prefix.'fulfillment', absolute: false),
+            ];
+        }
+
         if ($actor->can(AdminPermission::ChatView->value)) {
             $systemTiles[] = [
                 'key' => 'conversations',

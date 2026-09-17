@@ -15,6 +15,7 @@ import {
     ShoppingBag,
     Star,
     Ticket,
+    Truck,
     Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -30,6 +31,7 @@ import { AdminUnreadBadge } from './admin-unread-badge';
 const navigationIcons: Record<string, LucideIcon> = {
     overview: LayoutDashboard,
     orders: ShoppingBag,
+    fulfillment: Truck,
     customers: Users,
     conversations: MessageSquare,
     catalog: Package,

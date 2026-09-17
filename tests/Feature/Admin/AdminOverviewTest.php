@@ -330,7 +330,7 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'marketing.view',
             'marketing.manage',
         ],
-        ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/marketing/coupons', '/admin/settings', '/admin/more'],
+        ['/admin', '/admin/orders', '/admin/fulfillment', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/marketing/coupons', '/admin/settings', '/admin/more'],
     ],
     'English Staff' => [
         UserRole::Staff,

@@ -19,13 +19,26 @@ The mail line and the alarm row say which of three things happened. They need di
 | `لم يُرسل لأي مورد بعد` | `unplaced` | Paid, no supplier reference, and the store has not written down a reason | §2 |
 | `متوقف ولن يُرسل بدون تدخل` | `unplaced`, blocked | Paid, and the store is refusing to compose the request. The reason code is on the same line | §3, then §2 |
 | `المورد توقف عن الرد عليه` | `silent` | Placed, and the reads are being attempted and failing | §7 |
+| `ما وصلت عنه قراءة جديدة من فترة` | `stalled` | Placed, and no reading is arriving at all — nothing is failing because nothing is being attempted | §7 |
+
+**A `stalled` line that also says `المورد موقوف مؤقتاً، ما نسأله الآن` is not a stall to chase.**
+That is the supplier's circuit cooldown: we are choosing not to ask it, and the readings will
+resume on their own. Read the rest of the line first — it carries the item id, how many minutes
+it has been quiet, the phase and the supplier — and only go to §7 when the circuit is not the
+reason.
 
 Every mail line carries the order number, the **order item's public id**, the service, and — for a
 `silent` line — the supplier, the supplier reference and how many reads have failed. That is
 everything the steps below take as input, so the mail alone is enough to start.
 
-Read the open rows directly when the mail is not to hand. On the server, from the release
-directory, run `php artisan tinker` and paste this as one line:
+**Read the open rows on the admin fulfillment screen** — `/admin/fulfillment`, filtered by
+`Any alarm`. It lists every paid item a supplier still owes, oldest wait first, and opening a row
+shows the alarm, its age, whether the mail went out, the supplier reference and the last code the
+supplier gave. That replaces the tinker snippet below for everything except a server with no
+browser to hand; the snippet stays for exactly that case and for reading a resolved row, which
+the screen does not show.
+
+On the server, from the release directory, run `php artisan tinker` and paste this as one line:
 
 ```php
 App\Models\FulfillmentAlarm::query()->whereNull('resolved_at')->with('orderItem.order')->get()->map(fn ($a) => [$a->kind->value, $a->orderItem?->order?->order_number, $a->orderItem?->public_id, $a->raised_at->diffForHumans(), $a->context]);
@@ -111,8 +124,8 @@ empty — and (b) too, where it could be read at all — is a manual placement s
 The reason is the publisher's own word for what stopped it, and it is written in the same spelling
 everywhere it appears: `integration_events.last_error`, the `Placement request could not be
 composed` warning in the log, and — for an `unplaced` alarm, the only kind that carries one —
-`context.reason` and the mail line. A `silent` alarm has no reason; its trouble is at the supplier,
-not in the store.
+`context.reason` and the mail line. A `silent` or `stalled` alarm has no reason; their trouble is
+at the supplier or in the reading loop, not in the store's refusal to compose.
 
 | Reason | What is actually wrong | Alarm | What clears it |
 | --- | --- | --- | --- |
@@ -290,6 +303,18 @@ them in a row, which is the better part of an hour. The counter behind it (`poll
 only rises when a read was attempted, so the first question is still whether anything is reading at
 all.
 
+**`stalled` is the other half of the same question and needs the steps in a different order.**
+`silent` counts reads that were attempted and came back useless, so something is still trying.
+`stalled` measures the age of the last reading that landed, so it catches the cases where nothing
+is failing because nothing is being attempted: a `next_poll_at` pushed into the future, a job that
+drifted out of the poller's selection, a backlog whose tail never gets read inside the tick's
+deadline. The two are mutually exclusive by construction - below `silent_after_failures` the stall
+owns the item, at or above it the silence does - so an item never carries both.
+
+For a `stalled` row, start at step 3 (is the job still due?) rather than step 1, and check the
+`circuit_open` flag on the alarm first: a supplier inside its cooldown is one we are deliberately
+not asking, and there is nothing to chase.
+
 1. **Is the loop running at all?** The poller logs `Fulfillment poll completed.` once a minute. No
    line for an hour is the scheduler cron, not the supplier, and no alarm reports that on its own —
    a stopped loop leaves every job looking exactly as healthy as it did the minute it stopped.
@@ -333,6 +358,8 @@ again and mails about it again, because the sweep reads the world rather than th
 
 ## Related
 
+- `/admin/fulfillment` - the screen that lists every open alarm with its context, and the only
+  place a paid-but-unplaced item can be re-sent without a shell.
 - `docs/api/n8n-fulfillment-v1.md` — the placement contract and every refusal it can answer with.
 - `docs/api/supplier-endpoints.md` — the whole FFT and UTT call set, and the units trap in it.
 - `docs/operations/hostinger-deployment.md` — the scheduler and the release layout.

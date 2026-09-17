@@ -1,0 +1,341 @@
+<?php
+
+namespace App\Admin\Actions;
+
+use App\Actions\Fulfillment\EnqueueOrderPlacement;
+use App\Actions\Fulfillment\ResumeItemDelivery;
+use App\Actions\Fulfillment\RetryItemChallenge;
+use App\Admin\Audit\StaffAuditEvent;
+use App\Enums\AdminPermission;
+use App\Enums\OrderStatus;
+use App\Enums\ServiceType;
+use App\Enums\SupplierAction;
+use App\Models\FulfillmentJob;
+use App\Models\IntegrationEvent;
+use App\Models\OrderItem;
+use App\Models\User;
+use App\Support\Orders\AwaitingPlacement;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * Puts one item back in front of a supplier, at an operator's request.
+ *
+ * "Re-send" means two unrelated things and conflating them is how an order
+ * gets paid for twice, so this decides which from the row rather than from the
+ * caller:
+ *
+ * - **An item with no fulfillment job** was never placed. Its order's one
+ *   `order.paid` outbox row is re-opened so the publisher delivers it again.
+ *   A second event cannot be created - the idempotency key is
+ *   `order-paid:<id>` and the column is unique - and re-delivery is safe
+ *   because `ComposePlacementRequest` re-reads `AwaitingPlacement` at send
+ *   time and drops every item that has gained a job since. The request that
+ *   goes out can only contain work nobody is doing.
+ * - **An item that already has a job** is at a supplier. There is nothing to
+ *   place; the only honest instructions are the supplier's own resume and
+ *   challenge-retry, and only when the job's `allowed_actions` says so. This
+ *   class never offers a second placement for such an item, which is the
+ *   defence against the double spend - not the 409 `RecordSupplierPlacement`
+ *   would eventually answer with.
+ *
+ * Nothing here reports a placement. A successful send leaves an outbox row
+ * `pending` and the alarm open, and the caller is told `queued` for that
+ * reason (AGENTS.md Failures rule 3): saying "placed" would describe what was
+ * attempted rather than what was written.
+ */
+final class ResendFulfillmentItem
+{
+    /**
+     * The outbox status that means the publisher is mid-flight.
+     *
+     * Re-opening a claimed row would hand the same event to two senders. The
+     * claim is itself a conditional update on `pending`
+     * (`SignedOutboxDelivery::claim`), so a row in this state has a live run
+     * behind it and the honest answer is to refuse.
+     */
+    private const IN_FLIGHT = 'processing';
+
+    public function __construct(
+        private readonly RecordStaffAudit $recordStaffAudit,
+        private readonly EnqueueOrderPlacement $enqueuePlacement,
+        private readonly ResumeItemDelivery $resumeDelivery,
+        private readonly RetryItemChallenge $retryChallenge,
+    ) {}
+
+    /**
+     * @param  'send'|'resume'|'retry_challenge'  $action
+     * @return array{
+     *     outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight',
+     *     action: string,
+     *     previousEventStatus: ?string
+     * }
+     */
+    public function execute(
+        User $actor,
+        string $itemPublicId,
+        string $action,
+        string $reasonCode,
+        ?int $challengePosition = null,
+        ?string $ipAddress = null,
+        string $locale = 'en',
+    ): array {
+        if (! $actor->is_active || ! $actor->can(AdminPermission::FulfillmentAct->value)) {
+            throw new AuthorizationException('This action requires fulfillment.act permission.');
+        }
+
+        /** @var OrderItem $item */
+        $item = OrderItem::query()
+            ->with(['order', 'fulfillmentJob'])
+            ->where('public_id', $itemPublicId)
+            ->firstOrFail();
+
+        // Rule 5: serialised per subject, and refused rather than queued. A
+        // second press while the first is in flight must not wait its turn and
+        // then send again - it must be told the first one is running. The hold
+        // outlives the 60-second delivery timeout the publisher allows itself.
+        $lock = Cache::lock("fulfillment-resend:item:{$item->id}", 75);
+
+        if (! $lock->get()) {
+            return $this->result('busy', $action);
+        }
+
+        try {
+            return $this->act($actor, $item, $action, $reasonCode, $challengePosition, $ipAddress, $locale);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * @param  'send'|'resume'|'retry_challenge'  $action
+     * @return array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     */
+    private function act(
+        User $actor,
+        OrderItem $item,
+        string $action,
+        string $reasonCode,
+        ?int $challengePosition,
+        ?string $ipAddress,
+        string $locale,
+    ): array {
+        if (! $this->isActionable($item)) {
+            return $this->audited($actor, $item, $this->result('not_actionable', $action), $reasonCode, $ipAddress);
+        }
+
+        $job = $item->fulfillmentJob;
+
+        // Requested, before anything leaves. A reservation event rather than a
+        // result, per audit-logging.md: the outcome is a second row, and it is
+        // written from what actually happened.
+        $this->recordStaffAudit->execute($actor, $item, new StaffAuditEvent(
+            action: 'fulfillment.resend_requested',
+            metadata: [
+                'order_number' => (string) $item->order->order_number,
+                'order_item_public_id' => (string) $item->public_id,
+                'action' => $action,
+                'reason_code' => $reasonCode,
+                'supplier' => $job?->supplier?->value,
+            ],
+            ipAddress: $ipAddress,
+        ));
+
+        $result = match ($action) {
+            'send' => $this->send($item, $job),
+            'resume' => $this->supplierAction($item, $job, SupplierAction::Resume, $locale),
+            'retry_challenge' => $this->supplierAction($item, $job, SupplierAction::RetryChallenge, $locale, $challengePosition),
+            default => $this->result('not_actionable', $action),
+        };
+
+        return $this->audited($actor, $item, $result, $reasonCode, $ipAddress);
+    }
+
+    /**
+     * Re-opens the order's placement request, or writes one if none exists.
+     *
+     * @return array{outcome: 'queued'|'refused'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     */
+    private function send(OrderItem $item, ?FulfillmentJob $job): array
+    {
+        // An item at a supplier is never re-sent. The control does not offer
+        // it, and this is the gate behind the control.
+        if ($job instanceof FulfillmentJob) {
+            return $this->result('not_actionable', 'send');
+        }
+
+        /** @var IntegrationEvent|null $event */
+        $event = IntegrationEvent::query()
+            ->where('event_type', 'order.paid')
+            ->where('aggregate_id', (string) $item->order->public_id)
+            ->first();
+
+        if (! $event instanceof IntegrationEvent) {
+            // Nothing was ever queued for this order. Writing the row is what
+            // should have happened when it was paid, and the unique key makes
+            // a concurrent writer a replay rather than a duplicate.
+            try {
+                $created = $this->enqueuePlacement->execute($item->order);
+            } catch (UniqueConstraintViolationException) {
+                return $this->result('queued', 'send');
+            }
+
+            // `EnqueueOrderPlacement` writes nothing when the order owes no
+            // placement. `isActionable()` has already established that this
+            // item does, so a null here is a state that changed underneath us.
+            return $created === null
+                ? $this->result('not_actionable', 'send')
+                : $this->result('queued', 'send');
+        }
+
+        $previous = (string) $event->status;
+
+        if ($previous === self::IN_FLIGHT) {
+            return $this->result('in_flight', 'send', $previous);
+        }
+
+        // Guarded on the status this read saw, so two concurrent re-opens
+        // cannot both claim to have done it: one affects a row, the other
+        // affects none and is told so. Resetting `attempts` grants a fresh
+        // retry budget - the publisher's selection skips rows at the ceiling,
+        // so keeping the old count would make this a silent no-op - and
+        // clearing `last_error` is what stops `PlacementBlockers` reporting a
+        // reason the store is no longer stuck on.
+        $reopened = IntegrationEvent::query()
+            ->whereKey($event->id)
+            ->where('status', $previous)
+            ->update([
+                'status' => 'pending',
+                'attempts' => 0,
+                'available_at' => now(),
+                'last_error' => null,
+                'processed_at' => null,
+                'updated_at' => now(),
+            ]);
+
+        return $reopened === 1
+            ? $this->result('queued', 'send', $previous)
+            : $this->result('refused', 'send', $previous);
+    }
+
+    /**
+     * Hands a supplier instruction to the action that owns it.
+     *
+     * Both customer actions are reused rather than reimplemented: they carry
+     * the `ResolveActionableItem` gate, the supplier-reference lookup and the
+     * refusal handling, and an Admin-only copy of any of that would be a
+     * second truth about what a stuck job allows.
+     *
+     * Only the outcome is kept. Those actions answer with the customer's
+     * `ItemTracking` payload, which is built for a different reader and has no
+     * business in an admin response.
+     *
+     * @return array{outcome: 'resume_accepted'|'retry_accepted'|'refused'|'not_actionable', action: string, previousEventStatus: ?string}
+     */
+    private function supplierAction(
+        OrderItem $item,
+        ?FulfillmentJob $job,
+        SupplierAction $action,
+        string $locale,
+        ?int $challengePosition = null,
+    ): array {
+        if (! $job instanceof FulfillmentJob || ! in_array($action, $job->allowedActions(), true)) {
+            return $this->result('not_actionable', $action->value);
+        }
+
+        try {
+            $answer = $action === SupplierAction::Resume
+                ? $this->resumeDelivery->execute($item, $locale)
+                : $this->retryChallenge->execute($item, $challengePosition ?? 0, $locale);
+        } catch (AuthorizationException) {
+            // The gate behind the button disagreed with the button, which
+            // means the row moved between the page render and the press.
+            return $this->result('not_actionable', $action->value);
+        }
+
+        if (($answer['status'] ?? null) !== 'accepted') {
+            return $this->result('refused', $action->value);
+        }
+
+        return $this->result(
+            $action === SupplierAction::Resume ? 'resume_accepted' : 'retry_accepted',
+            $action->value,
+        );
+    }
+
+    /**
+     * Whether this item is one an operator may still act on.
+     *
+     * The same three facts the alarm sweep and the publisher read, in the same
+     * order: an automated service, a paid order, and neither the item nor its
+     * order finished. A booster item has no supplier to send it to, and a
+     * cancelled or refunded item must never reach one.
+     */
+    private function isActionable(OrderItem $item): bool
+    {
+        if (! in_array($item->service_type, [ServiceType::Coins, ServiceType::Sbc], true)) {
+            return false;
+        }
+
+        if ($item->order->paid_at === null) {
+            return false;
+        }
+
+        if (in_array($item->status, AwaitingPlacement::CLOSED, true)) {
+            return false;
+        }
+
+        return ! in_array($item->order->status, [
+            OrderStatus::Completed,
+            OrderStatus::Cancelled,
+            OrderStatus::Refunded,
+        ], true);
+    }
+
+    /**
+     * Writes the truthful result row and hands the outcome back.
+     *
+     * @param  array{outcome: string, action: string, previousEventStatus: ?string}  $result
+     * @return array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     */
+    private function audited(User $actor, OrderItem $item, array $result, string $reasonCode, ?string $ipAddress): array
+    {
+        $dispatched = in_array($result['outcome'], ['queued', 'resume_accepted', 'retry_accepted'], true);
+
+        $this->recordStaffAudit->execute($actor, $item, new StaffAuditEvent(
+            action: $dispatched ? 'fulfillment.resend_dispatched' : 'fulfillment.resend_refused',
+            metadata: [
+                'order_number' => (string) $item->order->order_number,
+                'order_item_public_id' => (string) $item->public_id,
+                'action' => $result['action'],
+                'reason_code' => $reasonCode,
+                'supplier' => $item->fulfillmentJob?->supplier?->value,
+                // The store's own word for where the outbox row was, so the
+                // widening this action performs - a `processed` row re-opened -
+                // is visible afterwards rather than erased by it.
+                'previous_event_status' => $result['previousEventStatus'],
+                'outcome' => $result['outcome'],
+            ],
+            ipAddress: $ipAddress,
+        ));
+
+        /** @var array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string} $result */
+        return $result;
+    }
+
+    /**
+     * @return array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     */
+    private function result(string $outcome, string $action, ?string $previousEventStatus = null): array
+    {
+        /** @var array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string} $result */
+        $result = [
+            'outcome' => $outcome,
+            'action' => $action,
+            'previousEventStatus' => $previousEventStatus,
+        ];
+
+        return $result;
+    }
+}

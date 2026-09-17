@@ -1025,4 +1025,122 @@ title at 600 in the status colour, body in `--muted-foreground`.
 5. **The `unplaced` detail sheet's `You were mailed` field.** `fulfillment_alarms.notified_at` is
    real and stamped by `AlertOwnerOfFulfillmentSilence`, but it records that the mail was handed
    to the queue, not that it was delivered. The label should probably say so; I have not found
-   wording short enough for a 44px field row.
+   wording short enough for a 44px field row. **Settled in implementation:** the field reads
+   `Mail queued`, which is the honest claim.
+
+---
+
+## 10. What changed while it was being built
+
+The canvas was approved on 2026-09-17 and the screen built against it the same day. Everything
+below is a departure from §§1–9 above, or a finding that only appeared with the code in hand.
+
+### 10.1 A third alarm kind shipped after the spec was written
+
+`FulfillmentAlarmKind` now has **three** cases, not two: `Unplaced`, `Silent` and **`Stalled`**
+(PR #207). The difference between the last two is what is broken — `Silent` counts reads that
+were attempted and came back useless, `Stalled` measures the age of the last reading that landed,
+so it catches the cases where nothing is failing because nothing is being attempted. The sweep
+makes them mutually exclusive on one item (below `silent_after_failures` the stall owns it, at or
+above it the silence does), so no row ever carries both.
+
+Folded in: `stalled` is on the `alarm` filter allowlist, has its own `danger` pill, and
+`SweepFulfillmentAlarms::stalled()`'s whole context reaches the row — `phase`, `band`,
+`observed_state`, `circuit_open`, `quiet_minutes` and `order_item_public_id`.
+
+**`circuit_open` changes what the screen says, not just what it shows.** A supplier inside its
+circuit cooldown is one we are *choosing* not to ask; it has not gone quiet. Sending an operator
+after a supplier that is answering fine is sending them to the wrong place, so the row and the
+detail say which of the two sentences is true — the same distinction
+`AlertOwnerOfFulfillmentSilence::stalledDetail()` draws in the mail.
+
+### 10.2 The unplaced reason comes from `PlacementBlockers`, not from anything new
+
+E2 shipped `app/Support/Orders/PlacementBlockers.php`, which reads the reason the publisher
+already stored on `integration_events.last_error` and answers whether waiting can clear it. The
+query calls `PlacementBlockers::reasons()` for the page's unplaced orders and the detail sheet
+renders `reason` verbatim with `blocks` deciding which sentence follows it. No second source of
+truth, and no translation of the code: the same spelling appears in the log, in the outbox row,
+in the alarm mail and now on the screen, which is what an operator searching for an order wants.
+
+### 10.3 `forms.md`'s recent-password confirmation does not exist anywhere in the Admin
+
+§6.5 said the re-send route would carry `EnsureAdminPassword` as "the same recent-password gate
+the settings screens carry". That was wrong, and the mistake is worth recording because it is not
+mine alone:
+
+- `EnsureAdminPassword` only checks that the actor **has a password at all**, and redirects to
+  the account security page when they do not. It is not a recency check.
+- `forms.md:10-14` requires recent password confirmation for credential reveal, refunds, wallet
+  adjustments, customer activation, role changes, catalog/pricing and settings changes.
+- Both lang files carry the copy for it — `passwordModalTitle`, `passwordModalDescription`,
+  `passwordLabel`, `passwordPlaceholder`, under `orderDetail.refund`, `customers`, `products`,
+  `categories`, `loyalty` and more — and `resources/js/types/admin.ts` types all of it.
+- **Nothing renders any of it.** No component in `resources/js/` references
+  `passwordModalTitle`. The credential-reveal route carries no password middleware either.
+
+So the gate is documented, translated, typed, and unimplemented across the whole Admin. The
+re-send route carries `EnsureAdminPassword` — which at least asserts a real interactive account —
+and the confirm dialog's credential note **no longer promises a password prompt**, because
+writing that sentence would have been the screen promising a gate that does not exist. Closing
+this properly is its own piece of work and it touches the refund and reveal paths too.
+
+### 10.4 Two sort keys are reachable by URL but have no header control
+
+The allowlist in §5.2 has five keys. The table gives header controls to three — `paid_at`
+(default), `observed_at` and `actual_cost` — because those are the three the approved canvas
+draws. `placed_at` and `poll_failures` stay in the allowlist and remain durable in the query
+string, which `tables.md` wants, but nothing on the screen offers them. That is a deliberate
+choice to match the canvas rather than an oversight; adding two more header controls is a canvas
+change, not a code change.
+
+### 10.5 The screen does not use TanStack Table, and has no row selection
+
+`/admin/orders` drives its table through TanStack for column visibility and row selection. This
+one is plain semantic markup. Selection is the reason: `tables.md` refuses a bulk financial or
+destructive action without its own transaction and idempotency design, and **every** action on
+this screen spends money or instructs a supplier. With no selection there is nothing for
+TanStack to hold, so `AdminFulfillmentPagination` exists instead of reusing
+`AdminOrdersPagination`, which reads a table object for a selected-row count.
+
+The approved canvas's `Columns` button is therefore **not built**. It was drawn, and it is the one
+approved element missing from the shipped screen — column visibility without TanStack is its own
+small piece of state, and the Staff view already removes the two columns most worth hiding.
+
+### 10.6 The row detail opens from the order number, not a separate control
+
+The canvas shows the order number as a link. In the build it opens the detail sheet, and the link
+*to the order* lives in the sheet's footer as `Open order`. One affordance, two destinations was
+the alternative and it is worse: an operator who wants the diagnostics is one click from them,
+and an operator who wants the order is two.
+
+### 10.7 The outcome word is the server's, never the browser's
+
+Worth stating because the first draft got it wrong. The page reads `data.outcome` off the JSON
+response rather than deriving it from which button was pressed. Only the Action knows whether the
+guarded `UPDATE` affected a row, and a press that re-opened an outbox row has placed **nothing** —
+so `queued` is the honest word, the alarm stays on the row, and the banner says the alarm stays
+open. A browser that guessed would eventually congratulate somebody for a placement that never
+happened.
+
+The controller maps outcomes to status codes so a caller can act without parsing prose: 200 for
+`queued` / `resume_accepted` / `retry_accepted`, 409 for `busy` / `in_flight` / `not_actionable`,
+503 for `refused`. `busy` and `in_flight` are **not** rendered as failures — colouring a refused
+double-press red teaches an operator to ignore red.
+
+### 10.8 Sending an order that never had an outbox row at all
+
+§6.2 covered re-opening an existing row. The code also handles there being no row: it calls
+`EnqueueOrderPlacement`, which is what should have happened at payment, and treats a unique-key
+collision as a replay. `isActionable()` has already established the item is owed, so a null
+return from the enqueue means the state changed underneath the press and the answer is
+`not_actionable`.
+
+### 10.9 The runbook lost a manual step
+
+`docs/operations/fulfillment-recovery.md` §1 told an operator to open `php artisan tinker` and
+paste a one-liner to read the open alarms. The screen replaces that, and the runbook now says so
+rather than carrying two procedures. The snippet stays for two cases the screen does not cover: a
+server with no browser to hand, and reading a **resolved** alarm, which the screen deliberately
+does not list. §1's table gained the `stalled` line and its circuit-cooldown caveat, and §7 gained
+the paragraph explaining why a stall starts at step 3 rather than step 1.

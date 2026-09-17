@@ -39,6 +39,14 @@ final class AdminShell
             ];
         }
 
+        if ($actor->can(AdminPermission::FulfillmentView->value)) {
+            $navigation[] = [
+                'key' => 'fulfillment',
+                'label' => (string) trans('admin.navigation.fulfillment', locale: $locale),
+                'url' => route($prefix.'fulfillment', absolute: false),
+            ];
+        }
+
         if ($actor->can(AdminPermission::CustomersView->value)) {
             $navigation[] = [
                 'key' => 'customers',
