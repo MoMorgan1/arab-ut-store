@@ -12,8 +12,10 @@ found twenty-five issues in the first draft; approved and dispatched since.
 **E2 shipped** (2026-09-17, #205): a paid item nobody placed, and a placed item whose reads keep
 coming back empty, are both said out loud - with the wait graded by why the item is stuck.
 
-**D3b's mechanism is built and switched off** - its phase cadence table is unset because D3a's
-instrumentation has recorded nothing to set it from; see the D3b section below.
+**D3b's mechanism is built and switched off** - its phase cadence table is unset because nothing
+had measured an observation gap. The measuring now exists (`fulfillment_observation_gaps`, owner
+decision 2026-09-17: persist it, do not log it); the table stays unset until it has something to
+be written from. See the D3b section below.
 
 **G2's repository half is done** (2026-09-17): every reference in the store that sent a customer or
 a reader to `track.arab-ut.com` now names the in-store page, and the cutover procedure is written
@@ -931,9 +933,55 @@ Three findings, checked against production:
 So D3b ships as **the mechanism with the table unset**: a `stalled` alarm kind alongside B6's
 `unplaced` and `silent`, driven by `services.suppliers.alarm.stalled_after_minutes`, whose every
 entry is null. Unset means that phase is not watched; it never means everything in it is stalled.
-Setting a number is a decision for whoever has the numbers, and turning the numbers on is its own
-prerequisite: raise the production log level for this channel, or give the poller somewhere durable
-to write a gap.
+Setting a number is a decision for whoever has the numbers.
+
+**Owner decision, 2026-09-17: persist the gap, do not raise the log level.** The numbers are to be
+queryable. A log line is not something anyone takes a percentile of in a month's time, and raising
+the level would have bought a wall of `info` on a box that keeps fourteen log files.
+
+**What now records.** `fulfillment_observation_gaps`, one row per landed observation, written by
+`RecordObservationGap` from inside `ApplySupplierObservation`'s transaction - the one moment the
+value exists, because the line after it overwrites `observed_at` and destroys the only evidence the
+previous reading happened. The row carries `fulfillment_job_id`, the `delivery_phase` and
+`supplier` the gap was measured in (copied, not joined: a job moves from `coins` to `challenge`
+while it runs, and joining a month later would file every coins gap under challenge),
+`gap_seconds`, `state_changed`, and `observed_at`.
+
+Three things it deliberately does not record. A job's **first** observation, which has nothing to
+measure from - a zero there would drag every distribution below the truth. A **failed** read, which
+never reaches the reconciler at all, because a gap is time between two readings and there is no
+second reading. And an observation **older** than the one already stored, which the reconciler
+discards.
+
+`state_changed` is the column that makes the table worth having. Without it the answer is "how
+often does a reading arrive", which is our own poll cadence read back to us; with it, it also
+answers "how long does a job go before it moves", which is what the alarm is really asking.
+
+**Retention: 14 days**, `services.suppliers.poll.gap_retention_days`, pruned in chunks nightly at
+03:30 by `fulfillment:prune-observation-gaps` - the same shape as `pricing-history:prune`, for the
+same reason. This is the only table in the fulfillment set that grows with time rather than with
+sales: one open job on the background cadence writes about 480 rows a day. Two weeks is twice the
+"week of numbers" this section asked for, and a percentile over the last fortnight describes the
+suppliers we deal with now rather than a season that has ended.
+
+**The query**, read-only, safe against production:
+
+```
+ssh arabut-prod "cd /home/u372356793/domains/store.arab-ut.com/current \
+    && php artisan fulfillment:observation-gaps --days=14"
+```
+
+It prints samples and p50/p90/p95/p99/max per phase, twice: over every reading, and over the
+readings that moved. `--supplier=fft|utt` narrows it. Percentiles are nearest-rank, computed by one
+`OFFSET` into the ordered column rather than by pulling the table into PHP, and it is the same
+definition `PollFulfillmentJobs::percentile()` uses so two places cannot report a p95 that means two
+different things.
+
+**The cadence table is still unwritten, and stays unwritten until the numbers exist.** The recorder
+shipped on an empty table: nothing had been measured when it was written, and production holds one
+open job. A threshold belongs above its phase's "readings that moved" p99, not at its p50 - the
+distribution says how long normal is, and the alarm fires past normal. The command prints a warning
+on every run while every entry is still unset.
 
 **D3c — notification.** Blocked on Mohamed, not on code: every message is customer-visible
 WhatsApp copy, and the catalogue ported from `Customer Notifier` has to be read and approved before

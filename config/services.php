@@ -85,6 +85,19 @@ return [
             'backoff_ceiling_seconds' => 600,
             'lease_seconds' => 30,
             'deadline_seconds' => 50,
+
+            // How long a measured observation gap is kept
+            // (`fulfillment_observation_gaps`, pruned daily by
+            // `fulfillment:prune-observation-gaps`).
+            //
+            // Fourteen days because the question the table answers is
+            // answered by weeks, not months: D3's own plan asked for "a week
+            // of numbers", and two weeks gives that twice over while bounding
+            // the table. One open job polled on the background cadence writes
+            // about 480 rows a day, so the window is roughly seven thousand
+            // rows per job a supplier is working on - a size shared hosting
+            // does not notice, which a year of the same rows would be.
+            'gap_retention_days' => 14,
         ],
 
         // The silence alarm's thresholds. Literals for the same reason as the

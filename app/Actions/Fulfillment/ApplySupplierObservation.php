@@ -29,6 +29,7 @@ final class ApplySupplierObservation
         private readonly InviteOrderReview $inviteOrderReview,
         private readonly SupplierCostInHalalah $supplierCost,
         private readonly EnqueueChallengeSolve $enqueueChallengeSolve,
+        private readonly RecordObservationGap $recordObservationGap,
     ) {}
 
     /**
@@ -280,6 +281,12 @@ final class ApplySupplierObservation
         bool $withheldDueToAdmin,
         bool $orderIsTerminal,
     ): void {
+        // Read before the overwrite, because the overwrite is what destroys
+        // them. How long this job went between readings exists as a computable
+        // value on this line and nowhere else, ever again.
+        $previousObservedAt = $job->observed_at;
+        $previousState = $job->observed_state;
+
         $job->observed_at = $observedAt;
         $job->observed_state = $state->observedState;
         $job->observation_supported = $state->supported;
@@ -297,6 +304,10 @@ final class ApplySupplierObservation
                 }
             }
         }
+
+        // After the phase is settled, so a gap is filed under the phase this
+        // reading put the job in rather than the one it was leaving.
+        $this->recordObservationGap->execute($job, $previousObservedAt, $previousState);
 
         // What the supplier has charged us so far, read from the raw payload
         // before the allowlist drops it, and kept on its own column: the

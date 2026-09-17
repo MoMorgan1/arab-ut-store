@@ -8,7 +8,7 @@ test('all expected schedule events are registered with correct frequencies and o
     $schedule = app(Schedule::class);
     $events = collect($schedule->events());
 
-    expect($events)->toHaveCount(13);
+    expect($events)->toHaveCount(14);
 
     $findEvent = function (string $commandSubstring) use ($events): ?Event {
         return $events->first(fn (Event $event): bool => str_contains((string) $event->command, $commandSubstring));
@@ -100,4 +100,11 @@ test('all expected schedule events are registered with correct frequencies and o
     expect($alarms)->not->toBeNull()
         ->and($alarms->expression)->toBe('*/5 * * * *')
         ->and($alarms->withoutOverlapping)->toBeTrue();
+
+    // 13. PruneObservationGaps - daily at 03:30, without overlapping. Ten past
+    // the pricing prune so two chunked deletes do not compete for the same IO.
+    $pruneGaps = $findEvent('fulfillment:prune-observation-gaps');
+    expect($pruneGaps)->not->toBeNull()
+        ->and($pruneGaps->expression)->toBe('30 3 * * *')
+        ->and($pruneGaps->withoutOverlapping)->toBeTrue();
 });

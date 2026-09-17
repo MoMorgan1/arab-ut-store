@@ -3,6 +3,7 @@
 use App\Console\Commands\ExpireAbandonedCheckouts;
 use App\Console\Commands\MaintainChatConversations;
 use App\Console\Commands\PollFulfillmentJobs;
+use App\Console\Commands\PruneObservationGaps;
 use App\Console\Commands\PrunePricingHistory;
 use App\Console\Commands\PublishChallengeReadyEvents;
 use App\Console\Commands\PublishOrderPaidEvents;
@@ -30,6 +31,12 @@ Schedule::command(RecoverStaleAgentTurns::class)->everyMinute()->withoutOverlapp
 Schedule::command(ExpireAbandonedCheckouts::class)->hourly()->withoutOverlapping();
 Schedule::command(PurgeDeadCancelledOrders::class)->hourly()->withoutOverlapping();
 Schedule::command(PrunePricingHistory::class)->dailyAt('03:20')->withoutOverlapping();
+
+// The poller writes one row per landed observation, so this is the only
+// fulfillment table that grows with time rather than with sales. Its own
+// minute, ten past the pricing prune, so two chunked deletes are not competing
+// for the same shared-hosting IO.
+Schedule::command(PruneObservationGaps::class)->dailyAt('03:30')->withoutOverlapping();
 
 // Every five minutes rather than every minute: the shortest silence it can
 // report is fifteen minutes old, so a minute's resolution would buy nothing
