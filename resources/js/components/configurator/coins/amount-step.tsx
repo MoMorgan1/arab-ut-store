@@ -19,6 +19,8 @@ type AmountStepProps = {
     isValid: boolean;
     locale: 'ar' | 'en';
     maximum: number;
+    /** What a supplier could actually deliver at the last pricing run. */
+    available: number;
     delivery: CoinsDeliveryValue | null;
     onAdjust: (delta: number) => void;
     onBack: () => void;
@@ -42,6 +44,7 @@ function adjustmentLabel(delta: number, locale: 'ar' | 'en'): string {
 
 export function AmountStep({
     amount,
+    available,
     delivery,
     focusRef,
     isValid,
@@ -73,13 +76,28 @@ export function AmountStep({
     // the rail shrinks with it instead of leaving an unreachable dead zone.
     const sliderMaximum =
         sliderQuantities[sliderQuantities.length - 1] ?? maximum;
-    const fillPercentage =
-        sliderMaximum === amount.minimum
+    // What the customer may actually land on. The rail deliberately keeps its
+    // full span: a season that starts with an empty market would otherwise
+    // shrink the slider to a stub and tell the customer nothing about why.
+    // They see the whole range, and the part nobody can deliver is dimmed.
+    const reachableQuantities = useMemo(
+        () => sliderQuantities.filter((stop) => stop <= available),
+        [available, sliderQuantities],
+    );
+    const reachableMaximum =
+        reachableQuantities[reachableQuantities.length - 1] ?? amount.minimum;
+    const isLimited = reachableMaximum < sliderMaximum;
+    const span = sliderMaximum - amount.minimum;
+    const percentage = (value: number) =>
+        span === 0
             ? 0
-            : ((quantity - amount.minimum) / (sliderMaximum - amount.minimum)) *
-              100;
+            : Math.max(
+                  0,
+                  Math.min(100, ((value - amount.minimum) / span) * 100),
+              );
     const sliderStyle = {
-        '--coins-slider-fill': `${Math.max(0, Math.min(100, fillPercentage)).toFixed(2)}%`,
+        '--coins-slider-fill': `${percentage(quantity).toFixed(2)}%`,
+        '--coins-slider-available': `${(span === 0 ? 100 : percentage(reachableMaximum)).toFixed(2)}%`,
     } as CSSProperties;
 
     useLayoutEffect(() => {
@@ -173,7 +191,7 @@ export function AmountStep({
                 role="group"
             >
                 {amount.presets
-                    .filter((preset) => preset <= maximum)
+                    .filter((preset) => preset <= reachableMaximum)
                     .map((preset) => (
                         <button
                             aria-pressed={isValid && quantity === preset}
@@ -203,13 +221,14 @@ export function AmountStep({
                 aria-label={translations.amount_copy.slider_label}
                 aria-valuetext={`${formatCoins(quantity, locale)} ${translations.units.coins}`}
                 className="coins-amount-slider"
+                data-limited={isLimited ? '' : undefined}
                 max={sliderMaximum}
                 min={amount.minimum}
                 onChange={(event) => {
                     const raw = Number(event.currentTarget.value);
                     const next =
-                        sliderQuantities[
-                            nearestStopIndex(raw, sliderQuantities)
+                        reachableQuantities[
+                            nearestStopIndex(raw, reachableQuantities)
                         ];
 
                     if (next !== undefined && next !== quantity) {
@@ -219,7 +238,7 @@ export function AmountStep({
                 onKeyDown={(event) => {
                     const next = stopForKey(
                         event.key,
-                        sliderQuantities,
+                        reachableQuantities,
                         quantity,
                     );
 
@@ -251,6 +270,15 @@ export function AmountStep({
                     {formatCompactCoins(maximum, locale)}
                 </span>
             </div>
+
+            {isLimited ? (
+                <p className="coins-amount-limited" role="status">
+                    {translations.amount_copy.limited_note.replace(
+                        ':amount',
+                        formatCompactCoins(reachableMaximum, locale),
+                    )}
+                </p>
+            ) : null}
 
             <div className="coins-adjustments">
                 <div>

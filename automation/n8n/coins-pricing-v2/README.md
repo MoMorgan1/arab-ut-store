@@ -21,7 +21,7 @@ All exports in this directory use placeholder credential identifiers
 (`CONFIGURE_ARABUT_PRICING_API_CREDENTIAL_ID`, `CONFIGURE_TELEGRAM_CREDENTIAL_ID`)
 and environment expressions (`$env.OPS_TELEGRAM_CHAT_ID`).
 
-Import `workflow-v2.4.json` instead; its steps are at the end of this file.
+Import `workflow-v2.6.json` instead; its steps are at the end of this file.
 
 Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
 the unpatched workflow is the only unsafe combination.
@@ -37,6 +37,41 @@ the unpatched workflow is the only unsafe combination.
   multiple of 0.1 SAR (`>= 10 && % 10 === 0`). The pre-v2.3 validator required
   whole riyals — if you ever re-import `workflow.json`, restore that stricter
   pairing or hourly runs will fail closed with `exact override is invalid`.
+
+## v2.6: the price comes from the fill size, not the word (2026-09-17)
+
+**`workflow-v2.6.json` is the current artifact.** It is v2.5 with edits in two
+Code nodes - `Probe FFT` and `Prepare Coins Snapshot` - and nothing else.
+
+### Why
+
+Every run from 2026-09-05 to 2026-09-17 failed at "FFT PS cycle cost is
+unavailable", and v2.5's carry-forward kept the store selling at FC26 rates
+throughout. The cause was structural, not a threshold: the cycle ladder climbs
+until FFT answers `coverage: "enough"` for a fixed two million coins, and a
+season that opens with the whole PlayStation pool under a million can never say
+it. Measured on 2026-09-17, coverage stayed `"limited"` at every offer up to
+eighty dollars per 100K, because the smallest amount the endpoint can be asked
+about is 100,000 coins and only 45,000 existed.
+
+### What v2.6 does
+
+`Probe FFT` reads `estimatedCoinsAtPrice` - how many coins the offer would
+actually fill - instead of the coverage word. It walks up from the provider's
+hint, takes the cheapest price that fills the target, and when the fill size
+plateaus below the target it takes where the plateau begins and reports that
+size. A deep market behaves exactly as before. An unreadable fill size is still
+refused rather than read as "offer more", for the reason v2.4 gave.
+
+`Prepare Coins Snapshot` publishes the result as
+`observations.availableCoins` per group, clamped to the configured ceiling and
+never above it. Zero is published as zero. This cannot travel in `legalRanges`:
+Laravel checks those three ranges for equality against the active Coins
+quantity settings, so they can only restate what the store already knows.
+
+The storefront caps its quantity slider at this figure (store PR #197): the
+rail keeps its full span, the stretch nobody can deliver is dimmed, and the
+thumb stops at the last reachable stop.
 
 ## v2.5: FFT down carries the last rates forward (2026-09-15)
 

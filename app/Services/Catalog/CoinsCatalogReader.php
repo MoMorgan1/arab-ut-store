@@ -5,6 +5,7 @@ namespace App\Services\Catalog;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\PriceRule;
+use App\Models\PriceRun;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ServicePriceSchedule;
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\Config;
 final class CoinsCatalogReader
 {
     private const PRICING_GROUPS = ['console_normal', 'console_fast', 'pc'];
+
+    /** @var array<string, mixed>|null */
+    private ?array $availability = null;
 
     public function __construct(private readonly CoinsPriceCalculator $calculator) {}
 
@@ -142,6 +146,52 @@ final class CoinsCatalogReader
         return $this->quantityRules ??= CoinsQuantityRules::fromConfiguration(
             $this->coinsConfiguration(),
         );
+    }
+
+    /**
+     * The largest quantity of this group a supplier could actually deliver
+     * when prices were last published, or null when the run did not say.
+     *
+     * The catalogue ceiling in config is what the store is willing to sell at
+     * its widest; this is what the market could answer on the hour. They are
+     * different questions, and conflating them is how a storefront ends up
+     * offering twenty million coins on a day the whole pool holds thirty
+     * thousand. The narrower of the two wins, and null means the run predates
+     * this field, so the configured ceiling stands unchanged.
+     *
+     * Read from the observation rather than from `legalRanges`: those are
+     * validated for equality against the storefront's own quantity settings,
+     * so by contract they can only ever restate the ceiling already in config.
+     */
+    public function availableMaximum(string $group): ?int
+    {
+        $maximum = $this->appliedAvailability()[$group] ?? null;
+
+        return is_int($maximum) && $maximum > 0 ? $maximum : null;
+    }
+
+    /**
+     * Read once per request. Every platform and delivery asks this, and the
+     * answer cannot change between two questions on the same page.
+     *
+     * @return array<string, mixed>
+     */
+    private function appliedAvailability(): array
+    {
+        if ($this->availability !== null) {
+            return $this->availability;
+        }
+
+        $payload = PriceRun::query()
+            ->where('status', 'applied')
+            ->latest('id')
+            ->value('payload');
+
+        $available = is_array($payload)
+            ? ($payload['observations']['availableCoins'] ?? null)
+            : null;
+
+        return $this->availability = is_array($available) ? $available : [];
     }
 
     /**

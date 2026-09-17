@@ -69,8 +69,56 @@ final class CoinsPricingRunRequest extends FormRequest
                 $this->validateLegalRanges($validator);
                 $this->validateRuleConfigurations($validator);
                 $this->validateCostTiers($validator);
+                $this->validateAvailableCoins($validator);
             },
         ];
+    }
+
+    /**
+     * `observations.availableCoins` is optional, and is the only figure in the
+     * payload allowed to disagree with the storefront's own settings.
+     *
+     * `legalRanges` cannot carry it: those are checked for equality against the
+     * active Coins quantity settings, so by contract they restate what the
+     * store already knows. What a supplier could actually deliver this hour is
+     * a different fact, it belongs to the observation, and it is refused here
+     * if malformed rather than quietly ignored - a ceiling read wrong is a
+     * storefront that offers coins nobody has.
+     */
+    private function validateAvailableCoins(Validator $validator): void
+    {
+        $available = $this->input('observations.availableCoins');
+
+        if ($available === null) {
+            return;
+        }
+
+        if (! is_array($available)) {
+            $validator->errors()->add(
+                'observations.availableCoins',
+                'The available Coins ceilings must be an object.',
+            );
+
+            return;
+        }
+
+        foreach ($available as $group => $coins) {
+            if (! in_array($group, self::GROUPS, true)) {
+                $validator->errors()->add(
+                    'observations.availableCoins',
+                    'The available Coins ceilings name an unknown group.',
+                );
+
+                continue;
+            }
+
+            if (! is_int($coins) || $coins < 0) {
+                $validator->errors()->add(
+                    "observations.availableCoins.{$group}",
+                    'An available Coins ceiling must be a non-negative integer.',
+                );
+            }
+        }
     }
 
     /**

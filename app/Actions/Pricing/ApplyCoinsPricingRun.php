@@ -129,7 +129,7 @@ final class ApplyCoinsPricingRun
         if (is_array($payload['observations'] ?? null)) {
             $safe['observations'] = array_intersect_key(
                 $payload['observations'],
-                array_flip(['source', 'ratioEuroUsd', 'cyclePSUsdPerM', 'cyclePCUsdPerM']),
+                array_flip(['source', 'ratioEuroUsd', 'cyclePSUsdPerM', 'cyclePCUsdPerM', 'availableCoins']),
             );
 
             // The raw supplier cost per tier is what a placement may spend

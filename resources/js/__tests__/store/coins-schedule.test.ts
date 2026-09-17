@@ -24,12 +24,14 @@ const platforms: CoinsPlatformOption[] = [
             {
                 label: 'Normal',
                 maximum: 70_000,
+                available: 70_000,
                 minutesPerMillion: 150,
                 value: 'normal',
             },
             {
                 label: 'Fast',
                 maximum: 80_000,
+                available: 80_000,
                 minutesPerMillion: 45,
                 value: 'fast',
             },
@@ -37,6 +39,7 @@ const platforms: CoinsPlatformOption[] = [
         iconUrls: [],
         label: 'PS / Xbox',
         maximum: 80_000,
+        available: 80_000,
         value: 'playstation',
     },
     {
@@ -44,6 +47,7 @@ const platforms: CoinsPlatformOption[] = [
         iconUrls: [],
         label: 'PC',
         maximum: 70_000,
+        available: 70_000,
         value: 'pc',
     },
 ];

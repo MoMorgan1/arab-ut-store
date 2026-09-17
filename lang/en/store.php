@@ -523,6 +523,7 @@ return [
         'slider_label' => 'Choose the Coins amount',
         'minimum_label' => 'Minimum',
         'maximum_label' => 'Maximum',
+        'limited_note' => ':amount Coins are available right now. Larger amounts return as supply does.',
         'clamped' => 'The amount was reduced to the maximum for this selection.',
         'normal_delivery_suggestion' => 'Fast delivery supports more than 2M Coins.',
         'switch_to_fast' => 'Switch to Fast',

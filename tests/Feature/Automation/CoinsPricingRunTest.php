@@ -271,3 +271,38 @@ it('refuses a malformed cost table rather than storing a budget nothing can spen
     ]],
     'an empty platform' => [['console_fast' => [], 'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]]]],
 ]);
+
+it('keeps the ceiling a supplier could actually fill, which legalRanges is not allowed to carry', function () {
+    // legalRanges is checked for equality against the storefront's own
+    // quantity settings, so it can only ever restate what the store already
+    // knows. What the market could deliver this hour is a different fact and
+    // travels on the observation.
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+    $payload['observations']['availableCoins'] = [
+        'console_normal' => 300_000,
+        'console_fast' => 45_000,
+        'pc' => 0,
+    ];
+
+    signedCoinsPricingRun($payload)->assertCreated();
+
+    expect(PriceRun::sole()->payload['observations']['availableCoins'])->toBe([
+        'console_normal' => 300_000,
+        'console_fast' => 45_000,
+        'pc' => 0,
+    ]);
+});
+
+it('refuses a malformed availability ceiling rather than offering coins nobody has', function (array $available) {
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+    $payload['observations']['availableCoins'] = $available;
+
+    signedCoinsPricingRun($payload)->assertStatus(422);
+
+    expect(PriceRun::count())->toBe(0);
+})->with([
+    'a negative ceiling' => [['console_fast' => -1]],
+    'a ceiling that is not a whole number of coins' => [['console_fast' => 1_000.5]],
+    'a ceiling sent as text' => [['console_fast' => '45000']],
+    'a group nothing prices' => [['console_slow' => 45_000]],
+]);

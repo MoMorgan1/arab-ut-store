@@ -2724,6 +2724,7 @@ html.admin-document {
 
     .coins-amount-slider {
         --coins-slider-fill: 0%;
+        --coins-slider-available: 100%;
         --coins-slider-track: 0.5rem;
         --coins-slider-thumb: 1.5rem;
         --coins-slider-safe: 1.375rem;
@@ -2732,10 +2733,15 @@ html.admin-document {
         margin-inline: var(--coins-slider-safe);
         padding: 0;
         appearance: none;
+        /* Three bands, not two: filled, still reachable, and the stretch no
+           supplier can deliver today - which stays visible so the customer
+           can see the range exists rather than a slider that simply ends. */
         background: linear-gradient(
                 to right,
                 var(--arabut-gold) 0 var(--coins-slider-fill),
-                rgb(255 255 255 / 20%) var(--coins-slider-fill) 100%
+                rgb(255 255 255 / 20%) var(--coins-slider-fill)
+                    var(--coins-slider-available),
+                rgb(255 255 255 / 7%) var(--coins-slider-available) 100%
             )
             center / calc(100% - var(--coins-slider-thumb))
             var(--coins-slider-track) no-repeat;
@@ -2743,6 +2749,14 @@ html.admin-document {
         direction: ltr;
         outline: 0;
         touch-action: pan-y;
+    }
+
+    .coins-amount-limited {
+        margin-block-start: 0.5rem;
+        font-size: 0.75rem;
+        line-height: 1.6;
+        color: rgb(255 255 255 / 62%);
+        text-align: center;
     }
 
     .coins-amount-slider::-webkit-slider-runnable-track {
