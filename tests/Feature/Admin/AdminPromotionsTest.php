@@ -83,7 +83,6 @@ test('confirmed admin can create a scoped promotion with an audit log entry', fu
     $category = Category::factory()->create();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', [
             'name_ar' => 'عرض الفئة',
             'name_en' => 'Category deal',
@@ -126,7 +125,6 @@ test('confirmed admin can update a promotion while switching its scope cleanly',
     ]));
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson("/admin/api/marketing/promotions/{$promotion->public_id}", [
             'name_ar' => 'عرض الخدمة',
             'name_en' => 'Service deal',
@@ -156,7 +154,6 @@ test('staff actors are forbidden from promotion mutations even with confirmed pa
     $staff = adminPromotionsActor(UserRole::Staff);
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', promotionPayload())
         ->assertForbidden();
 });
@@ -166,7 +163,6 @@ test('confirmed admin can toggle promotion status with an audit log entry', func
     $promotion = Promotion::query()->create(promotionAttributes(['is_active' => true]));
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/marketing/promotions/{$promotion->public_id}/status", ['is_active' => false])
         ->assertOk()
         ->assertJson(['data' => ['isActive' => false]]);
@@ -179,7 +175,6 @@ test('confirmed admin can toggle promotion status with an audit log entry', func
         ->and($log?->metadata['new_active'])->toBeFalse();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/marketing/promotions/{$promotion->public_id}/status", ['is_active' => true])
         ->assertOk();
 
@@ -190,7 +185,6 @@ test('promotion create requests validate every rule boundary', function (array $
     $admin = adminPromotionsActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', $payload)
         ->assertStatus(422)
         ->assertJsonValidationErrors($field);
@@ -259,7 +253,6 @@ test('confirmed admin can create an nth_item promotion', function (): void {
     $admin = adminPromotionsActor(UserRole::Admin);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', [
             'name_ar' => 'عرض اشتر واحصل',
             'name_en' => 'BOGO deal',
@@ -296,7 +289,6 @@ test('confirmed admin can create a bundle promotion with components', function (
     $product2 = Product::factory()->create();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', [
             'name_ar' => 'باقة التوفير',
             'name_en' => 'Savings Bundle',
@@ -332,7 +324,6 @@ test('nth_item and bundle requests validate boundary constraints', function (): 
 
     // 0 buy quantity rejected
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', [
             'name_ar' => 'عرض',
             'name_en' => 'Deal',
@@ -348,7 +339,6 @@ test('nth_item and bundle requests validate boundary constraints', function (): 
 
     // Bundle with < 2 components rejected
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', [
             'name_ar' => 'باقة',
             'name_en' => 'Bundle',
@@ -364,7 +354,6 @@ test('nth_item and bundle requests validate boundary constraints', function (): 
 
     // Bundle missing price rejected
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', [
             'name_ar' => 'باقة',
             'name_en' => 'Bundle',
@@ -383,7 +372,6 @@ test('category scope rejects an unknown category public id', function (): void {
     $admin = adminPromotionsActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions', promotionPayload([
             'scope' => 'category',
             'category' => '01J0000000000000000000000',
@@ -396,12 +384,10 @@ test('updating or toggling an unknown public id fails', function (): void {
     $admin = adminPromotionsActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson('/admin/api/marketing/promotions/01J0000000000000000000000', promotionPayload())
         ->assertNotFound();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/promotions/01J0000000000000000000000/status', ['is_active' => true])
         ->assertNotFound();
 });

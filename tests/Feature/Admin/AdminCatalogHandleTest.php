@@ -75,7 +75,6 @@ test('product write endpoints resolve slug and ULID handles without a redirect',
         $handle = $index === 0 ? $product->slug : (string) $product->public_id;
 
         $this->actingAs($admin)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->postJson("/admin/api/products/{$handle}", [
                 'name_ar' => 'اسم محدث',
                 'name_en' => 'Updated Name',
@@ -105,7 +104,6 @@ test('product visibility resolves slug and ULID handles without a redirect', fun
     $byUlid = Product::factory()->create(['slug' => 'hide-by-ulid']);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/products/{$bySlug->slug}/visibility", [
             'hidden' => true,
             'expected_hidden' => false,
@@ -113,7 +111,6 @@ test('product visibility resolves slug and ULID handles without a redirect', fun
         ->assertOk();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/products/{$byUlid->public_id}/visibility", [
             'hidden' => true,
             'expected_hidden' => false,
@@ -177,19 +174,16 @@ test('every coupon write endpoint resolves code and ULID handles without a redir
         $handle = $index === 0 ? $coupon->code : (string) $coupon->public_id;
 
         $this->actingAs($admin)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->putJson("/admin/api/marketing/coupons/{$handle}", catalogHandleCouponPayload([
                 'code' => $coupon->code,
             ]))
             ->assertOk();
 
         $this->actingAs($admin)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->postJson("/admin/api/marketing/coupons/{$handle}/status", ['is_active' => false])
             ->assertOk();
 
         $this->actingAs($admin)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->postJson("/admin/api/marketing/coupons/{$handle}/duplicate", [
                 'code' => "CLONE{$index}".Str::upper(Str::random(4)),
             ])
@@ -202,7 +196,6 @@ test('renaming a coupon code returns the new url and retires the old one', funct
     $coupon = Coupon::query()->create(catalogHandleCoupon(['code' => 'OLDCODE10']));
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson("/admin/api/marketing/coupons/{$coupon->code}", catalogHandleCouponPayload([
             'code' => 'NEWCODE10',
         ]));

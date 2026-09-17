@@ -39,7 +39,6 @@ test('staff users are forbidden from adjusting customer wallet', function (): vo
     $customer = createWalletTestCustomer(5000);
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
             'amount_halalah' => 2000,
             'reason' => 'Goodwill compensation for delay',
@@ -53,7 +52,6 @@ test('unconfirmed MFA admin actors are redirected to MFA setup when adjusting wa
     $customer = createWalletTestCustomer(5000);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
             'amount_halalah' => 2000,
             'reason' => 'Goodwill compensation for delay',
@@ -74,7 +72,6 @@ test('confirmed admin can credit customer wallet and write staff audit log', fun
     $customer = User::factory()->create(['role' => UserRole::Customer]);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
             'amount_halalah' => 3000,
             'reason' => 'Customer appreciation goodwill credit',
@@ -126,7 +123,6 @@ test('confirmed admin can debit customer wallet', function (): void {
     $customer = createWalletTestCustomer(10000);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
             'amount_halalah' => -4000,
             'reason' => 'Correction for duplicated promo code payout',
@@ -159,7 +155,6 @@ test('wallet debit driving balance negative is rejected with 422 error', functio
     $customer = createWalletTestCustomer(2000);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", [
             'amount_halalah' => -5000,
             'reason' => 'Attempted overdraft debit',
@@ -180,7 +175,6 @@ test('wallet adjustment enforces validation constraints', function (
     $customer = createWalletTestCustomer(5000);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/wallet/adjust", $payload)
         ->assertStatus(422)
         ->assertJsonValidationErrors($expectedErrorField);

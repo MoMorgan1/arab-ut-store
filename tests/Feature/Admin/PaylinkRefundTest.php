@@ -104,7 +104,6 @@ test('unauthenticated users and non-admin actors are forbidden from refund endpo
 
     $staff = createPaylinkAdminActor(UserRole::Staff);
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, $payload)
         ->assertForbidden();
 
@@ -142,7 +141,6 @@ test('both default and localized route families execute refund and return safe J
 
     $url = "{$prefix}/api/orders/{$order->order_number}/refund";
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
             'amountHalalah' => 3000,
             'reason' => 'Staff processed refund.',
@@ -174,7 +172,6 @@ test('amount mismatch records refunds.rejected audit and returns 422 full_refund
     $url = "/admin/api/orders/{$order->order_number}/refund";
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
             'amountHalalah' => 2000, // mismatched amount
             'reason' => 'Partial refund attempt.',
@@ -201,7 +198,6 @@ test('request validation failures are not audited', function (): void {
 
     // Unknown fields
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
             'amountHalalah' => 2500,
             'reason' => 'Reason',
@@ -211,7 +207,6 @@ test('request validation failures are not audited', function (): void {
 
     // Empty reason
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
             'amountHalalah' => 2500,
             'reason' => '',
@@ -220,7 +215,6 @@ test('request validation failures are not audited', function (): void {
 
     // Reason > 500 characters
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
             'amountHalalah' => 2500,
             'reason' => str_repeat('a', 501),
@@ -248,12 +242,10 @@ test('replay of completed refund returns 200 without creating a second audit', f
     $payload = ['amountHalalah' => 2500, 'reason' => 'Customer request.'];
 
     $firstResponse = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, $payload)
         ->assertOk();
 
     $replayResponse = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, $payload)
         ->assertOk();
 
@@ -269,7 +261,6 @@ test('rate limiter throttles after ten requests for the same admin, returns 429 
 
     for ($i = 0; $i < 10; $i++) {
         $this->actingAs($admin)
-            ->withSession(['auth.password_confirmed_at' => now()->timestamp])
             ->postJson($url, [
                 'amountHalalah' => 2500,
                 'reason' => '',
@@ -278,7 +269,6 @@ test('rate limiter throttles after ten requests for the same admin, returns 429 
     }
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, [
             'amountHalalah' => 2500,
             'reason' => 'Valid reason',

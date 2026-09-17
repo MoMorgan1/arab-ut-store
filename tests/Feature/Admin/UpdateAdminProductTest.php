@@ -50,7 +50,6 @@ test('staff actors and inactive admin actors are forbidden from updating product
     $product = createTestProduct();
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/products/{$product->public_id}", [
             'name_ar' => 'اسم جديد',
             'name_en' => 'New Name',
@@ -66,7 +65,6 @@ test('staff actors and inactive admin actors are forbidden from updating product
     $inactiveAdmin->forceFill(['is_active' => false])->save();
 
     $this->actingAs($inactiveAdmin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/products/{$product->public_id}", [
             'name_ar' => 'اسم جديد',
             'name_en' => 'New Name',
@@ -84,7 +82,6 @@ test('confirmed Admin can update manual product editable fields and records staf
     $product = createTestProduct();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/products/{$product->public_id}", [
             'name_ar' => 'كوينز فيفا 26 محدث',
             'name_en' => 'FC 26 Coins Updated',
@@ -134,7 +131,6 @@ test('updating an automation product is refused with 422 product_not_editable', 
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/products/{$product->public_id}", [
             'name_ar' => 'اسم معدل',
             'name_en' => 'Modified Name',
@@ -159,7 +155,6 @@ test('stale expected values cause 409 conflict with current product values', fun
     $staleExpected['name_en'] = 'Stale Name In Cache';
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/products/{$product->public_id}", [
             'name_ar' => 'اسم معدل',
             'name_en' => 'Modified Name',
@@ -188,7 +183,6 @@ test('unexpected fields in request payload are rejected by validation', function
     $product = createTestProduct();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/products/{$product->public_id}", [
             'name_ar' => 'اسم معدل',
             'name_en' => 'Modified Name',

@@ -107,6 +107,12 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
                         $mfa->defaults('locale', $locale);
                     }
 
+                    // Kept on purpose, and it is not the gate the owner ruled
+                    // out on 2026-09-18. Fortify guards its OWN two-factor
+                    // endpoints with `password.confirm` and answers 423 when
+                    // the confirmation has lapsed; the security section shows
+                    // this link for exactly that answer. Without it an admin
+                    // mid-way through changing two-factor has nowhere to go.
                     $confirmPassword = Route::get('/security/confirm-password', ConfirmPasswordController::class)
                         ->name('security.confirm-password');
 

@@ -42,7 +42,6 @@ function setPrice(User $actor, ProductVariant $variant, array $payload)
 {
     return test()
         ->actingAs($actor)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson(
             route('admin.variants.price.store', ['publicId' => $variant->public_id]),
             $payload,

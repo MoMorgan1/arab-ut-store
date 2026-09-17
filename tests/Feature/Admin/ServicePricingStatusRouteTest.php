@@ -43,7 +43,6 @@ test('coins is rejected at the controller: it has a schedule but cannot be switc
     $before = ServicePriceSchedule::query()->where('service_type', ServiceType::Coins)->value('is_active');
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins/status', [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -58,7 +57,6 @@ test('a manual service can be deactivated through the same route', function (): 
     $admin = createScheduleStatusTestAdmin();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/rivals/status', [
             'action' => 'deactivate',
             'expected_active' => true,

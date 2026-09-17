@@ -45,7 +45,6 @@ test('nonprivileged accounts receive a forbidden Admin response', function (User
     $user = User::factory()->create(['role' => $role]);
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get('/admin/settings')
         ->assertForbidden();
 })->with([
@@ -60,7 +59,6 @@ test('inactive Staff cannot retain Admin route admission', function (): void {
     ]);
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get('/admin/settings')
         ->assertForbidden();
 });
@@ -89,7 +87,6 @@ test('legacy MFA route redirects permanently to settings', function (
     $user = privilegedUser(UserRole::Admin, confirmed: true);
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get($path)
         ->assertStatus(301)
         ->assertRedirect($destination);

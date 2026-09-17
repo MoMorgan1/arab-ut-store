@@ -60,7 +60,6 @@ function hideCategory(User $actor, Category $category, bool $hidden = true, ?boo
 {
     return test()
         ->actingAs($actor)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson(route('admin.categories.visibility.store', ['publicId' => $category->public_id]), [
             'hidden' => $hidden,
             'expected_hidden' => $expected ?? ! $hidden,
@@ -165,7 +164,6 @@ it('rejects unknown fields in payload', function (): void {
     $category = testCategory();
 
     test()->actingAs($actor)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson(route('admin.categories.visibility.store', ['publicId' => $category->public_id]), [
             'hidden' => true,
             'expected_hidden' => false,

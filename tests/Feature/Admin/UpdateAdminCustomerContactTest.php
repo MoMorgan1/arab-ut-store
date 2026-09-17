@@ -43,7 +43,6 @@ test('staff actors and inactive admin actors are forbidden from updating custome
     $customer = createContactTestCustomer();
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'NewFirst',
             'last_name' => 'NewLast',
@@ -57,7 +56,6 @@ test('staff actors and inactive admin actors are forbidden from updating custome
     $inactiveAdmin->forceFill(['is_active' => false])->save();
 
     $this->actingAs($inactiveAdmin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'NewFirst',
             'last_name' => 'NewLast',
@@ -73,7 +71,6 @@ test('confirmed admin can update name, email, and phone successfully', function 
     $customer = createContactTestCustomer();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'UpdatedFirst',
             'last_name' => 'UpdatedLast',
@@ -121,7 +118,6 @@ test('email_verified_at and phone_verified_at are unchanged after edit and sessi
     ]);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'NewName',
             'last_name' => $customer->last_name,
@@ -146,7 +142,6 @@ test('phone can be set to null', function (): void {
     expect($customer->phone)->not->toBeNull();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => $customer->first_name,
             'last_name' => $customer->last_name,
@@ -178,7 +173,6 @@ test('replacing a phone keeps its verification stamp', function (): void {
     $originalPhoneVerifiedAt = $customer->phone_verified_at;
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => $customer->first_name,
             'last_name' => $customer->last_name,
@@ -198,7 +192,6 @@ test('duplicate email belonging to another user is rejected with 422', function 
     $customer2 = createContactTestCustomer();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer1->public_id}/contact", [
             'first_name' => $customer1->first_name,
             'last_name' => $customer1->last_name,
@@ -216,7 +209,6 @@ test('duplicate phone belonging to another user is rejected with 422', function 
     $customer2 = createContactTestCustomer();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer1->public_id}/contact", [
             'first_name' => $customer1->first_name,
             'last_name' => $customer1->last_name,
@@ -234,7 +226,6 @@ test('an admin cannot edit another admin or their own account through the route'
 
     foreach ([$otherAdmin, $admin] as $target) {
         $this->actingAs($admin)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->postJson("/admin/api/customers/{$target->public_id}/contact", [
                 'first_name' => 'NewFirst',
                 'last_name' => 'NewLast',
@@ -256,7 +247,6 @@ test('an edit whose expectation matches is accepted even when the row was touche
     $customer->forceFill(['preferred_locale' => 'en'])->save();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'NewFirst',
             'last_name' => $customer->last_name,
@@ -275,7 +265,6 @@ test('an email differing only by case is still rejected as a duplicate', functio
     $customer2 = createContactTestCustomer();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer1->public_id}/contact", [
             'first_name' => $customer1->first_name,
             'last_name' => $customer1->last_name,
@@ -292,7 +281,6 @@ test('an edited email is stored lowercased', function (): void {
     $customer = createContactTestCustomer();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => $customer->first_name,
             'last_name' => $customer->last_name,
@@ -313,7 +301,6 @@ test('an expectation that no longer matches the row is a 409 carrying the live v
     $customer->forceFill(['email' => 'moved.by.someone.else@example.test'])->save();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => 'NewName',
             'last_name' => $customer->last_name,
@@ -341,7 +328,6 @@ test('staff audit record with action customers.contact_updated names only change
     $newEmail = 'brand.new.email@example.test';
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => $customer->first_name,
             'last_name' => $customer->last_name,
@@ -375,7 +361,6 @@ test('no audit record is written when nothing changed', function (): void {
     $initialLogCount = StaffAuditLog::query()->count();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", [
             'first_name' => $customer->first_name,
             'last_name' => $customer->last_name,
@@ -407,7 +392,6 @@ test('contact request rejects unknown fields and invalid parameters', function (
     $merged = array_merge($basePayload, $payload);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/contact", $merged)
         ->assertStatus(422)
         ->assertJsonValidationErrors($expectedErrorField);

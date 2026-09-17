@@ -203,11 +203,6 @@ export const englishAdminUi: AdminTranslations = {
                 'This coupon was modified by another action. Please review before proceeding.',
             validationError: 'Please fix the highlighted fields and try again.',
         },
-        passwordModalTitle: 'Confirm your password',
-        passwordModalDescription:
-            'For security, please enter your password to confirm this action.',
-        passwordLabel: 'Password',
-        passwordPlaceholder: 'Enter your current password',
         confirmPasswordButton: 'Confirm password',
         confirmingPassword: 'Verifying password…',
         invalidPassword: 'The provided password was incorrect.',
@@ -374,11 +369,6 @@ export const englishAdminUi: AdminTranslations = {
                 'This promotion was modified by another action. Please review before proceeding.',
             validationError: 'Please fix the highlighted fields and try again.',
         },
-        passwordModalTitle: 'Confirm your password',
-        passwordModalDescription:
-            'For security, please enter your password to confirm this action.',
-        passwordLabel: 'Password',
-        passwordPlaceholder: 'Enter your current password',
         confirmPasswordButton: 'Confirm password',
         confirmingPassword: 'Verifying password…',
         invalidPassword: 'The provided password was incorrect.',
@@ -819,11 +809,6 @@ export const englishAdminUi: AdminTranslations = {
                 'Unable to process refund. Please check your connection and try again.',
             networkError:
                 'Network error. Please check your connection and try again.',
-            passwordModalTitle: 'Confirm your password',
-            passwordModalDescription:
-                'For security, please enter your password to confirm this refund.',
-            passwordLabel: 'Password',
-            passwordPlaceholder: 'Enter your current password',
             confirmPasswordButton: 'Confirm password',
             confirmingPassword: 'Verifying password…',
             invalidPassword: 'The provided password was incorrect.',
@@ -1234,11 +1219,6 @@ export const englishAdminUi: AdminTranslations = {
         orderTotal: 'Total',
         ordersCount: 'Total orders',
         ordersSection: 'Orders summary',
-        passwordLabel: 'Password',
-        passwordModalDescription:
-            'For security, please enter your password to confirm updating customer status.',
-        passwordModalTitle: 'Confirm your password',
-        passwordPlaceholder: 'Enter your current password',
         phone: 'Phone',
         phoneUnverified: 'Unverified',
         phoneVerified: 'Verified',
@@ -1587,11 +1567,6 @@ export const englishAdminUi: AdminTranslations = {
     },
     categories: {
         invalidPassword: 'The provided password was incorrect.',
-        passwordLabel: 'Password',
-        passwordModalDescription:
-            'For security, please enter your password to confirm this storefront visibility change.',
-        passwordModalTitle: 'Confirm your password',
-        passwordPlaceholder: 'Enter your current password',
         actions: 'Actions',
         activeFilters: 'Active filters',
         allSources: 'All sources',
@@ -1744,11 +1719,6 @@ export const englishAdminUi: AdminTranslations = {
         noVariants: 'No variants for this product.',
         notEditableError: 'Automation products cannot be edited manually.',
         outcome: 'Item outcome',
-        passwordLabel: 'Password',
-        passwordModalDescription:
-            'For security, please enter your password to confirm updating product details.',
-        passwordModalTitle: 'Confirm your password',
-        passwordPlaceholder: 'Enter your current password',
         path: 'Path',
         platform: 'Platform',
         price: 'Price',
@@ -2024,11 +1994,6 @@ export const englishAdminUi: AdminTranslations = {
             successMessage: 'Loyalty tier updated successfully.',
             updateFailed:
                 'We could not update the loyalty tier. Please check your connection and try again.',
-            passwordModalTitle: 'Confirm your password',
-            passwordModalDescription:
-                'For security, please enter your password to confirm updating loyalty tier settings.',
-            passwordLabel: 'Password',
-            passwordPlaceholder: 'Enter your current password',
             confirmPasswordButton: 'Confirm password',
             confirmingPassword: 'Verifying password…',
             invalidPassword: 'The provided password was incorrect.',

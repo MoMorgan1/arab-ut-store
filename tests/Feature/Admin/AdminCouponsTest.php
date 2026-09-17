@@ -292,13 +292,11 @@ test('duplicate copies fields and targets, creates paused, writes audit record, 
 
     // Staff is forbidden
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/marketing/coupons/{$source->public_id}/duplicate")
         ->assertForbidden();
 
     // Admin succeeds
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/marketing/coupons/{$source->public_id}/duplicate", [
             'code' => 'CLONED20',
         ]);
@@ -328,7 +326,6 @@ test('confirmed admin can create a percent coupon with an audit log entry', func
     $admin = adminCouponsActor(UserRole::Admin);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/coupons', [
             'code' => 'SUMMER25',
             'discount_type' => 'percent',
@@ -371,7 +368,6 @@ test('confirmed admin can update a coupon while keeping its identity', function 
     Coupon::query()->create(couponAttributes(['code' => 'OTHERCODE']));
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson("/admin/api/marketing/coupons/{$coupon->public_id}", [
             'code' => $coupon->code,
             'discount_type' => 'fixed',
@@ -400,7 +396,6 @@ test('staff actors are forbidden from coupon mutations even with confirmed passw
     $staff = adminCouponsActor(UserRole::Staff);
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/coupons', [
             'code' => 'STAFFCODE',
             'discount_type' => 'percent',
@@ -415,7 +410,6 @@ test('confirmed admin can toggle coupon status with an audit log entry', functio
     $coupon = Coupon::query()->create(couponAttributes(['is_active' => true]));
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/marketing/coupons/{$coupon->public_id}/status", ['is_active' => false])
         ->assertOk()
         ->assertJson(['data' => ['isActive' => false]]);
@@ -428,7 +422,6 @@ test('confirmed admin can toggle coupon status with an audit log entry', functio
         ->and($log?->metadata['new_active'])->toBeFalse();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/marketing/coupons/{$coupon->public_id}/status", ['is_active' => true])
         ->assertOk();
 
@@ -443,7 +436,6 @@ test('coupon create requests validate every rule boundary', function (array $pay
     $admin = adminCouponsActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/coupons', $payload)
         ->assertStatus(422)
         ->assertJsonValidationErrors($field);
@@ -470,7 +462,6 @@ test('update requests reject a duplicate code owned by another coupon', function
     Coupon::query()->create(couponAttributes(['code' => 'TAKENCODE']));
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson("/admin/api/marketing/coupons/{$coupon->public_id}", couponPayload(['code' => 'TAKENCODE']))
         ->assertStatus(422)
         ->assertJsonValidationErrors('code');
@@ -480,12 +471,10 @@ test('updating or toggling an unknown public id fails', function (): void {
     $admin = adminCouponsActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->putJson('/admin/api/marketing/coupons/01J00000000000000000000000', couponPayload())
         ->assertNotFound();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson('/admin/api/marketing/coupons/01J00000000000000000000000/status', ['is_active' => true])
         ->assertNotFound();
 });

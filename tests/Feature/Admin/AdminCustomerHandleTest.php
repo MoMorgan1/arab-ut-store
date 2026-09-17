@@ -76,7 +76,6 @@ test('an admin status change resolves a legacy ULID without a canonicalizing red
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/status", [
             'action' => 'suspend',
             'reason_code' => 'abuse',
@@ -104,7 +103,6 @@ test('status, contact, and wallet mutations resolve the customer number without 
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->customer_number}/status", [
             'action' => 'suspend',
             'reason_code' => 'abuse',
@@ -113,7 +111,6 @@ test('status, contact, and wallet mutations resolve the customer number without 
         ->assertSuccessful();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->customer_number}/contact", [
             'first_name' => 'Updated',
             'last_name' => $customer->last_name,
@@ -129,7 +126,6 @@ test('status, contact, and wallet mutations resolve the customer number without 
         ->assertSuccessful();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->customer_number}/wallet/adjust", [
             'amount_halalah' => 1000,
             'reason' => 'Goodwill compensation for delay',
@@ -146,7 +142,6 @@ test('an unknown well-formed ULID returns 404 from the detail and every mutation
         ->assertNotFound();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$unknown}/status", [
             'action' => 'suspend',
             'reason_code' => 'abuse',
@@ -155,7 +150,6 @@ test('an unknown well-formed ULID returns 404 from the detail and every mutation
         ->assertNotFound();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$unknown}/contact", [
             'first_name' => 'Ghost',
             'last_name' => 'Account',
@@ -171,7 +165,6 @@ test('an unknown well-formed ULID returns 404 from the detail and every mutation
         ->assertNotFound();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$unknown}/wallet/adjust", [
             'amount_halalah' => 1000,
             'reason' => 'Goodwill compensation for delay',
