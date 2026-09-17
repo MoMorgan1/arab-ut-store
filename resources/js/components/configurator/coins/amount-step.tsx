@@ -84,9 +84,17 @@ export function AmountStep({
         () => sliderQuantities.filter((stop) => stop <= available),
         [available, sliderQuantities],
     );
-    const reachableMaximum =
-        reachableQuantities[reachableQuantities.length - 1] ?? amount.minimum;
-    const isLimited = reachableMaximum < sliderMaximum;
+    // Only an empty market closes a platform. The figure a run publishes is
+    // what ONE buy at the clearing price would fill, not the size of the pool
+    // behind it - 45,000 against a pool of 858,000 - and fulfilment buys more
+    // than once. So a ceiling that lands just under the store's minimum is not
+    // a reason to refuse the order; zero is.
+    const soldOut = available <= 0;
+    const reachableMaximum = Math.max(
+        reachableQuantities[reachableQuantities.length - 1] ?? 0,
+        amount.minimum,
+    );
+    const isLimited = !soldOut && reachableMaximum < sliderMaximum;
     const span = sliderMaximum - amount.minimum;
     const percentage = (value: number) =>
         span === 0
@@ -222,6 +230,7 @@ export function AmountStep({
                 aria-valuetext={`${formatCoins(quantity, locale)} ${translations.units.coins}`}
                 className="coins-amount-slider"
                 data-limited={isLimited ? '' : undefined}
+                disabled={soldOut}
                 max={sliderMaximum}
                 min={amount.minimum}
                 onChange={(event) => {
@@ -277,6 +286,12 @@ export function AmountStep({
                         ':amount',
                         formatCompactCoins(reachableMaximum, locale),
                     )}
+                </p>
+            ) : null}
+
+            {soldOut ? (
+                <p className="coins-amount-sold-out" role="status">
+                    {translations.amount_copy.sold_out_note}
                 </p>
             ) : null}
 

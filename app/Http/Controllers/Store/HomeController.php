@@ -254,6 +254,9 @@ class HomeController extends Controller
      *
      * Never above the configured ceiling: a provider claiming it can source
      * fifty million coins does not widen what this store is willing to sell.
+     * No margin is added here on purpose - the pricing run already publishes a
+     * sellable share of the supplier's pool rather than a raw reading, and
+     * applying a second cushion on top would quietly sell the pool twice.
      */
     private function available(CoinsCatalogReader $catalog, string $group, int $maximum): int
     {

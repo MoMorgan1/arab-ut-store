@@ -459,3 +459,32 @@ test('a run that reports no availability leaves the configured ceilings alone', 
         }
     });
 });
+
+test('a platform with no market at all comes off sale', function () {
+    // Twice nothing is nothing. PC on 2026-09-17: FFT's pool empty, UTT's lots
+    // empty, so the run published a ceiling of zero for it.
+    createHomeCatalog();
+
+    PriceRun::query()->create([
+        'run_id' => (string) Str::ulid(),
+        'event_id' => (string) Str::ulid(),
+        'status' => 'applied',
+        'mode' => 'apply',
+        'pricing_version' => 1,
+        'payload' => ['observations' => ['availableCoins' => [
+            'console_normal' => 45_000,
+            'console_fast' => 45_000,
+            'pc' => 0,
+        ]]],
+        'started_at' => now(),
+        'completed_at' => now(),
+    ]);
+
+    $this->get('/en')->assertInertia(function (Assert $page): void {
+        $platforms = collect($page->toArray()['props']['platforms']);
+
+        expect($platforms->firstWhere('value', 'pc')['available'])->toBe(0)
+            // Console keeps selling on what the run published for it.
+            ->and($platforms->firstWhere('value', 'playstation')['available'])->toBe(45_000);
+    });
+});

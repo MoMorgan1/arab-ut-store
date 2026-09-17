@@ -167,7 +167,10 @@ final class CoinsCatalogReader
     {
         $maximum = $this->appliedAvailability()[$group] ?? null;
 
-        return is_int($maximum) && $maximum > 0 ? $maximum : null;
+        // Zero is an answer, not an absence: a platform with no market at all
+        // says so, and treating it as "the run did not report" would put the
+        // configured ceiling back and offer coins nobody can source.
+        return is_int($maximum) && $maximum >= 0 ? $maximum : null;
     }
 
     /**
