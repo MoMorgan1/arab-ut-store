@@ -38,9 +38,13 @@ final class AwaitingPlacement
     /**
      * The statuses that take an item out of a supplier's hands for good.
      *
+     * Public because the alarm sweep asks the same question about items that
+     * were placed, where this class's queries cannot help it: an alarm for an
+     * item nobody owes anything on is an alarm that never closes.
+     *
      * @var list<OrderItemStatus>
      */
-    private const CLOSED = [
+    public const CLOSED = [
         OrderItemStatus::Completed,
         OrderItemStatus::Cancelled,
         OrderItemStatus::Refunded,

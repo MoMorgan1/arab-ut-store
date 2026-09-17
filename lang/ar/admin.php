@@ -123,7 +123,7 @@ return [
             'failedEventsHint' => 'أحداث الطلبات المدفوعة استنفدت كل محاولات التسليم، فلم تُبلَّغ أتمتة التنفيذ أبدًا. شغّل "php artisan orders:requeue-paid-event" على الخادم بمعرّف الحدث من سجل الأخطاء.',
             'silentItems' => 'عناصر مدفوعة لا يعمل عليها أحد',
             'silentSince' => 'الأقدم منذ',
-            'silentItemsHint' => 'هذه العناصر مدفوعة ولم يُطلب من أي مورد تنفيذها، أو أن المورد توقف عن الرد عنها، أو لم تصل عنها أي قراءة جديدة منذ فترة. اتبع docs/operations/fulfillment-recovery.md.',
+            'silentItemsHint' => 'هذه العناصر مدفوعة ولم يُطلب من أي مورد تنفيذها، أو أن المورد توقف عن الرد عنها. اتبع docs/operations/fulfillment-recovery.md.',
         ],
         'attentionRailTitle' => 'التركيز التشغيلي',
         'attentionStripTitle' => 'يتطلب متابعة',

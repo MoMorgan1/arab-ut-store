@@ -31,16 +31,4 @@ enum FulfillmentAlarmKind: string
      * has been unreachable long enough to stop being a blip.
      */
     case Silent = 'silent';
-
-    /**
-     * A placed item nothing has read for far longer than any cadence allows.
-     *
-     * The distinction from Silent is the whole point of having two: Silent is
-     * the poller trying and failing, which shows up as a rising
-     * `poll_failure_count`. This one is nobody trying at all - the scheduler
-     * cron is dead, the tick keeps dying before it reaches this band, or the
-     * row fell out of the selection - and in that case the failure counter
-     * never moves, so the only evidence is the age of the newest observation.
-     */
-    case Stale = 'stale';
 }

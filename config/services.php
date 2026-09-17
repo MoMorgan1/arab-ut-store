@@ -100,22 +100,17 @@ return [
             // The same silence, when the store has already written down why it
             // cannot send the order: no applied pricing run to budget against,
             // a platform no supplier serves, an EA account purged before the
-            // request left. The publisher runs every minute, so by five minutes
-            // it has refused four times for the same reason and a fifth will
-            // not read differently. Waiting the full quarter hour would only
-            // delay the person who has to do something about it.
+            // request left. The publisher backs off one, two then four minutes,
+            // so its attempts land at roughly zero, one and three minutes: by
+            // five it has refused three times for the same reason and the
+            // fourth is two minutes away. Waiting the full quarter hour to hear
+            // the same answer a fourth time only delays the person who has to
+            // do something about it.
             'blocked_after_minutes' => 5,
             // Fruitless supplier reads in a row. The poller backs off from its
             // band cadence to a ten-minute ceiling, so six of them is the better
             // part of an hour in which no read has landed at all.
             'silent_after_failures' => 6,
-            // How old the newest observation on a placed job may get before
-            // nobody reading it counts as a fault of its own. The slowest gap a
-            // healthy poller produces is the ten-minute backoff ceiling, and an
-            // open supplier circuit adds a minute, so an hour is six times the
-            // worst honest silence - long enough never to catch a slow band,
-            // short enough that a dead scheduler is heard the same morning.
-            'stale_after_minutes' => 60,
             // How far back a NEW alarm may be opened. An alarm that is already
             // open stays open however old it gets; this only stops the first run
             // after a deploy from opening one for every automated item the store

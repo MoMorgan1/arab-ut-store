@@ -12,13 +12,12 @@ touched.
 
 ## 1. Which silence is it
 
-The mail line and the alarm row say which of four things happened. They need different work.
+The mail line and the alarm row say which of three things happened. They need different work.
 
 | The line reads | Alarm kind | What it means | Go to |
 | --- | --- | --- | --- |
 | `لم يُرسل لأي مورد بعد` | `unplaced` | Paid, no supplier reference, and the store has not written down a reason | §2 |
 | `متوقف ولن يُرسل بدون تدخل` | `unplaced`, blocked | Paid, and the store is refusing to compose the request. The reason code is on the same line | §3, then §2 |
-| `لا توجد قراءة جديدة من المورد` | `stale` | Placed, reference recorded, and nothing has read it for an hour | §6 |
 | `المورد توقف عن الرد عليه` | `silent` | Placed, and the reads are being attempted and failing | §6 |
 
 Read the open rows directly when the mail is not to hand. On the server, from the release
@@ -32,27 +31,38 @@ php artisan tinker
 ...     ->map(fn ($a) => [$a->kind->value, $a->orderItem?->order?->order_number, $a->orderItem?->public_id, $a->raised_at->diffForHumans(), $a->context]);
 ```
 
-`context` carries the order number, the service, and — for the two placed kinds — the supplier and
-the reference. For an `unplaced` alarm it carries `reason` and `blocked` when the store has one.
+`context` carries the order number, the service, and — for a `silent` alarm — the supplier, the
+reference and the failed-read count. For an `unplaced` alarm it carries `reason` and `blocked` when
+the store has written one down.
 
 ## 2. Has anybody already placed it — the three states
 
-A paid order with no supplier reference is in exactly one of three states, and only the first is
-safe to place by hand.
+A paid order with no supplier reference is in one of three states, and only one of them is safe to
+place by hand.
 
-**State A — nothing left the store.** The outbox row is still pending and n8n never acknowledged
-it. No supplier has heard of this order.
+**State A — nothing left the store.** No supplier has heard of this order.
 
-**State B — n8n placed it and the report never landed.** From n8n's side the placement succeeded;
-the store's record of it was lost. The supplier *has* this order. Placing it again is the
-expensive mistake.
+**State B — a supplier already has it and the store does not know.** n8n placed the order and the
+store's record of the placement was lost. Placing it again buys the same coins twice at today's
+prices and puts a second bot on one EA account.
 
 **State C — the store is refusing to compose the request.** Nothing reached n8n and nothing will,
-until the thing named in §3 is fixed.
+until the thing named in §3 is fixed. Nothing is at a supplier.
 
-Tell them apart in this order, stopping at the first answer:
+> **The outbox row cannot tell State A from State B, and nothing below changes that.** The store
+> records `delivery_failed` whenever n8n did not answer `acknowledged: true` within sixty seconds —
+> and the workflow places the supplier order *before* it answers. A run that bought coins at second
+> 58 and answered at second 61 is written down here as a failure. Worse, `ship-coins` answers
+> `acknowledged: false` **by design** when an order needs several shipments and it has just placed
+> the first one, and the store records that as `delivery_failed` too. So `delivery_failed` is not
+> merely inconclusive: it is the normal reading for an order that *was* partly placed.
+>
+> **Nothing in this section authorises a manual placement.** Only two things do, and both are
+> needed: the n8n execution history showing no placement call succeeded for this order (b), and the
+> supplier showing no matching order on that EA account in that window (c). Read the outbox row to
+> know where to look first — never to decide.
 
-**a. The outbox row.** One row per paid order, keyed `order-paid:<order id>`.
+**a. The outbox row — where to look first.** One row per paid order, keyed `order-paid:<order id>`.
 
 ```bash
 php artisan tinker
@@ -62,21 +72,32 @@ php artisan tinker
 ...     ->first(['event_id', 'status', 'attempts', 'available_at', 'last_error']);
 ```
 
-| What it says | Reading |
+| What it says | What it does and does not mean |
 | --- | --- |
-| `status: pending`, `last_error: delivery_failed` | n8n never acknowledged a request. State A. |
-| `status: pending`, any other `last_error` | The store never got as far as sending. State C — §3. |
+| `status: pending`, `last_error: delivery_failed` | n8n did not acknowledge. It may still have placed — a timeout, a lost response, or a deliberate `acknowledged: false` after placing one shipment of several. **A or B; check both (b) and (c).** |
+| `status: pending`, any other `last_error` | The store never got as far as sending, so nothing is at a supplier. State C — §3. This is the one reading that stands on its own. |
 | `status: processed` | n8n answered `acknowledged: true`. It believed it had placed. **State B until the supplier says otherwise.** |
-| `status: failed` | Retired after ten attempts. `last_error` still names what the attempts failed on. State A or C. |
-| No row at all | Nothing was ever queued. State A, and worth asking why — `EnqueueOrderPlacement` writes no row when nothing awaited placement at payment. |
+| `status: failed` | Retired after ten attempts; `last_error` still names what they failed on. Read that value in the two rows above — a composition reason is C, `delivery_failed` is A or B. |
+| No row at all | Nothing was ever queued, so n8n was never told. State A — but (b) and (c) still apply, because a person may have placed this order by hand earlier without recording it. |
 
-**b. n8n's own execution history.** Open `ship-coins` (or `solve-challenge`) and search the
-executions for the order number: the request payload carries `order_number`, and every failure the
-workflow throws starts with it. An execution that reached `External: Buy Coins` or
-`UTT: Add Order Public` and came back with an id is a placement that happened — State B — and the
-id in that node's response is the reference to record in §5.
+**b. n8n's own execution history — mandatory.** Open `ship-coins` (and `solve-challenge` for a
+challenge) and search the executions for the order number: the request payload carries
+`order_number`, and every failure the workflow throws starts with it. Read every execution for that
+order, not just the last: one may have placed a shipment and a later one failed.
 
-**c. The supplier.** §4. Slower than both of the above, and the only one that is proof.
+- An execution that reached `External: Buy Coins` or `UTT: Add Order Public` and came back with an
+  id **placed an order**. That id is the reference to record in §5, and no new placement is needed
+  for the items it covered.
+- An execution that threw before those nodes placed nothing.
+- No execution at all for that order number means n8n was never asked — consistent with State A,
+  and still not sufficient on its own.
+
+If execution data is off on that workflow, or the runs have aged out, treat the answer as unknown
+and rely entirely on (c).
+
+**c. The supplier — the only proof.** §4. Check the EA account for an order in the window between
+payment and now, whatever (a) and (b) said. Only when both (b) and (c) come back empty is a manual
+placement safe.
 
 ## 3. The reasons the store refuses, and what clears each
 
@@ -147,7 +168,8 @@ idempotency keys and the same refusals.
 
 **On an order that already exists** — the case this runbook is about — there is no admin screen.
 The endpoint the workflows use is the only surface, and the practical way to reach it at 2am is
-the action behind it:
+the action behind it. **Do not run this until §2 (b) and (c) both came back empty, or until you
+hold a reference a supplier actually issued.**
 
 ```bash
 php artisan tinker
@@ -187,12 +209,15 @@ to `in_progress`.
 
 ## 6. The reference exists but the readings stopped
 
-`stale` means nothing is reading the job; `silent` means reads are being attempted and are failing.
-The first is almost always ours.
+A `silent` alarm means the poller is reading and the reads keep coming back with nothing — six of
+them in a row, which is the better part of an hour. The counter behind it (`poll_failure_count`)
+only rises when a read was attempted, so the first question is still whether anything is reading at
+all.
 
 1. **Is the loop running at all?** The poller logs `Fulfillment poll completed.` once a minute. No
-   line for an hour and every `stale` alarm has one cause: the scheduler cron. Check it the way
-   `hostinger-deployment.md` describes, then `php artisan schedule:list`.
+   line for an hour is the scheduler cron, not the supplier, and no alarm reports that on its own —
+   a stopped loop leaves every job looking exactly as healthy as it did the minute it stopped.
+   Check the cron the way `hostinger-deployment.md` describes, then `php artisan schedule:list`.
 2. **Force one pass** and read what it says: `php artisan fulfillment:poll --deadline=20`. The
    summary line carries `attempted`, `observed`, `unreadable`, `unavailable`, `not_configured` and
    `circuit_skipped`, which is usually the whole diagnosis.

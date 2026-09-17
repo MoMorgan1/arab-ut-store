@@ -46,7 +46,7 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
         $mail = (new MailMessage)
             ->subject("تنبيه تنفيذ: {$this->total} عنصر بلا حركة")
             ->greeting('عناصر مدفوعة توقفت عن الحركة')
-            ->line('كل سطر هنا عنصر مدفوع لم يصل لمورد، أو عنصر عند مورد توقفت قراءاته، أو عنصر لم تصل عنه أي قراءة جديدة:');
+            ->line('كل سطر هنا عنصر مدفوع لم يصل لمورد، أو عنصر عند مورد توقفت قراءاته:');
 
         foreach ($this->rows as $row) {
             $mail->line('- '.$this->describe($row));
@@ -73,7 +73,6 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
             // more order still on its way.
             $row['kind'] === 'unplaced' && $row['blocked'] => 'متوقف ولن يُرسل بدون تدخل',
             $row['kind'] === 'unplaced' => 'لم يُرسل لأي مورد بعد',
-            $row['kind'] === 'stale' => 'لا توجد قراءة جديدة من المورد',
             default => 'المورد توقف عن الرد عليه',
         };
 

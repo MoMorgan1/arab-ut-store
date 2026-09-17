@@ -43,7 +43,14 @@ What survives a rollback, and what to check afterwards:
   by the newer release. They are schema, not release state.
 - **`fulfillment_alarms` re-derives itself.** It is a state table the sweep rebuilds from the world,
   so it needs no attention beyond running `php artisan fulfillment:alarms` once and reading the
-  count.
+  count. The one exception is a row whose `kind` the rolled-back release has never heard of: the
+  old sweep cannot resolve a kind it does not know, and the owner alert throws when it casts one.
+  No release up to this one is affected — the kinds are `unplaced` and `silent`, and both have
+  existed since the table did — but a release that adds a kind must have its rows closed as part of
+  rolling back past it:
+  `UPDATE fulfillment_alarms SET resolved_at = NOW() WHERE kind = '<the kind that release added>' AND resolved_at IS NULL;`
+  A resolved row is invisible to both the alert and the panel, and the newer release re-opens
+  whatever is still true on its first sweep.
 
 Verify after any rollback that the background loops came back with the release: one
 `Fulfillment poll completed.` line per minute in the log, and one `fulfillment:alarms` run whose

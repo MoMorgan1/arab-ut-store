@@ -123,7 +123,7 @@ return [
             'failedEventsHint' => 'Paid-order events exhausted every delivery attempt, so the fulfilment workflow was never told. Run "php artisan orders:requeue-paid-event" on the server with the event id from the error log.',
             'silentItems' => 'Paid items nobody is working on',
             'silentSince' => 'Oldest since',
-            'silentItemsHint' => 'These were paid for and no supplier was ever asked to deliver them, the supplier stopped answering about them, or nothing has read them for an hour. Follow docs/operations/fulfillment-recovery.md.',
+            'silentItemsHint' => 'These were paid for and no supplier was ever asked to deliver them, or the supplier stopped answering about them. Follow docs/operations/fulfillment-recovery.md.',
         ],
         'attentionRailTitle' => 'Operational focus',
         'attentionStripTitle' => 'Needs attention',
