@@ -1,4 +1,4 @@
-// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.5.json the
+// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.6.json the
 // way n8n would - once with FFT answering, once with FFT down - and pins the
 // v2.5 rule: FFT down carries last time's rates forward and still publishes a
 // UTT cost table; with nothing to carry forward it stops as v2.4 did.
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.5.json', import.meta.url), 'utf8'));
+const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.6.json', import.meta.url), 'utf8'));
 const source = (name) => workflow.nodes.find((node) => node.name === name).parameters.jsCode;
 const configSrc = source('Config');
 const prepareSrc = source('Prepare Coins Snapshot');
@@ -90,4 +90,69 @@ test('FFT down carries the last published rates forward and still publishes UTT 
     // 4. FFT down, memory without cycle costs (first carry-forward after upgrade): cycle costs null, still publishes.
     const fourth = await runPrepare(config, fftDown, utt, { lastSuccessfulRates: rates });
     assert.equal(fourth.snapshot.observations.cyclePSUsdPerM, null);
+});
+
+test('the snapshot publishes what each group could actually be filled with', async () => {
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, 0.26), highestAvailable: null },
+    };
+    const fft = {
+        source: 'fft', failed: false,
+        cycle: {
+            // The real FC27 opening: 45,000 coins on console, nothing on PC.
+            ps: { usdPerM: 300, amountCoins: 45_000, coversTarget: false },
+            pc: { usdPerM: null, amountCoins: 0, coversTarget: false },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    };
+
+    const out = await runPrepare(config, fft, utt, {});
+
+    assert.equal(out.valid, true);
+    assert.deepEqual(out.snapshot.observations.availableCoins, {
+        console_normal: 45_000,
+        console_fast: 45_000,
+        // Zero is published as zero. A platform with no market has to be able
+        // to say so, or the storefront keeps offering twenty million coins.
+        pc: 0,
+    });
+    // legalRanges is checked for equality against the store's own settings and
+    // must therefore stay exactly as configured, whatever the market says.
+    assert.equal(out.snapshot.legalRanges.pc.maximum, 20_000_000);
+});
+
+test('a ceiling above what the store sells is clamped, never widened', async () => {
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, 0.26), highestAvailable: null },
+    };
+    const fft = {
+        source: 'fft', failed: false,
+        cycle: {
+            ps: { usdPerM: 12, amountCoins: 90_000_000, coversTarget: true },
+            pc: { usdPerM: 20, amountCoins: 90_000_000, coversTarget: true },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    };
+
+    const out = await runPrepare(config, fft, utt, {});
+
+    assert.deepEqual(out.snapshot.observations.availableCoins, {
+        console_normal: 2_000_000,
+        console_fast: 20_000_000,
+        pc: 20_000_000,
+    });
 });
