@@ -20,3 +20,20 @@ if (!('ResizeObserver' in globalThis)) {
         disconnect(): void {}
     };
 }
+
+// jsdom implements no Pointer Capture API and no scrolling, and Radix's Select
+// calls both while it opens: it asks the trigger whether it has captured the
+// pointer, and scrolls the highlighted option into view. Every browser we
+// support answers both, so these are jsdom gaps rather than cases a component
+// must handle - without them a select that works in a real browser throws on
+// the first click in a test. `hasPointerCapture` answers false because nothing
+// here captures a pointer.
+if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = (): boolean => false;
+    Element.prototype.setPointerCapture = (): void => {};
+    Element.prototype.releasePointerCapture = (): void => {};
+}
+
+if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = (): void => {};
+}

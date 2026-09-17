@@ -16,6 +16,10 @@ final class AdminAccess
         AdminPermission::OrdersUpdate,
         AdminPermission::OrdersCancel,
         AdminPermission::OrderCredentialsView,
+        // Owner decision, 2026-09-17: Staff work the fulfillment queue, so
+        // they see it. They do not get `FulfillmentViewCost` (our margin) or
+        // `FulfillmentAct` (spending money at a supplier).
+        AdminPermission::FulfillmentView,
     ];
 
     public function allows(User $user, AdminPermission $permission): bool

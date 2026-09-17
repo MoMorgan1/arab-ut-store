@@ -7,12 +7,14 @@ import {
     MessageSquare,
     Settings,
     Ticket,
+    Truck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { AdminMorePageProps, AdminMoreTile } from '@/types/admin';
 
 const tileIcons: Record<AdminMoreTile['key'], LucideIcon> = {
+    fulfillment: Truck,
     conversations: MessageSquare,
     categories: FolderTree,
     coupons: Ticket,

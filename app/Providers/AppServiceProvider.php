@@ -209,6 +209,25 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('staff-identity', fn (Request $request): Limit => Limit::perMinute(10)
             ->by('staff-identity:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
+        // Re-sending an item to a supplier. Its own budget rather than
+        // `staff-writes`, for the reason `staff-payments` has one: that limit
+        // is for rows in our own database, and this request reaches an outside
+        // service and can spend money.
+        //
+        // Two buckets, and BOTH carry the caller (Failures rule 6). Throttling
+        // runs before the controller checks anything, so a bucket keyed on the
+        // item id alone is one any signed-in operator could empty on another's
+        // behalf - and the per-item bucket is the one that turns a jammed
+        // button into two requests instead of twenty.
+        RateLimiter::for('staff-fulfillment-action', function (Request $request): array {
+            $caller = (string) ($request->user()?->getAuthIdentifier() ?? $request->ip());
+
+            return [
+                Limit::perMinute(6)->by('staff-fulfillment-action-user:'.$caller),
+                Limit::perMinute(2)->by('staff-fulfillment-action-item:'.$caller.':'.(string) $request->route('item')),
+            ];
+        });
+
         // The lookups behind the manual-order drawer: a customer search as you
         // type, and a price suggestion each time an item changes. They read and
         // reserve nothing, so the budget is generous - but it is still keyed on

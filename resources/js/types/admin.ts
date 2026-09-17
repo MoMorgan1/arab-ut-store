@@ -127,6 +127,7 @@ export type AdminTranslations = {
             silentItems: string;
             silentSince: string;
             silentItemsHint: string;
+            silentItemsLink: string;
         };
         viewAllOrders: string;
         viewUnresolvedOrders: string;
@@ -299,6 +300,157 @@ export type AdminTranslations = {
     };
     statuses: Record<string, string>;
     holdReasons: Record<string, string>;
+    /**
+     * The fulfillment queue's strings.
+     *
+     * Flat strings are spelled out so a key renamed in the lang files fails
+     * the type check rather than rendering as nothing on a screen about money.
+     * The five maps keyed on an enum value stay `Record`, the way `statuses`
+     * and `holdReasons` above do: their keys come from PHP enums, and listing
+     * them twice would only let the two lists drift.
+     */
+    fulfillment: {
+        headTitle: string;
+        title: string;
+        description: string;
+        refresh: string;
+        tableLabel: string;
+        loading: string;
+        errorTitle: string;
+        loadFailed: string;
+        columnOrder: string;
+        columnService: string;
+        columnSupplier: string;
+        columnWaiting: string;
+        columnState: string;
+        columnSignal: string;
+        columnCost: string;
+        columnAction: string;
+        searchPlaceholder: string;
+        searchPlaceholderShort: string;
+        searchLabel: string;
+        searchButton: string;
+        clearSearch: string;
+        filters: string;
+        resetFilters: string;
+        activeFilters: string;
+        applyFilters: string;
+        filterSupplier: string;
+        filterSupplierAll: string;
+        filterPhase: string;
+        filterPhaseAll: string;
+        filterStatus: string;
+        filterStatusAll: string;
+        filterAlarm: string;
+        filterAlarmAll: string;
+        filterAlarmAny: string;
+        filterAlarmNone: string;
+        filterService: string;
+        filterServiceAll: string;
+        filterHold: string;
+        filterHoldAll: string;
+        filterHoldHeld: string;
+        filterHoldClear: string;
+        filterPaidFrom: string;
+        filterPaidTo: string;
+        noItems: string;
+        noItemsMatching: string;
+        noJob: string;
+        neverPlaced: string;
+        noReading: string;
+        notReported: string;
+        atSupplier: string;
+        readAgo: string;
+        paidAgo: string;
+        failedReads: string;
+        quietFor: string;
+        quietUnread: string;
+        circuitOpen: string;
+        challengeCount: string;
+        progressSolves: string;
+        openOrder: string;
+        phase: Record<string, string>;
+        alarm: Record<string, string>;
+        alarmHint: Record<string, string>;
+        presentation: Record<string, string>;
+        detail: {
+            alarmRaised: string;
+            alarmNotified: string;
+            alarmResolved: string;
+            alarmStillOpen: string;
+            alarmNotQueued: string;
+            itemHeading: string;
+            itemOrder: string;
+            itemService: string;
+            itemPlatform: string;
+            itemStatus: string;
+            itemPaidAt: string;
+            supplierHeading: string;
+            supplierName: string;
+            supplierReference: string;
+            supplierPhase: string;
+            supplierPlacedAt: string;
+            supplierObservedAt: string;
+            supplierObservedState: string;
+            supplierCost: string;
+            noJobNote: string;
+            blockerHeading: string;
+            blockerCode: string;
+            blockerBlocks: string;
+            blockerClears: string;
+            close: string;
+        };
+        action: {
+            send: string;
+            sendLong: string;
+            resume: string;
+            resumeLong: string;
+            retry: string;
+            retryLong: string;
+            sending: string;
+            none: string;
+        };
+        dialog: {
+            sendTitle: string;
+            sendBody: string;
+            resumeTitle: string;
+            resumeBody: string;
+            retryTitle: string;
+            retryBody: string;
+            reasonLabel: string;
+            reasonPlaceholder: string;
+            reasonRequired: string;
+            sendUnrecorded: string;
+            challengeLabel: string;
+            challengePlaceholder: string;
+            challengeOption: string;
+            challengeRequired: string;
+            credentialNote: string;
+            cancel: string;
+        };
+        reasonCodes: Record<string, string>;
+        result: {
+            queuedTitle: string;
+            queuedBody: string;
+            resumeTitle: string;
+            resumeBody: string;
+            retryTitle: string;
+            retryBody: string;
+            refusedTitle: string;
+            refusedBody: string;
+            busyTitle: string;
+            busyBody: string;
+            unknownTitle: string;
+            unknownBody: string;
+            staleTitle: string;
+            staleBody: string;
+        };
+        badge: {
+            queued: string;
+            resumeSent: string;
+            retrySent: string;
+        };
+    };
     mfa: {
         headTitle: string;
         eyebrow: string;
@@ -1684,6 +1836,7 @@ export type AdminNavigationItem = {
     key:
         | 'overview'
         | 'orders'
+        | 'fulfillment'
         | 'customers'
         | 'conversations'
         | 'catalog'
@@ -2905,6 +3058,7 @@ export type AdminCategoriesQueryState = {
 
 export type AdminMoreTile = {
     key:
+        | 'fulfillment'
         | 'conversations'
         | 'categories'
         | 'coupons'
@@ -3033,5 +3187,123 @@ export type AdminStorePageEditorPageProps = {
         en: AdminStorePageLocaleContent;
     };
     canManage: boolean;
+    logoutUrl: string;
+};
+
+/**
+ * One item in the fulfillment queue.
+ *
+ * `job` is null for an item nobody ever placed, and that is the row the screen
+ * exists for. `cost` is **absent** rather than null when the actor lacks
+ * `fulfillment.view_cost` — the server never emits the key — so the optional
+ * marker here is load-bearing rather than a convenience.
+ */
+export type AdminFulfillmentRow = {
+    id: string;
+    orderNumber: string;
+    service: string;
+    platform: string;
+    itemStatus: string;
+    paidAt: string | null;
+    progress: {
+        done: number;
+        total: number;
+        unit: 'coins' | 'solves';
+    } | null;
+    job: {
+        status: string;
+        phase: string | null;
+        holdReason: string | null;
+        presentation: string | null;
+        observedState: string | null;
+        observedAt: string | null;
+        pollFailures: number;
+        band: 'attention' | 'background';
+    } | null;
+    placement: {
+        supplier: string;
+        reference: string;
+        phase: string;
+        placedAt: string | null;
+        challengeCount: number;
+    } | null;
+    alarms: AdminFulfillmentAlarm[];
+    blocker: {
+        reason: string;
+        blocks: boolean;
+    } | null;
+    actions: AdminFulfillmentAction[];
+    cost?: AdminMoney<string> | null;
+};
+
+/**
+ * An open alarm on a row.
+ *
+ * `circuitOpen` decides which of two true sentences the screen says. A
+ * supplier inside its cooldown is one we are choosing not to ask, not one that
+ * has gone quiet, and an operator sent after a supplier that is answering fine
+ * has been sent to the wrong place.
+ */
+export type AdminFulfillmentAlarm = {
+    kind: 'unplaced' | 'silent' | 'stalled';
+    raisedAt: string | null;
+    notifiedAt: string | null;
+    pollFailures: number | null;
+    quietMinutes: number | null;
+    circuitOpen: boolean;
+    phase: string | null;
+    blocked: boolean;
+    reason: string | null;
+};
+
+export type AdminFulfillmentAction = 'send' | 'resume' | 'retry_challenge';
+
+export type AdminFulfillmentSort =
+    'paid_at' | 'placed_at' | 'observed_at' | 'poll_failures' | 'actual_cost';
+
+export type AdminFulfillmentQueryState = {
+    search?: string | null;
+    supplier?: string | null;
+    phase?: string | null;
+    status?: string | null;
+    alarm?: string | null;
+    hold?: string | null;
+    service?: string | null;
+    paid_from?: string | null;
+    paid_to?: string | null;
+    sort: AdminFulfillmentSort;
+    direction: 'asc' | 'desc';
+    per_page: 15 | 25 | 50 | 100;
+    page: number;
+};
+
+export type AdminFulfillmentFilterOptions = {
+    suppliers: AdminFilterOption[];
+    phases: AdminFilterOption[];
+    statuses: AdminFilterOption[];
+    alarms: AdminFilterOption[];
+    services: AdminFilterOption[];
+    holds: AdminFilterOption[];
+    reasonCodes: AdminFilterOption[];
+    perPageOptions: number[];
+};
+
+export type AdminFulfillmentPageProps = {
+    locale: 'ar' | 'en';
+    direction: 'rtl' | 'ltr';
+    /** The instant the rows were read; every age on the page counts from it. */
+    generatedAt: string;
+    adminUi: AdminTranslations;
+    adminIdentity: AdminIdentity;
+    adminNavigation: AdminNavigationItem[];
+    permissions: string[];
+    items: AdminFulfillmentRow[];
+    pagination: AdminPagination;
+    filters: AdminFulfillmentQueryState;
+    filterOptions: AdminFulfillmentFilterOptions;
+    canSeeCost: boolean;
+    canAct: boolean;
+    orderUrlTemplate: string;
+    resendUrlTemplate: string;
     logoutUrl: string;
 };

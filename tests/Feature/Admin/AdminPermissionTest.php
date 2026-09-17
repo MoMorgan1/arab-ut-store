@@ -6,7 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 
-test('the admin permission enum contains exactly the approved twenty-seven abilities', function (): void {
+test('the admin permission enum contains exactly the approved thirty abilities', function (): void {
     expect(array_map(
         static fn (AdminPermission $permission): string => $permission->value,
         AdminPermission::cases(),
@@ -52,6 +52,11 @@ function adminPermissionMatrix(): array
         'orders.update',
         'orders.cancel',
         'order_credentials.view',
+        // Owner decision, 2026-09-17: Staff work the fulfillment queue, so
+        // they see it. They do NOT get `fulfillment.view_cost` (our margin per
+        // shipment) or `fulfillment.act` (spending money at a supplier, on an
+        // amount they are not allowed to read).
+        'fulfillment.view',
     ];
     $matrix = [];
 
@@ -76,6 +81,9 @@ function adminPermissionAbilities(): array
         'orders.cancel',
         'orders.refund',
         'order_credentials.view',
+        'fulfillment.view',
+        'fulfillment.view_cost',
+        'fulfillment.act',
         'customers.view',
         'customers.update_status',
         'customers.update_contact',

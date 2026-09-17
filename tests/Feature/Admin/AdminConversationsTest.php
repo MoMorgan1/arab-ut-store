@@ -116,8 +116,8 @@ test('admin navigation includes conversations between customers and products', f
                     ->all() === $expectedUrls,
             ));
 })->with([
-    'Canonical family' => ['/admin/conversations', ['/admin', '/admin/orders', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/marketing/coupons', '/admin/settings', '/admin/more']],
-    'Localized family' => ['/en/admin/conversations', ['/en/admin', '/en/admin/orders', '/en/admin/customers', '/en/admin/conversations', '/en/admin/products', '/en/admin/marketing/coupons', '/en/admin/settings', '/en/admin/more']],
+    'Canonical family' => ['/admin/conversations', ['/admin', '/admin/orders', '/admin/fulfillment', '/admin/customers', '/admin/conversations', '/admin/products', '/admin/marketing/coupons', '/admin/settings', '/admin/more']],
+    'Localized family' => ['/en/admin/conversations', ['/en/admin', '/en/admin/orders', '/en/admin/fulfillment', '/en/admin/customers', '/en/admin/conversations', '/en/admin/products', '/en/admin/marketing/coupons', '/en/admin/settings', '/en/admin/more']],
 ]);
 
 test('status filter returns only open conversations when status=open', function (): void {

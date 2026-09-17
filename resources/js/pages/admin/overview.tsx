@@ -21,6 +21,13 @@ export default function AdminOverviewPage() {
         timeZone: 'UTC',
     });
 
+    // Only present when the actor holds `fulfillment.view`: the shell builds
+    // the navigation from the permissions, so the link the banner offers is
+    // decided server-side rather than by this component.
+    const fulfillmentUrl =
+        props.adminNavigation.find((item) => item.key === 'fulfillment')?.url ??
+        null;
+
     const ordersUrl =
         props.adminNavigation.find((item) => item.key === 'orders')?.url ??
         (props.locale === 'en' ? '/en/admin/orders' : '/admin/orders');
@@ -32,6 +39,7 @@ export default function AdminOverviewPage() {
             {/* 0. Background jobs, shown only when they are in trouble */}
             <AdminQueueHealthBanner
                 dateFormatter={dateFormatter}
+                fulfillmentUrl={fulfillmentUrl}
                 health={props.queueHealth}
                 locale={props.locale}
                 translations={copy}

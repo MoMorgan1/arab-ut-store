@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { AlertTriangle } from 'lucide-react';
 
 import type { AdminQueueHealth, AdminTranslations } from '@/types/admin';
@@ -11,11 +12,14 @@ import type { AdminQueueHealth, AdminTranslations } from '@/types/admin';
  */
 export default function AdminQueueHealthBanner({
     dateFormatter,
+    fulfillmentUrl,
     health,
     locale,
     translations,
 }: {
     dateFormatter: Intl.DateTimeFormat;
+    /** Null when the actor may not open the queue; then the count has no link. */
+    fulfillmentUrl: string | null;
     health: AdminQueueHealth | null;
     locale: 'ar' | 'en';
     translations: AdminTranslations['overview'];
@@ -176,6 +180,14 @@ export default function AdminQueueHealthBanner({
                     <p className="max-w-prose text-xs text-muted-foreground">
                         {copy.silentItemsHint}
                     </p>
+                    {fulfillmentUrl === null ? null : (
+                        <Link
+                            className="inline-flex text-xs font-semibold text-status-warning underline-offset-4 hover:underline"
+                            href={fulfillmentUrl}
+                        >
+                            {copy.silentItemsLink}
+                        </Link>
+                    )}
                 </div>
             ) : null}
         </aside>

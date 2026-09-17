@@ -31,6 +31,7 @@ test('AdminShell emits the grouped navigation tree with catalog, marketing, and 
     expect($keys)->toBe([
         'overview',
         'orders',
+        'fulfillment',
         'customers',
         'conversations',
         'catalog',
@@ -77,13 +78,16 @@ test('AdminShell filters grouped navigation based on individual permissions', fu
     $shell = app(AdminShell::class)->for($staff, 'en');
     $keys = array_column($shell['adminNavigation'], 'key');
 
-    // Staff with only order permissions sees no catalog or marketing groups
-    expect($keys)->toBe(['overview', 'orders', 'settings', 'more'])
+    // Staff with only order permissions sees no catalog or marketing groups.
+    // Fulfillment is there because Staff hold `fulfillment.view` (owner
+    // decision, 2026-09-17) - they work that queue, they just cannot see its
+    // cost column or press its re-send button.
+    expect($keys)->toBe(['overview', 'orders', 'fulfillment', 'settings', 'more'])
         ->and($keys)->not->toContain('catalog')
         ->and($keys)->not->toContain('marketing');
 });
 
-test('Admin more page renders all six permission-filtered tiles for Admin actor', function (string $url, string $expectedLocale, string $expectedDirection): void {
+test('Admin more page renders all seven permission-filtered tiles for Admin actor', function (string $url, string $expectedLocale, string $expectedDirection): void {
     $admin = adminMoreActor(UserRole::Admin, $expectedLocale);
 
     $response = $this->actingAs($admin)->get($url);
@@ -102,9 +106,13 @@ test('Admin more page renders all six permission-filtered tiles for Admin actor'
             ->where('groups.1.tiles.1.key', 'promotions')
             ->where('groups.1.tiles.2.key', 'loyalty')
             ->where('groups.2.key', 'system')
-            ->has('groups.2.tiles', 2)
-            ->where('groups.2.tiles.0.key', 'conversations')
-            ->where('groups.2.tiles.1.key', 'settings')
+            ->has('groups.2.tiles', 3)
+            // First in the group, and the only way to reach the fulfillment
+            // queue on a phone: the tab bar carries a fixed five keys and the
+            // sidebar is desktop-only.
+            ->where('groups.2.tiles.0.key', 'fulfillment')
+            ->where('groups.2.tiles.1.key', 'conversations')
+            ->where('groups.2.tiles.2.key', 'settings')
         );
 })->with([
     // Both admin route families register locale 'en' (routes/admin.php), so the
@@ -119,7 +127,7 @@ test('Admin more page tile URLs are all real named routes', function (): void {
     $page = app(AdminMorePage::class)->for($admin, 'en');
 
     $allTiles = collect($page['groups'])->flatMap(fn (array $group) => $group['tiles']);
-    expect($allTiles)->toHaveCount(6);
+    expect($allTiles)->toHaveCount(7);
 
     foreach ($allTiles as $tile) {
         expect($tile['url'])->toBeString()->not->toBeEmpty();
@@ -128,7 +136,8 @@ test('Admin more page tile URLs are all real named routes', function (): void {
     }
 
     $urlMap = $allTiles->pluck('url', 'key')->all();
-    expect($urlMap['categories'])->toBe('/admin/categories')
+    expect($urlMap['fulfillment'])->toBe('/admin/fulfillment')
+        ->and($urlMap['categories'])->toBe('/admin/categories')
         ->and($urlMap['coupons'])->toBe('/admin/marketing/coupons')
         ->and($urlMap['promotions'])->toBe('/admin/marketing/promotions')
         ->and($urlMap['loyalty'])->toBe('/admin/marketing/loyalty')
@@ -136,15 +145,22 @@ test('Admin more page tile URLs are all real named routes', function (): void {
         ->and($urlMap['settings'])->toBe('/admin/settings');
 });
 
-test('Admin more page filters tiles for Staff actor with only order permissions', function (): void {
+test('Admin more page shows Staff the fulfillment tile and nothing else', function (): void {
     $staff = adminMoreActor(UserRole::Staff, 'en');
 
     $response = $this->actingAs($staff)->get('/admin/more');
 
+    // Staff hold `fulfillment.view` and nothing else this page offers, and on
+    // a phone this tile is their only route to the queue - the tab bar carries
+    // a fixed five keys and the sidebar is desktop-only. Every other group
+    // stays hidden, so the page proves the filter still filters.
     $response->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/more')
-            ->has('groups', 0)
+            ->has('groups', 1)
+            ->where('groups.0.key', 'system')
+            ->has('groups.0.tiles', 1)
+            ->where('groups.0.tiles.0.key', 'fulfillment')
         );
 });
 

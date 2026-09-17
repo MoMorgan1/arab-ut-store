@@ -528,6 +528,50 @@ describe('Admin operational overview', () => {
                 /docs\/operations\/fulfillment-recovery\.md/,
             ),
         ).toBeInTheDocument();
+        // This actor's navigation carries no fulfillment entry, so it may not
+        // open the queue and the count is left without a link rather than
+        // offering one that would 403.
+        expect(
+            within(banner).queryByRole('link', {
+                name: 'Open the fulfillment queue',
+            }),
+        ).toBeNull();
+    });
+
+    it('sends an actor who may open the queue straight to it', () => {
+        inertia.props = pageProps({
+            adminNavigation: [
+                { key: 'overview', label: 'Overview', url: '/en/admin' },
+                { key: 'orders', label: 'Orders', url: '/en/admin/orders' },
+                {
+                    key: 'fulfillment',
+                    label: 'Fulfillment',
+                    url: '/en/admin/fulfillment',
+                },
+            ],
+            queueHealth: {
+                monitored: true,
+                connection: 'database',
+                failedJobs: 0,
+                latestFailure: null,
+                failedEvents: 0,
+                stalledJobs: 0,
+                oldestQueuedAt: null,
+                silentItems: 3,
+                oldestSilenceAt: '2026-09-16T09:00:00+00:00',
+            },
+        });
+        render(<AdminOverviewPage />);
+
+        const banner = screen.getByRole('complementary', {
+            name: 'Background jobs need attention',
+        });
+
+        expect(
+            within(banner).getByRole('link', {
+                name: 'Open the fulfillment queue',
+            }),
+        ).toHaveAttribute('href', '/en/admin/fulfillment');
     });
 
     it('says the queue is unmonitored rather than healthy when it cannot see it', () => {

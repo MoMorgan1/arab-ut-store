@@ -6,10 +6,14 @@
 | ------------------------- | ----- | ----- |
 | `dashboard.view`          | yes   | yes   |
 | `orders.view`             | yes   | yes   |
+| `orders.create`           | yes   | yes   |
 | `orders.update`           | yes   | yes   |
 | `orders.cancel`           | yes   | yes   |
 | `orders.refund`           | yes   | no    |
 | `order_credentials.view`  | yes   | yes   |
+| `fulfillment.view`        | yes   | yes   |
+| `fulfillment.view_cost`   | yes   | no    |
+| `fulfillment.act`         | yes   | no    |
 | `customers.view`          | yes   | no    |
 | `customers.update_status` | yes   | no    |
 | `customers.update_contact` | yes   | no    |
@@ -48,8 +52,15 @@ Customer and ServiceAccount receive none.
 
 - v1 roles are fixed and code-defined; do not install a dynamic permission
   package or add direct per-user permission editing.
-- The Admin-first near-MVP limits Staff to the five approved overview, order
-  operation, and credential-reveal permissions above. Any Staff expansion
-  requires a new explicit owner decision before code or documentation changes.
+- The Admin-first near-MVP limits Staff to the seven approved overview, order
+  operation, credential-reveal and fulfillment-queue permissions above, which
+  are the seven listed in `AdminAccess::STAFF`. Any Staff expansion requires a
+  new explicit owner decision before code or documentation changes.
+- The fulfillment queue is one screen with two views (owner decision,
+  2026-09-17). Staff see status, age, stall, supplier and signal; the cost
+  column and the re-send control are Admin-only. The cost is withheld by the
+  query and absent from the Inertia payload rather than hidden in the browser,
+  and a Staff request naming `sort=actual_cost` fails validation instead of
+  falling back - a silent fallback would tell the caller the column exists.
 - Role changes are Admin-only, require recent password confirmation, prevent the
   acting Admin from removing the last active Admin, and are audited.
