@@ -360,6 +360,36 @@ test('a reason the outbox records for its own sake is not the order being stuck'
     'a reason added after this was written' => ['something_new', true],
 ]);
 
+// Nothing linked the allowlist to the thing that produces reasons, so adding
+// one to `ComposePlacementRequest` broke no test and paged Mohamed five minutes
+// after the next paid order, with nobody having decided that was right. This
+// walks the source for every reason those paths can write and demands somebody
+// have put it in one list or the other.
+test('every reason the outbox can record has been deliberately classified', function () {
+    $reasons = [];
+
+    foreach ([
+        'app/Actions/Fulfillment/ComposePlacementRequest.php' => "/new PlacementRequestIncomplete\(\s*'([a-z_]+)'/",
+        'app/Actions/Fulfillment/PublishOrderPaidEvent.php' => "/->release\(\\\$event, '([a-z_]+)'\)/",
+        'app/Fulfillment/Outbox/OutboxQueue.php' => "/COALESCE\(last_error, '([a-z_]+)'\)/",
+    ] as $file => $pattern) {
+        preg_match_all($pattern, (string) file_get_contents(base_path($file)), $matches);
+        $reasons = [...$reasons, ...$matches[1]];
+    }
+
+    $reasons = array_values(array_unique($reasons));
+
+    // A guard on the guard: a changed spelling in any of those files would
+    // otherwise leave this test quietly enumerating nothing and passing.
+    expect($reasons)->toHaveCount(12);
+
+    $classified = [...PlacementBlockers::CLEARS_ITSELF, ...PlacementBlockers::BLOCKS];
+
+    foreach ($reasons as $reason) {
+        expect($classified)->toContain($reason);
+    }
+});
+
 // The reason on the alarm has to be the one the publisher actually wrote, not
 // a string a test invented: the whole grading rests on that column, and on
 // `markProcessed()` clearing it when a request finally lands.
@@ -526,31 +556,67 @@ test('a hand-made job with no reference is still caught by its failure count', f
     expect(FulfillmentAlarm::query()->sole()->kind)->toBe(FulfillmentAlarmKind::Silent);
 });
 
-test('the mail says which silence each line is', function () {
+// The mail is what the owner has at two in the morning. A field that reaches
+// only the database row is a field nobody has: the reference and the failed-read
+// count were both in the context and neither was rendered, so no line could be
+// acted on without opening tinker first.
+test('the mail says which silence each line is, and carries what recovery needs', function () {
     $blocked = orderPaidMinutesAgo(6, 'AUT-MAIL-1');
-    coinsItem($blocked);
+    $blockedItem = coinsItem($blocked);
     undeliveredPlacement($blocked, 'credentials_purged');
 
     $waiting = orderPaidMinutesAgo(20, 'AUT-MAIL-2');
     coinsItem($waiting);
 
     $silent = orderPaidMinutesAgo(300, 'AUT-MAIL-3');
-    placedJob(coinsItem($silent), ['poll_failure_count' => 6, 'supplier_order_id' => 'FFT-9002']);
+    $silentItem = coinsItem($silent);
+    placedJob($silentItem, ['poll_failure_count' => 6, 'supplier_order_id' => 'FFT-9002']);
 
     expect(sweepAlarms()['raised'])->toBe(3);
     expect(alertSilence())->toBe(3);
 
     Notification::assertSentOnDemand(
         FulfillmentSilenceAlert::class,
-        function (FulfillmentSilenceAlert $notification): bool {
+        function (FulfillmentSilenceAlert $notification) use ($blockedItem, $silentItem): bool {
             $body = implode("\n", $notification->toMail(new stdClass)->introLines);
 
             expect($body)->toContain('AUT-MAIL-1: متوقف ولن يُرسل بدون تدخل')
                 // The publisher's own word for it, not a translation of it: an
                 // operator searching the log wants one spelling, not two.
                 ->toContain('credentials_purged')
+                ->toContain((string) $blockedItem->public_id)
                 ->toContain('AUT-MAIL-2: لم يُرسل لأي مورد بعد')
-                ->toContain('AUT-MAIL-3: المورد توقف عن الرد عليه');
+                // The reference to look up at the supplier, the count that says
+                // how deep the silence is, and the item to report against.
+                ->toContain('AUT-MAIL-3: المورد توقف عن الرد عليه بعد 6 قراءات فاشلة')
+                ->toContain('FFT-9002')
+                ->toContain((string) $silentItem->public_id);
+
+            return true;
+        },
+    );
+});
+
+// One order, two items, one stored reason between them - the reason is written
+// per order and the alarms are per item. Without the item id the two lines were
+// byte-identical, and for a per-item cause like a purged EA account neither said
+// which item held it.
+test('two items on one order are told apart in the mail', function () {
+    $order = orderPaidMinutesAgo(6, 'AUT-TWIN-1');
+    $first = coinsItem($order);
+    $second = coinsItem($order);
+    undeliveredPlacement($order, 'credentials_purged');
+
+    expect(sweepAlarms()['raised'])->toBe(2);
+    expect(alertSilence())->toBe(2);
+
+    Notification::assertSentOnDemand(
+        FulfillmentSilenceAlert::class,
+        function (FulfillmentSilenceAlert $notification) use ($first, $second): bool {
+            $lines = $notification->toMail(new stdClass)->introLines;
+
+            expect(implode("\n", $lines))->toContain((string) $first->public_id)
+                ->toContain((string) $second->public_id);
 
             return true;
         },

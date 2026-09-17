@@ -50,7 +50,10 @@ What survives a rollback, and what to check afterwards:
   rolling back past it:
   `UPDATE fulfillment_alarms SET resolved_at = NOW() WHERE kind = '<the kind that release added>' AND resolved_at IS NULL;`
   A resolved row is invisible to both the alert and the panel, and the newer release re-opens
-  whatever is still true on its first sweep.
+  whatever is still true on its first sweep. Rolling back past the release that graded the
+  placement wait has a milder version of the same effect and needs no action: the older sweep does
+  not know the short wait, so it resolves open alarms for orders younger than fifteen minutes and
+  refreshes the rest without `reason` or `blocked`. On redeploy they re-open and are mailed again.
 
 Verify after any rollback that the background loops came back with the release: one
 `Fulfillment poll completed.` line per minute in the log, and one `fulfillment:alarms` run whose

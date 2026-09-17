@@ -19,6 +19,16 @@ use App\Models\IntegrationEvent;
  * cannot compose a request for is not the same emergency as a paid order n8n
  * has not acknowledged yet, and the difference decides how long the customer
  * waits before anybody hears about it.
+ *
+ * **Scope: `order.paid` only.** `challenge.ready` releases its own rows with
+ * their own reasons, keyed on the order ITEM rather than the order, and they
+ * are not read here - not because they do not matter, but because there is no
+ * alarm for them to grade. A funded challenge already carries a fulfillment
+ * job for its coins phase, so the unplaced pass excludes it and the silence
+ * pass only watches its failure counter. Grading a reason onto an alarm that
+ * is never raised would be worse than the gap, because the table would then
+ * look as though it covered the case. `docs/operations/fulfillment-recovery.md`
+ * says which reasons reach an alarm and which do not.
  */
 final class PlacementBlockers
 {
@@ -31,13 +41,45 @@ final class PlacementBlockers
      * can record is the store refusing to compose the request - no applied
      * pricing run to budget against, a platform no supplier serves, an EA
      * account that was purged - and refusing it again in a minute changes
-     * nothing. An unrecognised reason is treated as blocking for the same
-     * cause: this decides when an operator is told, and a new reason nobody
-     * has classified yet is far better read out loud than sat on.
+     * nothing.
      *
      * @var list<string>
      */
-    private const CLEARS_ITSELF = ['delivery_failed', 'order_missing'];
+    public const CLEARS_ITSELF = ['delivery_failed', 'order_missing'];
+
+    /**
+     * The reasons somebody has looked at and decided will not clear.
+     *
+     * Not consulted at runtime, and that is deliberate: an unrecognised reason
+     * blocks, because this decides when an operator is told and a reason nobody
+     * has classified yet is far better read out loud than sat on. What this
+     * list is for is the decision itself. Adding a reason to
+     * `ComposePlacementRequest` and shipping it would otherwise page Mohamed
+     * five minutes after a paid order arrives, with nobody having judged
+     * whether that is right; the test that walks every reason that class can
+     * throw and demands it appear in one of these two lists is what makes the
+     * judgement happen before the mail does.
+     *
+     * `max_attempts_exceeded` is here for a reason of its own. It means the
+     * outbox gave up: the row is `failed`, and the publisher's selection takes
+     * only `pending` rows, so nothing will ever retry it without
+     * `orders:requeue-paid-event`. That is the plainest "will not fix itself"
+     * in the list, whatever the row does or does not say about the cause.
+     *
+     * @var list<string>
+     */
+    public const BLOCKS = [
+        'budget_unavailable',
+        'challenge_unknown',
+        'configuration_incomplete',
+        'credentials_incomplete',
+        'credentials_missing',
+        'credentials_purged',
+        'funding_missing',
+        'max_attempts_exceeded',
+        'platform_unsupported',
+        'service_has_no_challenge',
+    ];
 
     /**
      * The stored reason per order, for the orders asked about.

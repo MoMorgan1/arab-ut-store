@@ -107,6 +107,13 @@ final class SweepFulfillmentAlarms
 
             $context = [
                 'order_number' => (string) $item->order->order_number,
+                // The item, not just its order. Several items can share one
+                // order and one reason - the reason is stored per order - and
+                // for a per-item cause like a purged EA account the order
+                // number alone cannot say which item holds it. It is also the
+                // identifier every recovery step takes, so an operator with
+                // only the mail in hand can act from it.
+                'order_item_public_id' => (string) $item->public_id,
                 'service' => $item->service_type->value,
             ];
 
@@ -163,6 +170,7 @@ final class SweepFulfillmentAlarms
 
             $described[$item->id] = [
                 'order_number' => (string) $item->order->order_number,
+                'order_item_public_id' => (string) $item->public_id,
                 'service' => $item->service_type->value,
                 'supplier' => $job->supplier?->value,
                 'supplier_order_id' => $job->supplier_order_id,

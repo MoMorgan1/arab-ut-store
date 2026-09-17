@@ -68,10 +68,11 @@ final class AlertOwnerOfFulfillmentSilence
         return $pending->count();
     }
 
-    /** @return array{kind: string, order: string, detail: string, blocked: bool} */
+    /** @return array{kind: string, order: string, detail: string, blocked: bool, pollFailures: int|null} */
     private function row(FulfillmentAlarm $alarm): array
     {
         $context = is_array($alarm->context) ? $alarm->context : [];
+        $failures = $context['poll_failures'] ?? null;
 
         return [
             'kind' => $alarm->kind->value,
@@ -81,27 +82,39 @@ final class AlertOwnerOfFulfillmentSilence
             // person rather than for patience. Absent on an alarm raised before
             // the store had a reason to record, which is read as "not yet".
             'blocked' => ($context['blocked'] ?? false) === true,
+            'pollFailures' => is_int($failures) ? $failures : null,
         ];
     }
 
-    /** @param array<string, mixed> $context */
+    /**
+     * Everything the recovery runbook's first step needs, in the order it is
+     * needed.
+     *
+     * The mail is what the owner has at two in the morning, so a field that
+     * only reaches the database row is a field nobody has. The item id leads
+     * because every step takes it - the supplier lookup, the placement report -
+     * and because one order can hold several items with one reason between
+     * them, which without this produces two identical lines.
+     *
+     * @param  array<string, mixed>  $context
+     */
     private function detail(array $context): string
     {
         $parts = [];
 
-        if (is_string($context['service'] ?? null) && $context['service'] !== '') {
-            $parts[] = $context['service'];
-        }
+        foreach (['order_item_public_id', 'service', 'supplier', 'supplier_order_id'] as $key) {
+            $value = $context[$key] ?? null;
 
-        if (is_string($context['supplier'] ?? null) && $context['supplier'] !== '') {
-            $parts[] = $context['supplier'];
+            if (is_string($value) && $value !== '') {
+                $parts[] = $value;
+            }
         }
 
         // The publisher's own word for what stopped it - `budget_unavailable`,
         // `credentials_purged` - passed through rather than translated. It is
         // the string in the log and in `integration_events.last_error`, and an
         // operator searching for the order wants the same spelling in all
-        // three. The same is true of the service and supplier codes above.
+        // three. The same is true of the identifiers and codes above.
         if (is_string($context['reason'] ?? null) && $context['reason'] !== '') {
             $parts[] = $context['reason'];
         }
