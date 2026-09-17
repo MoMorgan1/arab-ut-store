@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\AdminPermission;
 use App\Enums\FulfillmentResendAction;
 use App\Models\User;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,6 +28,13 @@ final class ResendFulfillmentItem extends FormRequest
         'customer_report',
     ];
 
+    /**
+     * Everything this request may carry.
+     *
+     * @var list<string>
+     */
+    private const ALLOWED_KEYS = ['action', 'reason_code', 'challenge_position'];
+
     public function authorize(): bool
     {
         $user = $this->user();
@@ -45,6 +53,27 @@ final class ResendFulfillmentItem extends FormRequest
             // placement's stored ids, and resolving it there is also the
             // ownership check.
             'challenge_position' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:99'],
+        ];
+    }
+
+    /**
+     * A field nobody meant to send is a caller using the wrong shape.
+     *
+     * `forms.md` refuses the unknown key rather than ignoring it: a mutation
+     * that silently drops half a payload is one that looks like it worked.
+     *
+     * @return list<callable>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $unknown = array_diff(array_keys($this->all()), self::ALLOWED_KEYS);
+
+                if ($unknown !== []) {
+                    $validator->errors()->add('unexpected_fields', 'Unknown fields are not allowed.');
+                }
+            },
         ];
     }
 

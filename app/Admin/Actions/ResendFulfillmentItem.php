@@ -20,6 +20,7 @@ use App\Support\Orders\AwaitingPlacement;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Puts one item back in front of a supplier, at an operator's request.
@@ -82,9 +83,13 @@ final class ResendFulfillmentItem
             throw new AuthorizationException('This action requires fulfillment.act permission.');
         }
 
+        // Read once to find the row the lock is named after, and then read it
+        // again inside the lock. The second read is the one every decision is
+        // made from: between a page render and this press an admin can cancel
+        // the item or the poller can finish it, and deciding from the copy
+        // loaded before the lock is how a press acts on a row that moved.
         /** @var OrderItem $item */
         $item = OrderItem::query()
-            ->with(['order', 'fulfillmentJob'])
             ->where('public_id', $itemPublicId)
             ->firstOrFail();
 
@@ -92,14 +97,28 @@ final class ResendFulfillmentItem
         // second press while the first is in flight must not wait its turn and
         // then send again - it must be told the first one is running. The hold
         // outlives the 60-second delivery timeout the publisher allows itself.
-        $lock = Cache::lock("fulfillment-resend:item:{$item->id}", 75);
+        //
+        // Keyed on the order for a send, because the row a send re-opens is
+        // the order's single `order.paid` outbox row: two items of one order
+        // pressed together are one write, and per-item locks would let both
+        // through. A supplier instruction is per item, and keyed that way.
+        $subject = $action === FulfillmentResendAction::Send
+            ? "fulfillment-resend:order:{$item->order_id}"
+            : "fulfillment-resend:item:{$item->id}";
+        $lock = Cache::lock($subject, 75);
 
         if (! $lock->get()) {
             return $this->result(FulfillmentResendOutcome::Busy, $action->value);
         }
 
         try {
-            return $this->act($actor, $item, $action, $reasonCode, $challengePosition, $ipAddress, $locale);
+            /** @var OrderItem $fresh */
+            $fresh = OrderItem::query()
+                ->with(['order', 'fulfillmentJob'])
+                ->whereKey($item->id)
+                ->firstOrFail();
+
+            return $this->act($actor, $fresh, $action, $reasonCode, $challengePosition, $ipAddress, $locale);
         } finally {
             $lock->release();
         }
@@ -117,15 +136,15 @@ final class ResendFulfillmentItem
         ?string $ipAddress,
         string $locale,
     ): array {
-        if (! $this->isActionable($item)) {
-            return $this->audited($actor, $item, $this->result(FulfillmentResendOutcome::NotActionable, $action->value), $reasonCode, $ipAddress);
-        }
-
         $job = $item->fulfillmentJob;
 
-        // Requested, before anything leaves. A reservation event rather than a
-        // result, per audit-logging.md: the outcome is a second row, and it is
-        // written from what actually happened.
+        // Requested, before anything leaves and before the row is judged. A
+        // reservation event rather than a result, per audit-logging.md: the
+        // outcome is a second row, written from what actually happened - and
+        // the pair has to hold for a press that was refused too, or the log
+        // has a refusal nobody asked for. (A press refused for the lock never
+        // reaches here: it touched nothing, and the press holding the lock is
+        // writing the pair for that subject already.)
         $this->recordStaffAudit->execute($actor, $item, new StaffAuditEvent(
             action: 'fulfillment.resend_requested',
             metadata: [
@@ -133,18 +152,31 @@ final class ResendFulfillmentItem
                 'order_item_public_id' => (string) $item->public_id,
                 'action' => $action->value,
                 'reason_code' => $reasonCode,
-                'supplier' => $job?->supplier?->value,
+                'supplier' => $this->currentSupplier($item, $job),
             ],
             ipAddress: $ipAddress,
         ));
 
-        $result = match ($action) {
-            FulfillmentResendAction::Send => $this->send($item, $job),
-            FulfillmentResendAction::Resume => $this->supplierAction($item, $job, SupplierAction::Resume, $locale),
-            FulfillmentResendAction::RetryChallenge => $this->supplierAction($item, $job, SupplierAction::RetryChallenge, $locale, $challengePosition),
+        if (! $this->isActionable($item)) {
+            return $this->audited($actor, $item, $this->result(FulfillmentResendOutcome::NotActionable, $action->value), $reasonCode, $ipAddress);
+        }
+
+        $write = match ($action) {
+            FulfillmentResendAction::Send => fn (): array => $this->send($item, $job),
+            FulfillmentResendAction::Resume => fn (): array => $this->supplierAction($item, $job, SupplierAction::Resume, $locale),
+            FulfillmentResendAction::RetryChallenge => fn (): array => $this->supplierAction($item, $job, SupplierAction::RetryChallenge, $locale, $challengePosition),
         };
 
-        return $this->audited($actor, $item, $result, $reasonCode, $ipAddress);
+        // Rule 4: a send and the row that records it are one write. Nothing
+        // leaves the process between them, so a crash must not be able to
+        // leave a queued outbox row with no row saying who queued it.
+        //
+        // A supplier instruction cannot be wrapped the same way: it leaves the
+        // process, and a transaction held across a supplier call holds its
+        // locks for as long as the supplier takes to answer.
+        return $action === FulfillmentResendAction::Send
+            ? DB::transaction(fn (): array => $this->audited($actor, $item, $write(), $reasonCode, $ipAddress))
+            : $this->audited($actor, $item, $write(), $reasonCode, $ipAddress);
     }
 
     /**
@@ -307,7 +339,7 @@ final class ResendFulfillmentItem
                 'order_item_public_id' => (string) $item->public_id,
                 'action' => $result['action'],
                 'reason_code' => $reasonCode,
-                'supplier' => $item->fulfillmentJob?->supplier?->value,
+                'supplier' => $this->currentSupplier($item, $item->fulfillmentJob),
                 // The store's own word for where the outbox row was, so the
                 // widening this action performs - a `processed` row re-opened -
                 // is visible afterwards rather than erased by it.
@@ -318,6 +350,34 @@ final class ResendFulfillmentItem
         ));
 
         return $result;
+    }
+
+    /**
+     * Who is actually holding this item, for the audit row.
+     *
+     * The job's `supplier` column mirrors the FIRST placement, and an SBC item
+     * funded by one supplier can be solved at another - so a log that reads
+     * the mirror names the wrong supplier for exactly the presses a challenge
+     * retry makes. Read from the placement of the job's current phase, the way
+     * the screen itself reads it, and fall back to the mirror only when there
+     * is no placement row to read.
+     */
+    private function currentSupplier(OrderItem $item, ?FulfillmentJob $job): ?string
+    {
+        if (! $job instanceof FulfillmentJob) {
+            return null;
+        }
+
+        $placement = $job->placements()
+            ->when(
+                $job->delivery_phase !== null,
+                fn ($query) => $query->where('delivery_phase', $job->delivery_phase->value),
+            )
+            ->latest('id')
+            ->first();
+
+        // A placement always names its supplier; the job's mirror may not.
+        return $placement?->supplier->value ?? $job->supplier?->value;
     }
 
     /**

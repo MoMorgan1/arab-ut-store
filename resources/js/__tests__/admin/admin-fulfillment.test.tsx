@@ -110,6 +110,38 @@ const unplaced: AdminFulfillmentRow = {
     service: 'sbc',
 };
 
+/** A challenge item holding three solves, one of which failed. */
+const multiSolve: AdminFulfillmentRow = {
+    actions: ['retry_challenge'],
+    alarms: [],
+    blocker: null,
+    cost: null,
+    id: 'item-solves',
+    itemStatus: 'in_progress',
+    job: {
+        band: 'background',
+        holdReason: null,
+        observedAt: '2026-09-17T14:20:00Z',
+        observedState: 'solving',
+        phase: 'challenge',
+        pollFailures: 0,
+        presentation: 'in_progress',
+        status: 'in_progress',
+    },
+    orderNumber: 'AUT-1051',
+    paidAt: '2026-09-17T10:00:00Z',
+    placement: {
+        challengeCount: 3,
+        phase: 'challenge',
+        placedAt: '2026-09-17T10:05:00Z',
+        reference: '574401',
+        supplier: 'fft',
+    },
+    platform: 'console',
+    progress: { done: 1, total: 3, unit: 'solves' },
+    service: 'sbc',
+};
+
 /** A placed item whose supplier sits inside its circuit cooldown. */
 const stalled: AdminFulfillmentRow = {
     actions: ['resume'],
@@ -182,6 +214,10 @@ function baseProps(
             reasonCodes: [
                 { label: 'Never placed', value: 'never_placed' },
                 { label: 'Callback never arrived', value: 'callback_lost' },
+                {
+                    label: 'Supplier stopped reporting',
+                    value: 'supplier_stalled',
+                },
             ],
             services: [{ label: 'All services', value: 'all' }],
             statuses: [{ label: 'All states', value: 'all' }],
@@ -447,6 +483,73 @@ describe('the confirm dialog', () => {
             reason_code: 'callback_lost',
         });
         expect(options.headers).toEqual({ Accept: 'application/json' });
+    });
+
+    it('will not retry a challenge without saying which solve', async () => {
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+        renderPage({ items: [multiSolve] });
+
+        await user.click(
+            within(table()).getByRole('button', { name: 'Retry' }),
+        );
+
+        const dialog = screen.getByRole('dialog');
+        const [reason, solve] = within(dialog).getAllByRole('combobox');
+
+        await user.click(reason);
+        await user.click(
+            await screen.findByRole('option', {
+                name: 'Supplier stopped reporting',
+            }),
+        );
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Retry challenge' }),
+        );
+
+        // A default of zero would retry the first solve, which on this row is
+        // the one that already finished.
+        expect(screen.getByRole('alert').textContent).toContain(
+            'Choose which solve to retry.',
+        );
+        expect(http.submit).not.toHaveBeenCalled();
+
+        await user.click(solve);
+        await user.click(
+            await screen.findByRole('option', { name: 'Solve 3' }),
+        );
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Retry challenge' }),
+        );
+
+        expect(http.setData).toHaveBeenCalledWith({
+            action: 'retry_challenge',
+            challenge_position: 2,
+            reason_code: 'supplier_stalled',
+        });
+    });
+
+    it('asks nothing about solves when the placement holds one', async () => {
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+        renderPage({ items: [unplaced] });
+
+        await user.click(within(table()).getByRole('button', { name: 'Send' }));
+
+        expect(
+            within(screen.getByRole('dialog')).getAllByRole('combobox'),
+        ).toHaveLength(1);
+    });
+
+    it('warns that an unreported purchase cannot be seen from here', async () => {
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+        renderPage({ items: [unplaced] });
+
+        await user.click(within(table()).getByRole('button', { name: 'Send' }));
+
+        expect(
+            within(screen.getByRole('dialog')).getByText(
+                /buy the same coins twice/,
+            ),
+        ).toBeTruthy();
     });
 
     it('says resume rather than send for a placed item', async () => {

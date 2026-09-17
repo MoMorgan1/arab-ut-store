@@ -332,7 +332,6 @@ export type AdminTranslations = {
         searchButton: string;
         clearSearch: string;
         filters: string;
-        columnsButton: string;
         resetFilters: string;
         activeFilters: string;
         applyFilters: string;
@@ -421,6 +420,11 @@ export type AdminTranslations = {
             reasonLabel: string;
             reasonPlaceholder: string;
             reasonRequired: string;
+            sendUnrecorded: string;
+            challengeLabel: string;
+            challengePlaceholder: string;
+            challengeOption: string;
+            challengeRequired: string;
             credentialNote: string;
             cancel: string;
         };
@@ -436,6 +440,8 @@ export type AdminTranslations = {
             refusedBody: string;
             busyTitle: string;
             busyBody: string;
+            unknownTitle: string;
+            unknownBody: string;
             staleTitle: string;
             staleBody: string;
         };

@@ -145,7 +145,7 @@ export default function AdminFulfillmentPage() {
     }, [applyQuery]);
 
     const resendHttp = useHttp<
-        { action: string; reason_code: string },
+        { action: string; reason_code: string; challenge_position?: number },
         { data: { outcome: string; action: string } }
     >('post', props.resendUrlTemplate, {
         action: 'send',
@@ -168,7 +168,7 @@ export default function AdminFulfillmentPage() {
      * into an error modal.
      */
     const confirmResend = useCallback(
-        async (reasonCode: string) => {
+        async (reasonCode: string, challengePosition: number | null) => {
             if (pending === null) {
                 return;
             }
@@ -183,7 +183,15 @@ export default function AdminFulfillmentPage() {
                 // The payload goes on the hook, not into `submit` - the
                 // established admin idiom (see the wallet adjust dialog),
                 // because `submit` takes no data of its own.
-                resendHttp.setData({ action, reason_code: reasonCode });
+                resendHttp.setData(
+                    challengePosition === null
+                        ? { action, reason_code: reasonCode }
+                        : {
+                              action,
+                              challenge_position: challengePosition,
+                              reason_code: reasonCode,
+                          },
+                );
 
                 await resendHttp.submit('post', target, {
                     headers: { Accept: 'application/json' },
@@ -191,30 +199,40 @@ export default function AdminFulfillmentPage() {
                         setSubmitting(false);
                         setPending(null);
                     },
+                    // Every branch reports the server's own word, and
+                    // `unknown` when there is no word to report. Inventing one
+                    // is worse than admitting it: "not sent, nothing changed"
+                    // on a press that did go through sends the operator back
+                    // to press it a second time.
                     onHttpException: (response) => {
                         setResult({
                             action,
-                            outcome:
-                                outcomeOf(response) ??
-                                (response.status === 503
-                                    ? 'refused'
-                                    : 'not_actionable'),
+                            outcome: outcomeOf(response) ?? 'unknown',
                         });
 
                         return false;
                     },
                     onNetworkError: () => {
-                        setResult({ action, outcome: 'refused' });
+                        setResult({ action, outcome: 'unknown' });
+                        // The press may well have landed, so the list is
+                        // re-read rather than left showing the old row.
+                        router.reload({
+                            only: ['items', 'pagination', 'generatedAt'],
+                        });
 
                         return false;
                     },
                     onSuccess: (response) => {
                         setResult({
                             action,
-                            outcome: outcomeOf(response) ?? 'queued',
+                            outcome: outcomeOf(response) ?? 'unknown',
                         });
                         setOpenRow(null);
-                        router.reload({ only: ['items', 'pagination'] });
+                        // The clock comes back with the rows: a fresh
+                        // timestamp measured against the old one prints zero.
+                        router.reload({
+                            only: ['items', 'pagination', 'generatedAt'],
+                        });
                     },
                 });
             } catch {
@@ -398,6 +416,11 @@ function ResultBanner({
             case 'busy':
             case 'in_flight':
                 return [copy.result.busyTitle, copy.result.busyBody];
+            // No answer reached us, so neither "sent" nor "not sent" is true.
+            // Its body is the one that asks the operator to look at the
+            // supplier before pressing again.
+            case 'unknown':
+                return [copy.result.unknownTitle, copy.result.unknownBody];
             default:
                 return [copy.result.staleTitle, copy.result.staleBody];
         }

@@ -1,4 +1,4 @@
-import { KeyRound, Truck } from 'lucide-react';
+import { KeyRound, TriangleAlert, Truck } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export type AdminFulfillmentResendDialogProps = {
     copy: AdminTranslations['fulfillment'];
     isSubmitting: boolean;
     onCancel: () => void;
-    onConfirm: (reasonCode: string) => void;
+    onConfirm: (reasonCode: string, challengePosition: number | null) => void;
     reasonCodes: AdminFilterOption[];
     row: AdminFulfillmentRow;
 };
@@ -64,9 +64,17 @@ export default function AdminFulfillmentResendDialog({
     // and a select that starts uncontrolled and becomes controlled on the
     // first choice is the React warning nobody ever comes back to fix.
     const [reasonCode, setReasonCode] = useState('');
+    const [solve, setSolve] = useState('');
     const [showRequired, setShowRequired] = useState(false);
 
     const isSend = action === 'send';
+    // A placement can hold several solves, and the supplier retries the one it
+    // is told. With one solve the position is not a question; with more, a
+    // default of zero would retry a solve that is finished and leave the
+    // failed one alone, so the operator picks.
+    const solveCount =
+        action === 'retry_challenge' ? (row.placement?.challengeCount ?? 0) : 0;
+    const asksForSolve = solveCount > 1;
     const title = (
         isSend
             ? copy.dialog.sendTitle
@@ -139,10 +147,55 @@ export default function AdminFulfillmentResendDialog({
                             className="text-xs font-medium text-destructive"
                             role="alert"
                         >
-                            {copy.dialog.reasonRequired}
+                            {reasonCode === ''
+                                ? copy.dialog.reasonRequired
+                                : copy.dialog.challengeRequired}
                         </p>
                     ) : null}
                 </div>
+
+                {asksForSolve ? (
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="resend-solve">
+                            {copy.dialog.challengeLabel}
+                        </Label>
+                        <Select
+                            onValueChange={(value) => {
+                                setSolve(value);
+                                setShowRequired(false);
+                            }}
+                            value={solve}
+                        >
+                            <SelectTrigger
+                                className="min-h-11 w-full text-sm"
+                                id="resend-solve"
+                            >
+                                <SelectValue
+                                    placeholder={
+                                        copy.dialog.challengePlaceholder
+                                    }
+                                />
+                            </SelectTrigger>
+                            <SelectContent className="motion-reduce:animate-none">
+                                {Array.from(
+                                    { length: solveCount },
+                                    (_, index) => (
+                                        <SelectItem
+                                            className="min-h-11 text-sm"
+                                            key={index}
+                                            value={String(index)}
+                                        >
+                                            {copy.dialog.challengeOption.replace(
+                                                ':number',
+                                                String(index + 1),
+                                            )}
+                                        </SelectItem>
+                                    ),
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                ) : null}
 
                 {isSend ? (
                     // Not boilerplate. Composing the request decrypts the
@@ -168,6 +221,22 @@ export default function AdminFulfillmentResendDialog({
                     </div>
                 ) : null}
 
+                {isSend ? (
+                    // The one risk this screen cannot see. A supplier that
+                    // bought and never reported it leaves no job row, so the
+                    // item still reads as never placed and the request is
+                    // recomposed for it - which buys the same coins again.
+                    // Nothing in our database can rule that out, so the
+                    // operator is told to go and look before pressing.
+                    <div className="flex gap-2.5 rounded-md border border-status-danger/30 bg-status-danger/8 px-3 py-2.5 text-[13px] leading-relaxed text-foreground">
+                        <TriangleAlert
+                            aria-hidden="true"
+                            className="mt-0.5 size-4 shrink-0 text-status-danger"
+                        />
+                        <span>{copy.dialog.sendUnrecorded}</span>
+                    </div>
+                ) : null}
+
                 <DialogFooter>
                     <Button
                         className="min-h-11"
@@ -182,13 +251,19 @@ export default function AdminFulfillmentResendDialog({
                         className="min-h-11 gap-2"
                         disabled={isSubmitting}
                         onClick={() => {
-                            if (reasonCode === '') {
+                            if (
+                                reasonCode === '' ||
+                                (asksForSolve && solve === '')
+                            ) {
                                 setShowRequired(true);
 
                                 return;
                             }
 
-                            onConfirm(reasonCode);
+                            onConfirm(
+                                reasonCode,
+                                asksForSolve ? Number(solve) : null,
+                            );
                         }}
                         type="button"
                     >

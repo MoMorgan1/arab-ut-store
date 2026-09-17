@@ -114,16 +114,18 @@ final class ListAdminFulfillment extends FormRequest
                 }
             },
             // Sorting by a column the actor may not read is refused, not
-            // quietly ignored. A silent fallback is an oracle: it tells the
-            // caller the column exists and only the ordering was dropped,
-            // which is precisely what withholding the cost is meant to avoid.
+            // quietly ignored - a silent fallback tells the caller the column
+            // exists and only the ordering was dropped. The message is the
+            // same one an invented key gets, for the same reason: a distinct
+            // "not available for you" is itself the answer to "does this
+            // column exist?".
             function (Validator $validator): void {
                 if ($this->input('sort') !== 'actual_cost') {
                     return;
                 }
 
                 if (! $this->canSeeCost()) {
-                    $validator->errors()->add('sort', 'This sort is not available.');
+                    $validator->errors()->add('sort', 'The selected sort is invalid.');
                 }
             },
         ];

@@ -136,7 +136,11 @@ export default function AdminFulfillmentToolbar({
                 </form>
 
                 <Button
-                    className="min-h-11 shrink-0 gap-2 text-sm md:hidden"
+                    // Shown at every width, not only on a phone: the two date
+                    // filters live inside this sheet, so hiding its button on
+                    // desktop left `paid_from`/`paid_to` reachable by editing
+                    // the URL and no other way.
+                    className="min-h-11 shrink-0 gap-2 text-sm"
                     onClick={() => setSheetOpen(true)}
                     type="button"
                     variant="outline"

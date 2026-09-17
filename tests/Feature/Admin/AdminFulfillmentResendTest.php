@@ -8,6 +8,7 @@ use App\Enums\ServiceType;
 use App\Enums\Supplier;
 use App\Enums\UserRole;
 use App\Models\FulfillmentJob;
+use App\Models\FulfillmentPlacement;
 use App\Models\IntegrationEvent;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -33,8 +34,8 @@ function resendActor(UserRole $role = UserRole::Admin): User
     return $user;
 }
 
-/** @return array{0: Order, 1: OrderItem} */
-function resendItem(bool $withJob = false, array $jobAttributes = []): array
+/** @return array{0: Order, 1: OrderItem, 2: ?FulfillmentJob} */
+function resendItem(bool $withJob = false, array $jobAttributes = [], array $itemAttributes = []): array
 {
     $order = Order::factory()->for(User::factory()->create())->create([
         'status' => OrderStatus::InProgress,
@@ -44,10 +45,13 @@ function resendItem(bool $withJob = false, array $jobAttributes = []): array
     $item = OrderItem::factory()->for($order)->create([
         'service_type' => ServiceType::Coins,
         'status' => OrderItemStatus::Received,
+        ...$itemAttributes,
     ]);
 
-    if ($withJob) {
-        FulfillmentJob::factory()->create([
+    $job = null;
+
+    if ($withJob || $jobAttributes !== []) {
+        $job = FulfillmentJob::factory()->create([
             'order_item_id' => $item->id,
             'status' => FulfillmentStatus::InProgress,
             'supplier' => Supplier::Fft,
@@ -57,7 +61,7 @@ function resendItem(bool $withJob = false, array $jobAttributes = []): array
         ]);
     }
 
-    return [$order, $item];
+    return [$order, $item, $job];
 }
 
 function outboxRow(Order $order, string $status, ?string $lastError = null): IntegrationEvent
@@ -171,10 +175,13 @@ it('refuses a second press while the first is in flight', function (): void {
     [$order, $item] = resendItem();
     outboxRow($order, 'processed');
 
-    // The per-item lock, held by something else. Refused rather than queued
+    // The lock a send takes, held by something else. Keyed on the ORDER,
+    // because the row a send re-opens is the order's single `order.paid`
+    // outbox row - two items of one order pressed together are one write, and
+    // a per-item lock would let both through. Refused rather than queued
     // (AGENTS.md Failures rule 5): a press that waited its turn and then sent
     // again is the double placement.
-    $lock = Cache::lock("fulfillment-resend:item:{$item->id}", 75);
+    $lock = Cache::lock("fulfillment-resend:order:{$order->id}", 75);
     expect($lock->get())->toBeTrue();
 
     resend(resendActor(), $item)
@@ -302,4 +309,54 @@ it('keeps every secret out of the audit metadata', function (): void {
             expect($encoded)->not->toContain($forbidden);
         }
     }
+});
+
+it('refuses a field nobody meant to send', function (): void {
+    [, $item] = resendItem();
+
+    resend(resendActor(), $item, ['supplier_order_id' => '574339'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['unexpected_fields']);
+});
+
+it('names the supplier actually holding the item in the audit trail', function (): void {
+    [, $item, $job] = resendItem(jobAttributes: [
+        // The mirror still says UTT funded the coins; the challenge is at FFT,
+        // and only the placement row knows it.
+        'supplier' => Supplier::Utt,
+        'supplier_order_id' => '881204',
+        'delivery_phase' => DeliveryPhase::Challenge,
+    ]);
+
+    FulfillmentPlacement::query()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_order_id' => '574402',
+        'supplier_challenge_ids' => ['0f8fad5b-d9cb-469f-a165-70867728950e'],
+        'idempotency_key' => 'fulfillment-placement:'.$item->public_id.':challenge',
+        'placed_at' => now()->subMinutes(30),
+    ]);
+
+    $job->forceFill(['allowed_actions' => ['resume']])->save();
+
+    resend(resendActor(), $item, ['action' => 'resume']);
+
+    $requested = StaffAuditLog::query()
+        ->where('action', 'fulfillment.resend_requested')
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($requested->metadata['supplier'] ?? null)->toBe('fft');
+});
+
+it('writes the requested row even for a press the row refuses', function (): void {
+    [, $item] = resendItem(itemAttributes: ['status' => OrderItemStatus::Cancelled]);
+
+    resend(resendActor(), $item, ['action' => 'send'])->assertStatus(409);
+
+    // The pair is the promise: a refusal with no request beside it reads, in
+    // the log, like the store refused something nobody asked for.
+    expect(StaffAuditLog::query()->where('action', 'fulfillment.resend_requested')->count())->toBe(1)
+        ->and(StaffAuditLog::query()->where('action', 'fulfillment.resend_refused')->count())->toBe(1);
 });

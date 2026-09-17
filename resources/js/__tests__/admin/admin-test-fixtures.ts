@@ -852,7 +852,6 @@ export const englishAdminUi: AdminTranslations = {
         searchButton: 'Search',
         clearSearch: 'Clear search',
         filters: 'Filters',
-        columnsButton: 'Columns',
         resetFilters: 'Reset filters',
         activeFilters: 'Active filters:',
         applyFilters: 'Apply',
@@ -976,6 +975,12 @@ export const englishAdminUi: AdminTranslations = {
             reasonLabel: 'Reason',
             reasonPlaceholder: 'Choose a reason',
             reasonRequired: 'Choose a reason before sending.',
+            sendUnrecorded:
+                'If a supplier was already asked for this item, check its dashboard first: a purchase it made but never reported to us cannot be seen from here, and sending again would buy the same coins twice.',
+            challengeLabel: 'Which solve',
+            challengePlaceholder: 'Choose the solve to retry',
+            challengeOption: 'Solve :number',
+            challengeRequired: 'Choose which solve to retry.',
             credentialNote:
                 'The request carries the customer’s EA account, decrypted for this send only and written to the secret access log.',
             cancel: 'Cancel',
@@ -999,6 +1004,9 @@ export const englishAdminUi: AdminTranslations = {
             busyTitle: 'Already running.',
             busyBody:
                 'This item is being sent right now. Nothing was sent twice.',
+            unknownTitle: 'No answer came back.',
+            unknownBody:
+                'The press may or may not have gone through. Reload the page, and check the supplier before pressing again.',
             staleTitle: 'Not sent.',
             staleBody:
                 'This item moved since the page loaded. Reload and look again.',
