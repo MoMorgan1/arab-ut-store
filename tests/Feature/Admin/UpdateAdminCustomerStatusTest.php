@@ -40,7 +40,6 @@ test('staff actors are forbidden from updating customer status', function (): vo
     $customer = createStatusTestCustomer(true);
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/customers/{$customer->public_id}/status", [
             'action' => 'suspend',
             'reason_code' => 'abuse',
@@ -67,7 +66,6 @@ test('confirmed admin can suspend customer, destroying sessions and writing audi
     }
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/status", [
             'action' => 'suspend',
             'reason_code' => 'fraud_suspected',
@@ -110,7 +108,6 @@ test('confirmed admin can reactivate customer and write audit log', function ():
     $customer = createStatusTestCustomer(false);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/status", [
             'action' => 'reactivate',
             'reason_code' => 'account_recovery',
@@ -145,7 +142,6 @@ test('stale mutation throws AdminCustomerStatusConflict with 409 json response',
 
     // Provide expected_active = false when DB is currently true
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/status", [
             'action' => 'reactivate',
             'reason_code' => 'customer_request',
@@ -167,7 +163,6 @@ test('status request rejects unknown fields and invalid parameters', function (
     $customer = createStatusTestCustomer(true);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->postJson("/admin/api/customers/{$customer->public_id}/status", $payload)
         ->assertStatus(422)
         ->assertJsonValidationErrors($expectedErrorField);

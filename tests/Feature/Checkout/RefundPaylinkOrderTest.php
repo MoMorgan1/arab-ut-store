@@ -267,7 +267,6 @@ test('the admin refund endpoint is authenticated, admin restricted, mfa gated, p
     $this->postJson($url, $payload)->assertUnauthorized();
     $this->actingAs($customer)->postJson($url, $payload)->assertForbidden();
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson($url, $payload)
         ->assertForbidden();
     $this->actingAs($unconfirmedMfaAdmin)->postJson($url, $payload)
@@ -294,7 +293,6 @@ test('the admin refund endpoint completes one provider verified refund', functio
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/orders/'.$order->order_number.'/refund', [
             'amountHalalah' => 1250,
             'reason' => 'Customer request.',

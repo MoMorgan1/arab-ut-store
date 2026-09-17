@@ -254,7 +254,6 @@ it('revokes every trusted device from settings and audits it', function (): void
     issueTrustedDevice($user);
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->deleteJson(route('admin.security.trusted-devices.destroy'))
         ->assertOk()
         ->assertJson(['revoked' => 2]);
@@ -274,7 +273,6 @@ it('revokes only the requesting account devices', function (): void {
     issueTrustedDevice($other);
 
     $this->actingAs($user)
-        ->withSession(['auth.password_confirmed_at' => time()])
         ->deleteJson(route('admin.security.trusted-devices.destroy'))
         ->assertOk();
 

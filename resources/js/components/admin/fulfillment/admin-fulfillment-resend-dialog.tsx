@@ -204,14 +204,11 @@ export default function AdminFulfillmentResendDialog({
                     // touches somebody's credentials even though they never
                     // see them.
                     //
-                    // It deliberately does NOT promise a password prompt.
-                    // `forms.md` asks for a recent-password confirmation on an
-                    // action like this, and the repository has the copy for one
-                    // (`passwordModalTitle` and friends, in both lang files)
-                    // but no component that renders it - not here, not on the
-                    // refund, not on a wallet adjustment. Writing the sentence
-                    // would have been the screen promising a gate that does not
-                    // exist.
+                    // No password prompt is promised, because there is none to
+                    // promise: the owner ruled recent-password confirmation out
+                    // on 2026-09-18 (`forms.md`, *Sensitive actions*). The
+                    // permission, this confirm step and the audit row are the
+                    // gate.
                     <div className="flex gap-2.5 rounded-md border border-status-warning/30 bg-status-warning/8 px-3 py-2.5 text-[13px] leading-relaxed text-foreground">
                         <KeyRound
                             aria-hidden="true"

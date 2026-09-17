@@ -11,7 +11,6 @@ test('Admin with confirmed MFA receives settings page with security and team pro
     $staff = createSettingsUser(UserRole::Staff, confirmed: false);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get('/admin/settings');
 
     $response->assertOk()
@@ -57,7 +56,6 @@ test('Staff actor receives security section but null team and servicePricing pro
     $staff = createSettingsUser(UserRole::Staff, confirmed: true);
 
     $response = $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->get('/admin/settings');
 
     $response->assertOk()

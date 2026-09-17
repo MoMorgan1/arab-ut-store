@@ -8,7 +8,6 @@ test('Admin actor can promote Staff member to Admin', function (): void {
     $staff = createStaffTestActor(UserRole::Staff);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff->public_id}/role", [
             'expected_role' => 'staff',
             'role' => 'admin',
@@ -40,7 +39,6 @@ test('Admin actor can demote Admin to Staff when multiple active Admins exist', 
     $admin2 = createStaffTestActor(UserRole::Admin);
 
     $response = $this->actingAs($admin1)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$admin2->public_id}/role", [
             'expected_role' => 'admin',
             'role' => 'staff',
@@ -56,7 +54,6 @@ test('Admin actor cannot demote the last active Admin account', function (): voi
     $otherAdmin->forceFill(['is_active' => false])->save();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$admin->public_id}/role", [
             'expected_role' => 'admin',
             'role' => 'staff',
@@ -69,7 +66,6 @@ test('Admin actor cannot modify their own role', function (): void {
     createStaffTestActor(UserRole::Admin); // second admin
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$admin->public_id}/role", [
             'expected_role' => 'admin',
             'role' => 'staff',
@@ -82,7 +78,6 @@ test('Staff actor cannot modify any role', function (): void {
     $staff2 = createStaffTestActor(UserRole::Staff);
 
     $this->actingAs($staff1)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff2->public_id}/role", [
             'expected_role' => 'staff',
             'role' => 'admin',
@@ -95,7 +90,6 @@ test('stale expected_role returns 409 conflict JSON', function (): void {
     $target = createStaffTestActor(UserRole::Staff);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$target->public_id}/role", [
             'expected_role' => 'admin', // Stale! Current role is staff
             'role' => 'admin',
@@ -113,7 +107,6 @@ test('unknown extra payload fields are rejected with validation error', function
     $staff = createStaffTestActor(UserRole::Staff);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff->public_id}/role", [
             'expected_role' => 'staff',
             'role' => 'admin',

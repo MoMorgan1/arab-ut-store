@@ -13,7 +13,6 @@ test('an Admin can grant Staff access to an existing customer account', function
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => 'FUTURE.STAFF@example.test',
             'role' => 'staff',
@@ -36,7 +35,6 @@ test('granting never creates an account or touches a password', function (): voi
     $countBefore = User::query()->count();
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => 'nobody@example.test',
             'role' => 'admin',
@@ -55,7 +53,6 @@ test('a service account cannot be promoted and is not distinguishable from a mis
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => 'automation@example.test',
             'role' => 'admin',
@@ -70,7 +67,6 @@ test('an Admin cannot grant a role to themselves', function (): void {
     $admin = createStaffTestActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => (string) $admin->email,
             'role' => 'staff',
@@ -86,7 +82,6 @@ test('granting a role the account already holds is refused', function (): void {
     $staff = createStaffTestActor(UserRole::Staff);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => (string) $staff->email,
             'role' => 'staff',
@@ -104,7 +99,6 @@ test('a deactivated account must be reactivated before it can be promoted', func
     ]);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => 'suspended@example.test',
             'role' => 'staff',
@@ -129,7 +123,6 @@ test('Staff actors and guests cannot grant access', function (): void {
     $staff = createStaffTestActor(UserRole::Staff);
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', [
             'email' => 'target@example.test',
             'role' => 'staff',
@@ -143,7 +136,6 @@ test('unknown fields and bad roles are rejected', function (array $payload, stri
     $admin = createStaffTestActor(UserRole::Admin);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/team/grants', array_merge([
             'email' => 'someone@example.test',
             'role' => 'staff',

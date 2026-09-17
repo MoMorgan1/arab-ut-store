@@ -21,7 +21,6 @@ test('Admin actor can deactivate an active staff member and terminates their ses
     ]);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff->public_id}/status", [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -55,7 +54,6 @@ test('Admin actor can reactivate an inactive staff member', function (): void {
     $staff->forceFill(['is_active' => false])->save();
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff->public_id}/status", [
             'action' => 'activate',
             'expected_active' => false,
@@ -80,7 +78,6 @@ test('Admin actor cannot deactivate their own account', function (): void {
     createStatusTestActor(UserRole::Admin); // second admin
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$admin->public_id}/status", [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -95,7 +92,6 @@ test('Admin actor cannot deactivate the last active Admin account', function ():
 
     // Trying to deactivate $admin (which is the last active admin) via an attempt
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$admin->public_id}/status", [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -108,7 +104,6 @@ test('Staff actor cannot modify staff status', function (): void {
     $staff2 = createStatusTestActor(UserRole::Staff);
 
     $this->actingAs($staff1)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff2->public_id}/status", [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -121,7 +116,6 @@ test('stale expected_active returns 409 conflict JSON', function (): void {
     $staff = createStatusTestActor(UserRole::Staff);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff->public_id}/status", [
             'action' => 'deactivate',
             'expected_active' => false, // Stale! Staff is currently active (true)
@@ -139,7 +133,6 @@ test('unknown extra payload fields are rejected with validation error', function
     $staff = createStatusTestActor(UserRole::Staff);
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson("/admin/api/team/{$staff->public_id}/status", [
             'action' => 'deactivate',
             'expected_active' => true,

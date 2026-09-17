@@ -74,7 +74,6 @@ test('Admin updates FUT Champions ranks; version increments by 1; config round-t
     ];
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions', [
             'expected_version' => $initialVersion,
             'configuration' => $newConfig,
@@ -127,7 +126,6 @@ test('Admin updates Rivals steps; version increments by 1; config round-trips; a
     ];
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/rivals', [
             'expected_version' => $initialVersion,
             'configuration' => $newConfig,
@@ -170,7 +168,6 @@ test('stale expected_version returns 409 and leaves row untouched in database', 
     $staleVersion = $currentVersion + 5; // Stale!
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions', [
             'expected_version' => $staleVersion,
             'configuration' => [
@@ -207,7 +204,6 @@ test('configuration missing a rank, carrying an extra key, or containing zero/ne
     $currentVersion = (int) $schedule->version;
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions', [
             'expected_version' => $currentVersion,
             'configuration' => $invalidConfig,
@@ -318,12 +314,10 @@ test('Staff user, inactive admin, and ServiceAccount are refused', function (): 
         ->assertForbidden();
 
     $this->actingAs($staff)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions', $validPayload)
         ->assertForbidden();
 
     $this->actingAs($inactiveAdmin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions', $validPayload)
         ->assertForbidden();
 });
@@ -338,7 +332,6 @@ test('toggling is_active off makes ReadManualServicePricing throw and toggling b
 
     // Toggle is_active off (deactivate)
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions/status', [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -363,7 +356,6 @@ test('toggling is_active off makes ReadManualServicePricing throw and toggling b
 
     // Toggle is_active back on (activate)
     $restoreResponse = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/fut_champions/status', [
             'action' => 'activate',
             'expected_active' => false,
@@ -391,7 +383,6 @@ test('unknown service type is a validation error, not a 500', function (): void 
     $admin = createPricingTestAdmin(UserRole::Admin);
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/unknown_service', [
             'expected_version' => 1,
             'configuration' => ['foo' => 'bar'],
@@ -401,7 +392,6 @@ test('unknown service type is a validation error, not a 500', function (): void 
         ->assertJsonValidationErrors(['service_type']);
 
     $statusResponse = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/unknown_service/status', [
             'action' => 'deactivate',
             'expected_active' => true,
@@ -444,7 +434,6 @@ test('Admin edits the Coins quantity bands and the storefront follows without a 
     ];
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => $initialVersion,
             'configuration' => $newConfig,
@@ -478,7 +467,6 @@ test('Admin turns the Coins balance requirement on and off and the storefront fo
     ];
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => (int) $schedule->version,
             'configuration' => $configuration,
@@ -490,7 +478,6 @@ test('Admin turns the Coins balance requirement on and off and the storefront fo
     $configuration['requiresCurrentBalance'] = false;
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => (int) $schedule->version + 1,
             'configuration' => $configuration,
@@ -506,7 +493,6 @@ test('Admin cannot save Coins bands the storefront could not price', function (a
     $before = (array) $schedule->configuration;
 
     $response = $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => (int) $schedule->version,
             'configuration' => $configuration,
@@ -546,7 +532,6 @@ test('a stray field in the Coins configuration is refused, not quietly stored', 
     $before = (array) $schedule->configuration;
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => (int) $schedule->version,
             'configuration' => $configuration,
@@ -581,7 +566,6 @@ test('an edit that touches only a newly editable field is still saved', function
     $initialVersion = (int) $schedule->version;
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/'.$serviceType->value, [
             'expected_version' => $initialVersion,
             'configuration' => $configuration,
@@ -638,7 +622,6 @@ test('Coins bands that skip a platform ceiling are refused', function (): void {
     $before = (array) $schedule->configuration;
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => (int) $schedule->version,
             'configuration' => [
@@ -667,7 +650,6 @@ test('Coins bands too fine to price ahead of time are refused', function (): voi
     $before = (array) $schedule->configuration;
 
     $this->actingAs($admin)
-        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->postJson('/admin/api/settings/service-pricing/coins', [
             'expected_version' => (int) $schedule->version,
             'configuration' => [

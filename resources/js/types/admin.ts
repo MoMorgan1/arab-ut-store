@@ -289,10 +289,6 @@ export type AdminTranslations = {
             rateLimitedGeneric: string;
             genericError: string;
             networkError: string;
-            passwordModalTitle: string;
-            passwordModalDescription: string;
-            passwordLabel: string;
-            passwordPlaceholder: string;
             confirmPasswordButton: string;
             confirmingPassword: string;
             invalidPassword: string;
@@ -661,10 +657,6 @@ export type AdminTranslations = {
             | 'other_reviewed',
             string
         >;
-        passwordModalTitle: string;
-        passwordModalDescription: string;
-        passwordLabel: string;
-        passwordPlaceholder: string;
         confirmPasswordButton: string;
         confirmingPassword: string;
         invalidPassword: string;
@@ -1018,10 +1010,6 @@ export type AdminTranslations = {
             conflictError: string;
             validationError: string;
         };
-        passwordModalTitle: string;
-        passwordModalDescription: string;
-        passwordLabel: string;
-        passwordPlaceholder: string;
         confirmPasswordButton: string;
         confirmingPassword: string;
         invalidPassword: string;
@@ -1174,10 +1162,6 @@ export type AdminTranslations = {
             conflictError: string;
             validationError: string;
         };
-        passwordModalTitle: string;
-        passwordModalDescription: string;
-        passwordLabel: string;
-        passwordPlaceholder: string;
         confirmPasswordButton: string;
         confirmingPassword: string;
         invalidPassword: string;
@@ -1307,10 +1291,6 @@ export type AdminTranslations = {
         noVariants: string;
         notEditableError: string;
         outcome: string;
-        passwordLabel: string;
-        passwordModalDescription: string;
-        passwordModalTitle: string;
-        passwordPlaceholder: string;
         path: string;
         platform: string;
         price: string;
@@ -1557,10 +1537,6 @@ export type AdminTranslations = {
             cancelButton: string;
             successMessage: string;
             updateFailed: string;
-            passwordModalTitle: string;
-            passwordModalDescription: string;
-            passwordLabel: string;
-            passwordPlaceholder: string;
             confirmPasswordButton: string;
             confirmingPassword: string;
             invalidPassword: string;
@@ -1572,10 +1548,6 @@ export type AdminTranslations = {
     };
     categories: {
         invalidPassword: string;
-        passwordLabel: string;
-        passwordModalDescription: string;
-        passwordModalTitle: string;
-        passwordPlaceholder: string;
         actions: string;
         activeFilters: string;
         allSources: string;

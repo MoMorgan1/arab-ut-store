@@ -9,9 +9,17 @@
 
 ## Sensitive actions
 
-- Require recent password confirmation for credential reveal, refund, wallet
-  adjustment, customer activation, staff/role changes, catalog/pricing changes,
-  and settings changes.
+- **No recent-password confirmation on an admin action.** Owner decision,
+  2026-09-18: it is not wanted for credential reveal, refund, wallet
+  adjustment, customer activation, staff or role changes, catalog and pricing
+  changes, settings, or a supplier re-send. What gates those is the permission
+  the actor holds, two-factor at sign in, a confirm step that names the record
+  and the consequence, and the audit row. Do not ask for a password, and do not
+  write copy promising one.
+- The one exception is not ours: Fortify guards its own two-factor endpoints
+  with `password.confirm` and answers 423 when the confirmation has lapsed.
+  Changing two-factor therefore still asks for a password, and
+  `/admin/security/confirm-password` is the link that lets an operator give it.
 - Credential reveal requires a purpose and confirmation but never echoes secret
   input in errors.
 - Destructive confirmations name the record and consequence. Buttons say the
