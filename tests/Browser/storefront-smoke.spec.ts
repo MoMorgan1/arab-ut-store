@@ -853,7 +853,7 @@ test('authenticated Admin overview and orders are operable across required width
                     // The sidebar lists every destination (including inline group children,
                     // Reviews, FAQ, and Pages under Marketing since 2026-09);
                     // the tab bar caps at its five primary ones.
-                    await expect(sidebar.getByRole('link')).toHaveCount(13);
+                    await expect(sidebar.getByRole('link')).toHaveCount(14);
                     await expect(
                         sidebar.getByRole('link', { name: locale.overview }),
                     ).toHaveAttribute('aria-current', 'page');
@@ -1182,9 +1182,11 @@ test('authenticated Admin more page renders permission-filtered tiles, meets min
         const tiles = page.locator(
             'article a[href^="/admin"], article a[href^="/en/admin"]',
         );
-        await expect(tiles).toHaveCount(6);
+        // Seven since the fulfillment queue joined the system group: on a
+        // phone this tile is the only way to reach it.
+        await expect(tiles).toHaveCount(7);
 
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 7; i++) {
             await expectMinimumTouchTarget(tiles.nth(i));
         }
 

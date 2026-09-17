@@ -3058,6 +3058,7 @@ export type AdminCategoriesQueryState = {
 
 export type AdminMoreTile = {
     key:
+        | 'fulfillment'
         | 'conversations'
         | 'categories'
         | 'coupons'

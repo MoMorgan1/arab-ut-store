@@ -67,6 +67,12 @@ const sampleGroups: AdminMoreGroup[] = [
         label: 'Support & System',
         tiles: [
             {
+                key: 'fulfillment',
+                label: 'Fulfillment',
+                description: 'Paid items a supplier still owes.',
+                url: '/en/admin/fulfillment',
+            },
+            {
                 key: 'conversations',
                 label: 'Conversations',
                 description: 'Review customer support conversations.',
@@ -111,7 +117,23 @@ describe('AdminMorePage', () => {
         vi.clearAllMocks();
     });
 
-    it('renders all section headings and all six navigation tiles with descriptions', () => {
+    it('draws a tile for every key the server can send', () => {
+        render(<AdminMorePage />);
+
+        // One assertion per tile because a key with no icon behind it renders
+        // `undefined` as a component and takes the whole page down - which is
+        // how the fulfillment tile shipped a blank /admin/more once. The type
+        // cannot catch it: the keys arrive from the server as data.
+        for (const group of sampleGroups) {
+            for (const tile of group.tiles) {
+                expect(
+                    screen.getByRole('link', { name: new RegExp(tile.label) }),
+                ).toHaveAttribute('href', tile.url);
+            }
+        }
+    });
+
+    it('renders all section headings and every navigation tile with its description', () => {
         render(<AdminMorePage />);
 
         expect(
@@ -129,9 +151,13 @@ describe('AdminMorePage', () => {
             screen.getByRole('heading', { level: 2, name: 'Support & System' }),
         ).toBeVisible();
 
-        // 6 tiles as links
+        // Every tile is a link, and nothing else on the page is.
         const links = screen.getAllByRole('link');
-        expect(links).toHaveLength(6);
+        expect(links).toHaveLength(7);
+
+        expect(
+            screen.getByRole('link', { name: /Fulfillment/i }),
+        ).toHaveAttribute('href', '/en/admin/fulfillment');
 
         expect(
             screen.getByRole('link', { name: /Categories/i }),
