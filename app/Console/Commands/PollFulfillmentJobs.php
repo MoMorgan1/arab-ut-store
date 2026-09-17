@@ -7,6 +7,7 @@ use App\Actions\Fulfillment\ObserveFulfillmentJob;
 use App\Enums\FulfillmentStatus;
 use App\Enums\ObservationResult;
 use App\Enums\OrderStatus;
+use App\Enums\PollBand;
 use App\Models\FulfillmentJob;
 use App\Models\OrderItem;
 use App\Suppliers\Exceptions\SupplierNotConfigured;
@@ -384,20 +385,7 @@ final class PollFulfillmentJobs extends Command
 
     private function bandCadence(FulfillmentJob $job): int
     {
-        return $this->isAttention($job)
-            ? $this->attentionCadenceSeconds()
-            : $this->backgroundCadenceSeconds();
-    }
-
-    private function isAttention(FulfillmentJob $job): bool
-    {
-        $lastViewed = $job->last_viewed_at;
-
-        if (! $lastViewed instanceof CarbonImmutable) {
-            return false;
-        }
-
-        return $lastViewed->greaterThanOrEqualTo(CarbonImmutable::now()->subSeconds($this->attentionWindowSeconds()));
+        return PollBand::for($job->last_viewed_at)->cadenceSeconds();
     }
 
     private function isTerminal(FulfillmentJob $job): bool
@@ -486,17 +474,7 @@ final class PollFulfillmentJobs extends Command
 
     private function attentionWindowSeconds(): int
     {
-        return max(1, (int) config('services.suppliers.poll.attention_window_seconds', 180));
-    }
-
-    private function attentionCadenceSeconds(): int
-    {
-        return max(1, (int) config('services.suppliers.poll.attention_cadence_seconds', 25));
-    }
-
-    private function backgroundCadenceSeconds(): int
-    {
-        return max(1, (int) config('services.suppliers.poll.background_cadence_seconds', 180));
+        return PollBand::windowSeconds();
     }
 
     private function backoffCeiling(): int

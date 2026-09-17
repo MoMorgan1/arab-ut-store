@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Fulfillment\AlertOwnerOfFulfillmentSilence;
 use App\Actions\Fulfillment\SweepFulfillmentAlarms;
 use App\Enums\DeliveryPhase;
 use App\Enums\FulfillmentAlarmKind;
@@ -10,6 +11,10 @@ use App\Models\FulfillmentAlarm;
 use App\Models\FulfillmentJob;
 use App\Models\FulfillmentPlacement;
 use App\Models\Order;
+use App\Notifications\FulfillmentSilenceAlert;
+use App\Suppliers\SupplierGuard;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 
 /** @return array{raised: int, resolved: int, open: int} */
 function sweepForStalls(): array
@@ -35,6 +40,10 @@ function placedJobLastRead(?int $minutesAgo, array $attributes = [], string $ord
         'delivery_phase' => DeliveryPhase::Coins,
         'observed_state' => 'entered',
         'observed_at' => $minutesAgo === null ? null : now()->subMinutes($minutesAgo),
+        // Due. A job whose next poll is still ahead of it is waiting its turn,
+        // not being neglected, and the sweep says so - so a fixture that left
+        // the factory's future next_poll_at in place would test nothing.
+        'next_poll_at' => now()->subMinute(),
     ], $attributes));
 }
 
@@ -62,9 +71,15 @@ function cadenceOverrides(array $byPhase): void
 }
 
 beforeEach(function (): void {
+    // The array cache carries a circuit opened by one test into the next.
+    Cache::flush();
+
     // The shipped configuration, stated rather than assumed: a sixty-minute
     // fallback and no measured per-phase number yet.
-    config()->set('services.suppliers.alarm.stalled_fallback_minutes', 60);
+    config()->set('services.suppliers.alarm.stalled_fallback_minutes', [
+        'attention' => 30,
+        'background' => 60,
+    ]);
     config()->set('services.suppliers.alarm.stalled_after_minutes', []);
 });
 
@@ -107,8 +122,8 @@ test('a per-phase number overrides the fallback in both directions', function (i
 ]);
 
 test('a fallback that is not a positive number watches nothing at all', function (mixed $value) {
-    config()->set('services.suppliers.alarm.stalled_fallback_minutes', $value);
-    placedJobLastRead(30 * 24 * 60);
+    config()->set('services.suppliers.alarm.stalled_fallback_minutes', ['attention' => $value, 'background' => $value]);
+    placedJobLastRead(90);
 
     expect(sweepForStalls()['raised'])->toBe(0);
     expect(FulfillmentAlarm::query()->count())->toBe(0);
@@ -122,7 +137,7 @@ test('a fallback that is not a positive number watches nothing at all', function
 
 test('a per-phase entry that is not a positive number switches that phase off', function (mixed $value) {
     cadenceOverrides(['coins' => $value]);
-    placedJobLastRead(30 * 24 * 60);
+    placedJobLastRead(90);
 
     expect(sweepForStalls()['raised'])->toBe(0);
 })->with([
@@ -131,11 +146,97 @@ test('a per-phase entry that is not a positive number switches that phase off', 
     'a word where a number belongs' => ['soon'],
 ]);
 
+test('a fallback that is not a table watches nothing at all', function () {
+    config()->set('services.suppliers.alarm.stalled_fallback_minutes', 60);
+    placedJobLastRead(90);
+
+    expect(sweepForStalls()['raised'])->toBe(0);
+});
+
 test('a table that is not a table leaves every phase on the fallback', function () {
     config()->set('services.suppliers.alarm.stalled_after_minutes', null);
     placedJobLastRead(90);
 
     expect(sweepForStalls()['raised'])->toBe(1);
+});
+
+test('the band decides the threshold, not the phase alone', function (bool $watched, int $readMinutesAgo, int $expected) {
+    // Thirty minutes on the attention cadence is seventy-two missed reads;
+    // sixty on the background one is twenty. One number cannot serve both.
+    placedJobLastRead($readMinutesAgo, [
+        'last_viewed_at' => $watched ? now()->subSeconds(60) : null,
+    ]);
+
+    expect(sweepForStalls()['raised'])->toBe($expected);
+    if ($expected === 1) {
+        expect(FulfillmentAlarm::query()->sole()->context['band'] ?? null)
+            ->toBe($watched ? 'attention' : 'background');
+    }
+})->with([
+    'watched, past the attention threshold' => [true, 40, 1],
+    'watched, inside the attention threshold' => [true, 20, 0],
+    'unwatched, past the attention threshold but inside its own' => [false, 40, 0],
+    'unwatched, past its own threshold' => [false, 90, 1],
+]);
+
+test('a job the poller is deliberately not asking about yet is not stalled', function (callable $arrange) {
+    // deferForCircuit pushes next_poll_at into the future without touching the
+    // failure counter, so a rate-limited supplier would otherwise raise a stall
+    // that can never hand over to the silence alarm - and an operator would go
+    // looking at a supplier that is behaving.
+    $job = placedJobLastRead(90);
+    $arrange($job);
+
+    expect(sweepForStalls()['raised'])->toBe(0);
+})->with([
+    'one deferred behind a circuit cooldown' => [
+        fn (FulfillmentJob $job) => $job->forceFill(['next_poll_at' => now()->addMinute()])->save(),
+    ],
+    'one another tick is reading right now' => [
+        fn (FulfillmentJob $job) => $job->forceFill(['leased_until' => now()->addSeconds(30)])->save(),
+    ],
+]);
+
+test('a stall behind an open circuit says so rather than blaming the supplier', function () {
+    $job = placedJobLastRead(90, ['supplier' => Supplier::Fft, 'supplier_order_id' => 'FFT-CIRCUIT']);
+
+    // A supplier telling us to back off opens the circuit immediately.
+    app(SupplierGuard::class)->recordFailure($job->supplier, '30');
+
+    expect(sweepForStalls()['raised'])->toBe(1);
+    expect(FulfillmentAlarm::query()->sole()->context['circuit_open'] ?? null)->toBeTrue();
+});
+
+test('a quiet supplier is not reported as a stopped one', function () {
+    placedJobLastRead(90);
+
+    expect(sweepForStalls()['raised'])->toBe(1);
+    expect(FulfillmentAlarm::query()->sole()->context['circuit_open'] ?? null)->toBeFalse();
+});
+
+test('the first sweep after a deploy does not open an alarm for everything ancient', function () {
+    // The alarm starts watching when it ships. Without the window, the store's
+    // whole back catalogue of quiet jobs arrives in one mail.
+    config()->set('services.suppliers.alarm.raise_window_hours', 48);
+
+    placedJobLastRead(90, [], 'AUT-STALL-RECENT');
+    placedJobLastRead(72 * 60, [], 'AUT-STALL-ANCIENT');
+
+    expect(sweepForStalls())->toMatchArray(['raised' => 1, 'open' => 1]);
+    expect(FulfillmentAlarm::query()->sole()->context['order_number'] ?? null)->toBe('AUT-STALL-RECENT');
+});
+
+test('an alarm already open stays open however old the silence gets', function () {
+    config()->set('services.suppliers.alarm.raise_window_hours', 48);
+    $job = placedJobLastRead(90);
+
+    expect(sweepForStalls()['raised'])->toBe(1);
+
+    // Four days later it is far outside the window that was allowed to open
+    // it. Resolution reads the unwindowed set, so it must still be open.
+    $job->fresh()->forceFill(['observed_at' => now()->subDays(5)])->save();
+
+    expect(sweepForStalls())->toMatchArray(['raised' => 0, 'resolved' => 0, 'open' => 1]);
 });
 
 test('a job past its threshold raises once and not again', function () {
@@ -301,6 +402,33 @@ test('a stalled job hands over to the silent alarm at the failure count, and tak
 
     expect(sweepForStalls())->toMatchArray(['raised' => 0, 'resolved' => 1, 'open' => 0]);
     expect(openAlarmKinds())->toBe([]);
+});
+
+test('the mail carries the numbers that make a stall triageable', function () {
+    config()->set('store.order_alerts.email', 'owner@example.test');
+    Notification::fake();
+
+    placedJobLastRead(90, ['delivery_phase' => DeliveryPhase::Challenge]);
+    sweepForStalls();
+
+    expect(app(AlertOwnerOfFulfillmentSilence::class)->execute())->toBe(1);
+
+    Notification::assertSentOnDemand(
+        FulfillmentSilenceAlert::class,
+        function (FulfillmentSilenceAlert $notification): bool {
+            $detail = $notification->rows[0]['detail'] ?? '';
+
+            // How long, which phase, which supplier. Without the first of
+            // those the owner reads "no new reading for a while" and has to go
+            // and find out the one number the sweep already knew.
+            expect($notification->rows[0]['kind'] ?? null)->toBe('stalled')
+                ->and($detail)->toContain('90')
+                ->and($detail)->toContain('challenge')
+                ->and($detail)->toContain('utt');
+
+            return true;
+        },
+    );
 });
 
 test('a job at the failure count is the silent alarm alone, never both', function () {

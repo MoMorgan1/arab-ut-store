@@ -13,8 +13,21 @@ use RuntimeException;
  *
  * The poller writes one row per landed observation for the life of an order,
  * so this table is the only one in the fulfillment set that grows with time
- * rather than with sales. Left alone it would outgrow everything around it,
- * and every byte of that growth rides into every backup.
+ * rather than with sales - and it grows per job, so the bill is the aggregate
+ * and not the one job it is easy to reason about. A job nobody is watching
+ * writes about 480 rows a day on the three-minute cadence; a job whose order
+ * page is open writes about 3,456 on the twenty-five-second one, which at
+ * launch is most of them. A thousand concurrent background jobs is therefore
+ * around 6.7 million rows inside the fortnight, and an attention-heavy day is
+ * several times that.
+ *
+ * Two consequences this has to hold up under. The window only holds if a
+ * single nightly run clears a whole day's writes - roughly 480,000 rows at
+ * that scale - so the loop below is deliberately unbounded: it runs until
+ * nothing older than the cutoff is left, because a prune that gives up early
+ * leaves a table that grows forever by a little every night. And the chunk is
+ * a thousand rather than a handful, because five hundred chunks of a hundred
+ * is five hundred transactions to do one night's work.
  *
  * Nothing depends on an old row surviving. The table is a sample to take
  * percentiles from, and a percentile taken over the last fortnight describes
@@ -25,7 +38,7 @@ use RuntimeException;
  */
 final class PruneObservationGaps
 {
-    private const CHUNK_SIZE = 500;
+    private const CHUNK_SIZE = 1000;
 
     public function execute(): int
     {

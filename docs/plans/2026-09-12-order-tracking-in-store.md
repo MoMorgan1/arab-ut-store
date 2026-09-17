@@ -13,10 +13,11 @@ found twenty-five issues in the first draft; approved and dispatched since.
 coming back empty, are both said out loud - with the wait graded by why the item is stuck. Its
 `Stale` alarm was dropped: D3b owns that concept under the name `Stalled`.
 
-**D3b is built and armed on an interim threshold** - one global 60 minutes, because nothing had
-measured a per-phase observation gap. The measuring now exists (`fulfillment_observation_gaps`,
-owner decision 2026-09-17: persist it, do not log it); the per-phase table stays empty until it
-has something to be written from. See the D3b section below.
+**D3b is built and armed on interim per-band thresholds** - 30 minutes on the attention cadence,
+60 on the background one, because nothing had measured a per-phase observation gap. The measuring
+now exists (`fulfillment_observation_gaps`, owner decision 2026-09-17: persist it, do not log it);
+the per-phase table stays empty until it has something to be written from. See the D3b section
+below.
 
 **G2's repository half is done** (2026-09-17): every reference in the store that sent a customer or
 a reader to `track.arab-ut.com` now names the in-store page, and the cutover procedure is written
@@ -934,10 +935,14 @@ Three findings, checked against production:
 So D3b ships as a `stalled` alarm kind alongside B6's `unplaced` and `silent`, with **an interim
 threshold and no measured one**. Two settings, and the difference between them is the design:
 
-- `services.suppliers.alarm.stalled_fallback_minutes` (**60**) is what a phase nobody has measured
-  uses, so detection works from the day it deploys. Sixty minutes is six times the poller's worst
-  healthy gap - the ten-minute backoff ceiling plus a minute of circuit cooldown. That is interim
-  reasoning, not a measurement, and it came from the E2 branch, which had independently built the
+- `services.suppliers.alarm.stalled_fallback_minutes` is what a phase nobody has measured uses, so
+  detection works from the day it deploys. It is **per band** - attention **30**, background **60**
+  - because the bands differ by more than seven times and one number cannot serve both: an hour is
+  twenty missed reads on the background cadence and a hundred and forty on the attention one. Both
+  are floors derived from the poller rather than measurements: a job below the silence alarm's
+  failure count can be legitimately quiet for the sum of five backoffs plus jitter, about 23 minutes
+  on the attention cadence and 50 on the background one, and a threshold under that fires on a job
+  that is merely backing off. The idea came from the E2 branch, which had independently built the
   same alarm under the name `Stale`; E2 dropped its version and kept the placement-reason work.
 - `services.suppliers.alarm.stalled_after_minutes` is the per-phase table that replaces it, and is
   **empty**. A phase named in it with a null is deliberately not watched; a phase absent from it
@@ -949,6 +954,35 @@ advancing `observed_at` - so the boundary is exclusive at `silent_after_failures
 `stalled` owns the item, at or above it `silent` does, and crossing it resolves one as the other
 opens. An item under both would be counted twice on the panel and described two ways in one mail.
 
+**It has a raise window**, the same 48 hours `unplaced` has and for the same reason: the alarm
+starts watching when it ships, and without the bound the first sweep after a deploy opens one for
+every job quiet since before anybody was measuring and mails the lot. Resolution still reads the
+unwindowed set, so an alarm already open stays open however old the silence gets.
+
+**It says which of two true sentences it is.** A job whose `next_poll_at` is in the future is
+waiting its turn - `deferForCircuit` puts it there when a supplier is rate-limited, and ordinary
+backoff does the same - so the sweep requires the job to be due and unleased, mirroring the
+poller's own selection. When the supplier's circuit is open anyway the context carries
+`circuit_open` and the mail says so, because sending an operator after a supplier that is
+answering fine is worse than not mailing.
+
+**What it does not catch: a dead scheduler cron.** The sweep and the mail run on that same cron, so
+when it dies they die with it. That one belongs to `ReadQueueHealth`, which reads the queue tables
+from inside a web request. What it does catch is a `next_poll_at` a bug pushed into next year,
+selection drift, a backlog whose tail never gets read inside the tick's deadline, a circuit that
+opens faster than it closes, and a supplier answering every read with a status the translator
+cannot use.
+
+**An unreadable answer no longer counts as a reading.** `translateChallenge` returns
+`supported: false` on a challenge id collision, on an answer naming none of our ids, and on a
+status it does not recognise - and `ObserveFulfillmentJob` reports all three as `Observed`, because
+the HTTP call succeeded. `persistJobObservation` used to stamp `observed_at` for them anyway, which
+meant a supplier answering with an unrecognised status every three minutes kept a job looking
+freshly read forever: no `stalled`, no `silent` either (the failure counter never moves on a
+successful read), and a gap row per poll asserting a healthy cadence for a job nobody could read.
+An unsupported observation now advances neither `observed_at` nor `observed_state` and records no
+gap, which is what the comment in that file already said should happen.
+
 **Owner decision, 2026-09-17: persist the gap, do not raise the log level.** The numbers are to be
 queryable. A log line is not something anyone takes a percentile of in a month's time, and raising
 the level would have bought a wall of `info` on a box that keeps fourteen log files.
@@ -959,7 +993,12 @@ value exists, because the line after it overwrites `observed_at` and destroys th
 previous reading happened. The row carries `fulfillment_job_id`, the `delivery_phase` and
 `supplier` the gap was measured in (copied, not joined: a job moves from `coins` to `challenge`
 while it runs, and joining a month later would file every coins gap under challenge),
-`gap_seconds`, `state_changed`, and `observed_at`.
+`gap_seconds`, `moved`, `observed_at`, the `band` the poller would have read it on, the
+`poll_failure_count` at the time, and the three progress counters behind `moved`. No `public_id`:
+nothing outside the database ever names one of these rows, and a unique ULID index would be a write
+per insert for an identifier with no reader. The job reference is `nullOnDelete`, not a cascade -
+the measurement outlives its subject, because losing a fortnight of baseline when the jobs behind
+it are tidied up is how the table stops answering the question it exists for.
 
 **The supplier is the one that answered, not the one on the job.** `RecordSupplierPlacement` keeps
 the first placement's supplier on the job row on purpose, while a challenge read goes to the
@@ -968,25 +1007,45 @@ every FFT reading under UTT and the report's supplier filter would lie. The read
 supplier it actually called down to the recorder rather than a second copy of that rule being
 derived here.
 
-Four things it deliberately does not record. A job's **first** observation, which has nothing to
+Five things it deliberately does not record. A job's **first** observation, which has nothing to
 measure from - a zero there would drag every distribution below the truth. A **failed** read, which
 never reaches the reconciler at all, because a gap is time between two readings and there is no
 second reading. An observation **older** than the one already stored, which the reconciler
-discards. And a reading **replayed after its own commit**, which carries the same `fetchedAt` and
+discards. A reading **replayed after its own commit**, which carries the same `fetchedAt` and
 so is neither newer nor older: equal is no gap, not a gap of zero, and rollback protection does not
-cover it because the first write committed.
+cover it because the first write committed. And an observation of a **terminal order**, which is
+still read once or twice on its way out - those intervals describe an order being closed rather
+than one being worked.
 
-`state_changed` marks whether a reading was news. It does **not** measure how long a job sat in a
-state: a job polled every three minutes that finally moves after two hours contributes a
-three-minute row, not a two-hour one. Time-in-state needs a table of transitions, and this is not
-it.
+**The measurement is written after the transaction commits, and cannot fail the write it measures.**
+`ApplySupplierObservation` holds `lockForUpdate` on the order, every one of its items and the job,
+and carries the status moves, the cashback accrual and the challenge-solve enqueue. An INSERT
+failing inside that - a deadlock, a full disk - would roll all of it back and retry, so a
+customer's order would not advance because a measurement of that order could not be written down.
+So the recorder is split: `measure()` runs under the lock and touches no database, `record()` runs
+after the commit and swallows every `Throwable` with an error log. That catch is the one in this
+codebase that is deliberate rather than lazy - the ways an INSERT can fail are an open set and the
+right answer to all of them is the same, and without it the throw would escape into the poller,
+which turns any `Throwable` into a failed read and would walk the job into the silence alarm.
 
-**Retention: 14 days**, `services.suppliers.poll.gap_retention_days`, pruned in chunks nightly at
-03:30 by `fulfillment:prune-observation-gaps` - the same shape as `pricing-history:prune`, for the
-same reason. This is the only table in the fulfillment set that grows with time rather than with
-sales: one open job on the background cadence writes about 480 rows a day. Two weeks is twice the
-"week of numbers" this section asked for, and a percentile over the last fortnight describes the
-suppliers we deal with now rather than a season that has ended.
+`moved` marks whether a reading was news - a different state string **or** a progress counter that
+advanced, because a shipment that delivered another fifty thousand coins under an unchanged status
+told us something and string inequality alone would file it as silence. The counters behind that
+verdict are stored so the definition can change later without the history becoming unreadable. It
+does **not** measure how long a job sat in a state: a job polled every three minutes that finally
+moves after two hours contributes a three-minute row, not a two-hour one. Time-in-state needs a
+table of transitions, and this is not it.
+
+**Retention: 14 days**, `services.suppliers.poll.gap_retention_days`, pruned in chunks of a
+thousand nightly at 03:30 by `fulfillment:prune-observation-gaps` - the same shape as
+`pricing-history:prune`, for the same reason. This is the only table in the fulfillment set that
+grows with time rather than with sales, and the bill is the aggregate rather than the one job it is
+easy to reason about: about 480 rows a day for a background job, about 3,456 for one a customer is
+watching, so a thousand concurrent background jobs is roughly 6.7M rows inside the fortnight. The
+window only holds if one nightly run clears a whole day's writes, so the prune loop is deliberately
+unbounded - one that gives up early leaves a table that grows a little every night forever. Two
+weeks is twice the "week of numbers" this section asked for, and a percentile over the last
+fortnight describes the suppliers we deal with now rather than a season that has ended.
 
 **The query**, read-only, safe against production:
 
@@ -995,11 +1054,14 @@ ssh arabut-prod "cd /home/u372356793/domains/store.arab-ut.com/current \
     && php artisan fulfillment:observation-gaps --days=14"
 ```
 
-It prints samples and p50/p90/p95/p99/max per phase, twice: over every reading, and over the
-reading that brought news. `--supplier=fft|utt` narrows it. Percentiles are nearest-rank, computed
+It prints samples and p50/p90/p95/p99/max **per phase and per band**, twice each: over every
+reading, and over the reading that brought news. Per band because a threshold is per band and a
+distribution that averaged the two would describe neither. `--supplier=fft|utt` narrows it. Percentiles are nearest-rank, computed
 by one `OFFSET` into the ordered column rather than by pulling the table into PHP, and it is the
 same definition `PollFulfillmentJobs::percentile()` uses so two places cannot report a p95 that
-means two different things.
+means two different things. Those reads are `ORDER BY gap_seconds` with an `OFFSET` inside one
+phase or one supplier, about seventy per run, so `(delivery_phase, gap_seconds)` and
+`(supplier, gap_seconds)` are indexed alongside the counting and pruning indexes.
 
 Both columns measure the same thing - the interval between two consecutive readings - and **neither
 measures time-in-state**. So a phase threshold goes **above its "every reading" p99, with room over
@@ -1009,8 +1071,8 @@ during which the store was demonstrably being told things, which is a floor, not
 
 **The per-phase table is still unwritten, and stays unwritten until the numbers exist.** The
 recorder shipped on an empty table: nothing had been measured when it was written, and production
-holds one open job. Until then every phase runs on the 60-minute fallback, and the command says so
-on every run.
+holds one open job. Until then every phase runs on its band's fallback, and the command says so on
+every run.
 
 **D3c — notification.** Blocked on Mohamed, not on code: every message is customer-visible
 WhatsApp copy, and the catalogue ported from `Customer Notifier` has to be read and approved before

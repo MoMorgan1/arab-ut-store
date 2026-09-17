@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\DeliveryPhase;
+use App\Enums\PollBand;
 use App\Models\FulfillmentObservationGap;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -61,12 +62,16 @@ final class ShowObservationGaps extends Command
 
         $rows = [];
 
+        // Phase and band both, because a threshold is per band and a
+        // distribution that averaged the two would describe neither.
         foreach ($this->phases() as $label => $phase) {
-            foreach ([false, true] as $movedOnly) {
-                $row = $this->describe($label, $phase, $movedOnly, $since, $supplier);
+            foreach (PollBand::cases() as $band) {
+                foreach ([false, true] as $movedOnly) {
+                    $row = $this->describe($label, $phase, $band, $movedOnly, $since, $supplier);
 
-                if ($row !== null) {
-                    $rows[] = $row;
+                    if ($row !== null) {
+                        $rows[] = $row;
+                    }
                 }
             }
         }
@@ -79,7 +84,7 @@ final class ShowObservationGaps extends Command
         ));
 
         $this->table(
-            ['phase', 'scope', 'samples', 'p50', 'p90', 'p95', 'p99', 'max'],
+            ['phase', 'band', 'scope', 'samples', 'p50', 'p90', 'p95', 'p99', 'max'],
             $rows,
         );
 
@@ -121,22 +126,22 @@ final class ShowObservationGaps extends Command
     }
 
     /**
-     * @return array{0: string, 1: string, 2: int, 3: string, 4: string, 5: string, 6: string, 7: string}|null
+     * @return list<string|int>|null
      */
-    private function describe(string $label, ?DeliveryPhase $phase, bool $movedOnly, mixed $since, ?string $supplier): ?array
+    private function describe(string $label, ?DeliveryPhase $phase, PollBand $band, bool $movedOnly, mixed $since, ?string $supplier): ?array
     {
-        $samples = $this->scope($phase, $movedOnly ? true : null, $since, $supplier)->count();
+        $scope = fn () => $this->scope($phase, $band, $movedOnly ? true : null, $since, $supplier);
+        $samples = $scope()->count();
 
         if ($samples === 0) {
             return null;
         }
 
-        $percentile = fn (int $p): string => $this->format(
-            $this->percentile($this->scope($phase, $movedOnly ? true : null, $since, $supplier), $p, $samples),
-        );
+        $percentile = fn (int $p): string => $this->format($this->percentile($scope(), $p, $samples));
 
         return [
             $label,
+            $band->value,
             $movedOnly ? 'the reading that brought news' : 'every reading',
             $samples,
             $percentile(50),
@@ -165,7 +170,7 @@ final class ShowObservationGaps extends Command
     }
 
     /** @return Builder<FulfillmentObservationGap> */
-    private function scope(?DeliveryPhase $phase, ?bool $stateChanged, mixed $since, ?string $supplier): Builder
+    private function scope(?DeliveryPhase $phase, PollBand $band, ?bool $moved, mixed $since, ?string $supplier): Builder
     {
         return $this->window($since, $supplier)
             ->when(
@@ -173,7 +178,8 @@ final class ShowObservationGaps extends Command
                 fn (Builder $query) => $query->where('delivery_phase', $phase?->value),
                 fn (Builder $query) => $query->whereNull('delivery_phase'),
             )
-            ->when($stateChanged !== null, fn (Builder $query) => $query->where('state_changed', $stateChanged));
+            ->where('band', $band->value)
+            ->when($moved !== null, fn (Builder $query) => $query->where('moved', $moved));
     }
 
     /**

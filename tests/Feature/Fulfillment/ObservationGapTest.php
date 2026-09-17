@@ -8,6 +8,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\Platform;
+use App\Enums\PollBand;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
 use App\Models\FulfillmentJob;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * An order, item and live coins job, ready to be observed.
@@ -100,7 +102,7 @@ test('the second observation records the interval, its phase and its supplier', 
         ->and($gap->delivery_phase)->toBe(DeliveryPhase::Coins)
         ->and($gap->supplier)->toBe(Supplier::Fft)
         ->and($gap->observed_at->toDateTimeString())->toBe('2026-09-17 10:03:20')
-        ->and($gap->state_changed)->toBeTrue();
+        ->and($gap->moved)->toBeTrue();
 });
 
 test('a reading that told us nothing new is recorded, and marked as not news', function () {
@@ -114,7 +116,211 @@ test('a reading that told us nothing new is recorded, and marked as not news', f
     $gap = FulfillmentObservationGap::query()->sole();
 
     expect($gap->gap_seconds)->toBe(180)
-        ->and($gap->state_changed)->toBeFalse();
+        ->and($gap->moved)->toBeFalse();
+});
+
+test('an answer we could not read neither advances the clock nor records a gap', function () {
+    // The defect this closes: the supplier answers every poll with a status
+    // the translator does not recognise. Those are successful reads, so the
+    // failure counter never moves and the silence alarm cannot fire; if they
+    // also refreshed observed_at, the stall alarm could not fire either, and
+    // the gap table would fill with rows asserting a healthy cadence for a job
+    // nobody can read.
+    [, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'entered',
+    ]);
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: false,
+            observedState: null,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-17 10:03:00'),
+        rawPayload: ['status' => 'somethingNobodyRecognises'],
+    );
+
+    $fresh = $job->fresh();
+
+    expect(FulfillmentObservationGap::query()->count())->toBe(0)
+        // The clock stays where the last readable answer left it, so the job
+        // goes on ageing towards the stall alarm.
+        ->and($fresh->observed_at?->toDateTimeString())->toBe('2026-09-17 10:00:00')
+        // And the last thing we could read stays readable, rather than being
+        // wiped by a null and filed as "the reading that brought news".
+        ->and($fresh->observed_state)->toBe('entered')
+        // It is still recorded as unreadable, because that is diagnosis.
+        ->and($fresh->observation_supported)->toBeFalse();
+});
+
+test('a real challenge answer the translator cannot read leaves the clock alone', function () {
+    // Same defect, driven through the translator rather than a handmade state:
+    // an answer naming none of our challenge ids is one of its three
+    // unsupported paths.
+    Cache::flush();
+    config()->set('services.suppliers.fft.base_url', 'https://fft.example.test');
+    config()->set('services.suppliers.fft.api_user', 'store-fft');
+    config()->set('services.suppliers.fft.api_key', 'fft-key');
+    Http::preventStrayRequests();
+
+    $challengeId = '1803b7a6-0000-0000-0000-00000064265f';
+
+    [$order, $item, $job] = gapContext([
+        'supplier' => Supplier::Fft,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'observed_at' => now()->subMinutes(30),
+        'observed_state' => 'solvingChallenge',
+    ]);
+
+    FulfillmentPlacement::factory()->create([
+        'fulfillment_job_id' => $job->id,
+        'delivery_phase' => DeliveryPhase::Challenge,
+        'supplier' => Supplier::Fft,
+        'supplier_challenge_ids' => [$challengeId],
+        'idempotency_key' => 'placement-gap-unreadable',
+        'placed_at' => now()->subHours(2),
+    ]);
+
+    Http::fake([
+        'https://fft.example.test/sbcStatusBulkAPI' => Http::response([
+            $challengeId => ['sbcStatus' => 'a status nobody has heard of'],
+        ]),
+    ]);
+
+    $observedAtBefore = $job->observed_at;
+
+    app(ObserveFulfillmentJob::class)->execute($job, $item, $order);
+
+    expect(FulfillmentObservationGap::query()->count())->toBe(0);
+    expect($job->fresh()->observed_at?->toDateTimeString())->toBe($observedAtBefore?->toDateTimeString());
+});
+
+test('a failing measurement leaves the observation committed', function () {
+    // The measurement must never be load-bearing for the write it measures.
+    // Dropping the table is a stand-in for a deadlock or a full disk: whatever
+    // the cause, the order has to keep moving.
+    [, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'entered',
+    ]);
+
+    Schema::drop('fulfillment_observation_gaps');
+
+    observeWith($job, 'working', CarbonImmutable::parse('2026-09-17 10:03:00'));
+
+    $fresh = $job->fresh();
+
+    expect($fresh->observed_at?->toDateTimeString())->toBe('2026-09-17 10:03:00')
+        ->and($fresh->observed_state)->toBe('working');
+});
+
+test('an observation on a terminal order is not a sample', function () {
+    // A closed order is still read once or twice on its way out, and those
+    // intervals describe an order being closed rather than one being worked.
+    [$order, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'entered',
+    ]);
+
+    $order->forceFill(['status' => OrderStatus::Completed])->save();
+
+    observeWith($job, 'working', CarbonImmutable::parse('2026-09-17 10:03:00'));
+
+    expect(FulfillmentObservationGap::query()->count())->toBe(0);
+});
+
+test('a reading that advances a counter under an unchanged state still counts as news', function () {
+    // String inequality alone would file a shipment that delivered another
+    // 50,000 coins under an unchanged status as silence.
+    [, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'started',
+        'coins_delivered' => 50_000,
+    ]);
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: true,
+            observedState: 'started',
+            coinsDelivered: 100_000,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-17 10:03:00'),
+        rawPayload: ['status' => 'started'],
+    );
+
+    $gap = FulfillmentObservationGap::query()->sole();
+
+    expect($gap->moved)->toBeTrue()
+        // And the counter behind that verdict is kept, so the definition of
+        // news can be changed later without the history becoming unreadable.
+        ->and($gap->coins_delivered)->toBe(100_000);
+});
+
+test('a reading that moves nothing at all is not news', function () {
+    [, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'started',
+        'coins_delivered' => 50_000,
+    ]);
+
+    app(ApplySupplierObservation::class)->execute(
+        job: $job,
+        state: new TranslatedState(
+            status: OrderStatus::InProgress,
+            holdReason: null,
+            allowedActions: [],
+            supported: true,
+            observedState: 'started',
+            coinsDelivered: 50_000,
+        ),
+        observedAt: CarbonImmutable::parse('2026-09-17 10:03:00'),
+        rawPayload: ['status' => 'started'],
+    );
+
+    expect(FulfillmentObservationGap::query()->sole()->moved)->toBeFalse();
+});
+
+test('the band the poller would have used is recorded with the gap', function (bool $watched, string $expected) {
+    [, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'entered',
+        'last_viewed_at' => $watched ? CarbonImmutable::parse('2026-09-17 10:02:30') : null,
+    ]);
+
+    Carbon::setTestNow(CarbonImmutable::parse('2026-09-17 10:03:00'));
+    observeWith($job, 'working', CarbonImmutable::parse('2026-09-17 10:03:00'));
+
+    expect(FulfillmentObservationGap::query()->sole()->band->value)->toBe($expected);
+})->with([
+    'a customer watching the page' => [true, 'attention'],
+    'nobody watching' => [false, 'background'],
+]);
+
+test('a measurement outlives the job it measured', function () {
+    // nullOnDelete, not cascade: losing a fortnight of baseline because the
+    // jobs behind it were tidied up is how the table stops being able to
+    // answer the question it exists for.
+    [, , $job] = gapContext([
+        'observed_at' => CarbonImmutable::parse('2026-09-17 10:00:00'),
+        'observed_state' => 'entered',
+    ]);
+
+    observeWith($job, 'working', CarbonImmutable::parse('2026-09-17 10:03:00'));
+    expect(FulfillmentObservationGap::query()->count())->toBe(1);
+
+    $job->fresh()->delete();
+
+    $gap = FulfillmentObservationGap::query()->sole();
+    expect($gap->gap_seconds)->toBe(180)
+        ->and($gap->fulfillment_job_id)->toBeNull();
 });
 
 test('a reading replayed after its own commit records no second gap', function () {
@@ -331,12 +537,12 @@ test('the prune keeps the retention window and deletes what is behind it', funct
     $ages = [1, 13, 14, 15, 40];
 
     foreach ($ages as $days) {
-        FulfillmentObservationGap::query()->create([
+        FulfillmentObservationGap::factory()->create([
             'fulfillment_job_id' => $job->id,
             'delivery_phase' => DeliveryPhase::Coins,
             'supplier' => Supplier::Fft,
             'gap_seconds' => 180,
-            'state_changed' => false,
+            'moved' => false,
             'observed_at' => now()->subDays($days),
         ]);
     }
@@ -362,12 +568,13 @@ test('the prune clears a backlog larger than one chunk', function () {
 
     for ($i = 0; $i < 620; $i++) {
         $rows[] = [
-            'public_id' => (string) str()->ulid(),
             'fulfillment_job_id' => $job->id,
             'delivery_phase' => DeliveryPhase::Coins->value,
             'supplier' => Supplier::Fft->value,
+            'band' => PollBand::Background->value,
             'gap_seconds' => 180,
-            'state_changed' => false,
+            'moved' => false,
+            'poll_failure_count' => 0,
             'observed_at' => now()->subDays(30),
         ];
     }
@@ -383,19 +590,6 @@ test('a prune with no retention window configured refuses rather than guessing',
 
     expect(fn () => app(PruneObservationGaps::class)->execute())
         ->toThrow(RuntimeException::class);
-});
-
-test('deleting a job takes its measurements with it', function () {
-    [, , $job] = gapContext(['observed_at' => null, 'observed_state' => null]);
-
-    observeWith($job, 'entered', CarbonImmutable::parse('2026-09-17 10:00:00'));
-    observeWith($job->fresh(), 'working', CarbonImmutable::parse('2026-09-17 10:03:00'));
-
-    expect(FulfillmentObservationGap::query()->count())->toBe(1);
-
-    $job->fresh()->delete();
-
-    expect(FulfillmentObservationGap::query()->count())->toBe(0);
 });
 
 /**
@@ -434,7 +628,7 @@ function gapRow(string $output, string $phase, string $scope): array
             static fn (string $cell): bool => $cell !== '',
         ));
 
-        if (($cells[0] ?? null) === $phase && ($cells[1] ?? null) === $scope) {
+        if (($cells[0] ?? null) === $phase && ($cells[2] ?? null) === $scope) {
             return $cells;
         }
     }
@@ -453,12 +647,12 @@ test('the distribution command reports a percentile per phase and per scope', fu
     // did is a value no other row can produce - so an assertion on the
     // moved-only row cannot be satisfied by the unrestricted one.
     foreach ([60, 90, 120, 150, 180, 210, 240, 270, 300, 1500] as $index => $seconds) {
-        FulfillmentObservationGap::query()->create([
+        FulfillmentObservationGap::factory()->create([
             'fulfillment_job_id' => $job->id,
             'delivery_phase' => DeliveryPhase::Coins,
             'supplier' => Supplier::Fft,
             'gap_seconds' => $seconds,
-            'state_changed' => $index === 9,
+            'moved' => $index === 9,
             'observed_at' => now()->subHours($index + 1),
         ]);
     }
@@ -470,23 +664,23 @@ test('the distribution command reports a percentile per phase and per scope', fu
     // phase | scope | samples | p50 | p90 | p95 | p99 | max
     // Nearest rank over the ten: p50 is the fifth value, p90 the ninth.
     expect(gapRow($output, 'coins', 'every reading'))
-        ->toBe(['coins', 'every reading', '10', '180s (3m)', '300s (5m)', '1500s (25m)', '1500s (25m)', '1500s (25m)']);
+        ->toBe(['coins', 'background', 'every reading', '10', '180s (3m)', '300s (5m)', '1500s (25m)', '1500s (25m)', '1500s (25m)']);
 
     // One sample, so every percentile of that scope is that sample.
     expect(gapRow($output, 'coins', 'the reading that brought news'))
-        ->toBe(['coins', 'the reading that brought news', '1', '1500s (25m)', '1500s (25m)', '1500s (25m)', '1500s (25m)', '1500s (25m)']);
+        ->toBe(['coins', 'background', 'the reading that brought news', '1', '1500s (25m)', '1500s (25m)', '1500s (25m)', '1500s (25m)', '1500s (25m)']);
 });
 
 test('a supplier filter narrows the table to that supplier', function () {
     [, , $job] = gapContext();
 
     foreach ([[Supplier::Fft, 120], [Supplier::Utt, 600]] as [$supplier, $seconds]) {
-        FulfillmentObservationGap::query()->create([
+        FulfillmentObservationGap::factory()->create([
             'fulfillment_job_id' => $job->id,
             'delivery_phase' => DeliveryPhase::Coins,
             'supplier' => $supplier,
             'gap_seconds' => $seconds,
-            'state_changed' => false,
+            'moved' => false,
             'observed_at' => now()->subHour(),
         ]);
     }
@@ -496,18 +690,18 @@ test('a supplier filter narrows the table to that supplier', function () {
 
     expect($output)->toContain('1 gap(s)')
         ->toContain('supplier utt');
-    expect(gapRow($output, 'coins', 'every reading')[3] ?? null)->toBe('600s (10m)');
+    expect(gapRow($output, 'coins', 'every reading')[4] ?? null)->toBe('600s (10m)');
 });
 
 test('a phase with no samples is left off the table rather than printed as zero', function () {
     [, , $job] = gapContext();
 
-    FulfillmentObservationGap::query()->create([
+    FulfillmentObservationGap::factory()->create([
         'fulfillment_job_id' => $job->id,
         'delivery_phase' => DeliveryPhase::Coins,
         'supplier' => Supplier::Fft,
         'gap_seconds' => 180,
-        'state_changed' => false,
+        'moved' => false,
         'observed_at' => now()->subHour(),
     ]);
 
@@ -520,12 +714,12 @@ test('a phase with no samples is left off the table rather than printed as zero'
 test('the distribution command says which phases are still on the fallback', function () {
     [, , $job] = gapContext();
 
-    FulfillmentObservationGap::query()->create([
+    FulfillmentObservationGap::factory()->create([
         'fulfillment_job_id' => $job->id,
         'delivery_phase' => DeliveryPhase::Coins,
         'supplier' => Supplier::Fft,
         'gap_seconds' => 180,
-        'state_changed' => false,
+        'moved' => false,
         'observed_at' => now()->subHour(),
     ]);
 
@@ -545,12 +739,12 @@ test('the guidance points at the column that measures what it claims to', functi
     // neither scope measures how long a job sat in one state.
     [, , $job] = gapContext();
 
-    FulfillmentObservationGap::query()->create([
+    FulfillmentObservationGap::factory()->create([
         'fulfillment_job_id' => $job->id,
         'delivery_phase' => DeliveryPhase::Coins,
         'supplier' => Supplier::Fft,
         'gap_seconds' => 180,
-        'state_changed' => true,
+        'moved' => true,
         'observed_at' => now()->subHour(),
     ]);
 

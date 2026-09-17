@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fulfillment;
 
+use App\Enums\FulfillmentAlarmKind;
 use App\Models\FulfillmentAlarm;
 use App\Notifications\FulfillmentSilenceAlert;
 use Carbon\CarbonImmutable;
@@ -77,13 +78,54 @@ final class AlertOwnerOfFulfillmentSilence
         return [
             'kind' => $alarm->kind->value,
             'order' => is_string($context['order_number'] ?? null) ? $context['order_number'] : '',
-            'detail' => $this->detail($context),
+            'detail' => $alarm->kind === FulfillmentAlarmKind::Stalled
+                ? $this->stalledDetail($context)
+                : $this->detail($context),
             // Says that no retry will clear this one, so the mail can ask for a
             // person rather than for patience. Absent on an alarm raised before
             // the store had a reason to record, which is read as "not yet".
             'blocked' => ($context['blocked'] ?? false) === true,
             'pollFailures' => is_int($failures) ? $failures : null,
         ];
+    }
+
+    /**
+     * The three facts that make a stall triageable, which the shared detail
+     * line does not carry.
+     *
+     * The item id still leads, for the reason {@see self::detail()} gives.
+     * After it: how long is the first question anyone asks and the sweep
+     * already stores it; which phase says whether to look at a coin shipment
+     * or a solve; and a supplier inside its cooldown is a different problem
+     * from a supplier that has gone quiet, so the line says which it is rather
+     * than sending someone after a supplier that is behaving.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function stalledDetail(array $context): string
+    {
+        $parts = [];
+
+        if (is_string($context['order_item_public_id'] ?? null) && $context['order_item_public_id'] !== '') {
+            $parts[] = $context['order_item_public_id'];
+        }
+
+        $quiet = $context['quiet_minutes'] ?? null;
+        $parts[] = is_numeric($quiet) ? 'بدون قراءة منذ '.(int) $quiet.' دقيقة' : 'ما وصلت عنه أي قراءة';
+
+        if (is_string($context['phase'] ?? null) && $context['phase'] !== '') {
+            $parts[] = 'مرحلة '.$context['phase'];
+        }
+
+        if (is_string($context['supplier'] ?? null) && $context['supplier'] !== '') {
+            $parts[] = $context['supplier'];
+        }
+
+        if (($context['circuit_open'] ?? false) === true) {
+            $parts[] = 'المورد موقوف مؤقتاً، ما نسأله الآن';
+        }
+
+        return implode(' / ', $parts);
     }
 
     /**

@@ -135,10 +135,25 @@ return [
             //
             // What a phase with no entry of its own uses, so detection works
             // from the day it deploys rather than waiting on a measurement.
-            // Sixty minutes is six times the poller's worst healthy gap - the
-            // ten-minute backoff ceiling plus a minute of circuit cooldown -
-            // which is interim reasoning, not a number anyone measured.
-            'stalled_fallback_minutes' => 60,
+            // Per band, because one number cannot serve both: the bands differ
+            // by more than seven times, and an hour is twenty missed reads on
+            // the background cadence but a hundred and forty on the attention
+            // one, by which time the customer has already opened a ticket.
+            //
+            // Both are floors derived from the poller rather than measurements.
+            // A job whose reads keep failing backs off from its band cadence,
+            // doubling to the ten-minute ceiling, and the silence alarm takes
+            // it over at the sixth failure - so up to that handover it can be
+            // legitimately quiet for the sum of five backoffs plus their
+            // jitter: about 23 minutes on the attention cadence (50+100+200+
+            // 400+600s, jitter <= 6s each) and about 50 on the background one
+            // (360+600+600+600+600s, jitter <= 45s each). A threshold under
+            // those fires on a job that is merely backing off, with a less
+            // specific message than the alarm about to take it.
+            'stalled_fallback_minutes' => [
+                'attention' => 30,
+                'background' => 60,
+            ],
 
             // The per-phase table that replaces the fallback once
             // `fulfillment:observation-gaps` has something to say. Minutes,
