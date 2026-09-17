@@ -100,7 +100,11 @@ return [
                     // prices at 8,200: a data-entry error that reached the
                     // storefront as a 6,458 SAR product.
                     maxProviderPriceRatio: 10,
-                    minProviderPriceRatio: 0.02,
+                    // Lowered from 0.02 on 2026-09-17 with the basis move:
+                    // FFT cheaper than the market is upside now, not a fault,
+                    // and Intro to SBCs sits at 0.037 - close enough to the old
+                    // bound to lose a profitable product to a rounding.
+                    minProviderPriceRatio: 0.005,
                     // Double backslash is REQUIRED: this is a JS string that becomes a
                     // RegExp, so '\b' would be a backspace character (U+0008) and the
                     // filter would silently match nothing. Build & Price Snapshot

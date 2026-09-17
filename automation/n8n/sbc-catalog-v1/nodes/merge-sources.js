@@ -472,6 +472,10 @@ if (metadataSource.records.length >= limits.metadataLimit) {
 const mergedRecords = [];
 const identityMismatchIds = [];
 const priceDisagreementIds = [];
+// Which source set the coin basis for each eligible set. A run where these
+// swap is a run where the store's prices moved for a reason nobody chose.
+const marketBasisIds = [];
+const fftBasisIds = [];
 const priceDisagreements = [];
 const challengeMismatchIds = [];
 const missingFftIds = [];
@@ -513,6 +517,13 @@ function repeatCap(value) {
  * Returns null when they agree well enough, or the evidence when they do not.
  * An absent or zero EasySBC price is not evidence of anything - plenty of sets
  * carry no market figure - so those pass straight through on FFT's word.
+ *
+ * The two bounds stopped meaning the same thing when the basis moved to
+ * EasySBC. FFT far ABOVE the market is still the dangerous case: we pay FFT,
+ * so it means the solve costs more than the customer is charged - that is the
+ * 100,700,000-coin Gold Upgrade. FFT far BELOW is now margin rather than
+ * risk, and the lower bound is only here to catch a zero-ish typo, which is
+ * why it sits an order of magnitude under the widest real spread seen.
  */
 function priceDisagreement(consolePrice, meta) {
     const reference = finiteNumber(meta.psPrice ?? meta.pcPrice);
@@ -613,6 +624,32 @@ for (const [id, meta] of metadataById) {
         continue;
     }
 
+    // Owner decision 2026-09-17: the COIN BASIS is EasySBC's, not FFT's.
+    //
+    // FFT stays the availability authority - a set it does not list, or lists
+    // at zero, is one nobody can be sold - but the coin figure the storefront
+    // charges for now comes from the market. The two are not measuring the
+    // same thing: FFT quotes what it charges to solve a squad out of its own
+    // card stock, EasySBC reads what the cards cost on the open market, and on
+    // 2026-09-17 they were 21x apart on Intro to SBCs - 212 against 5,750,
+    // with FUT.GG's independent 4,550 agreeing with EasySBC. Two market
+    // sources against one service quote, and the service quote is the one that
+    // can quietly put a challenge on sale below what the coins to fill it
+    // cost. Where EasySBC carries no figure, FFT's stands: a price from the
+    // party we actually pay beats no price at all.
+    const marketConsole = Math.round(finiteNumber(meta.psPrice) ?? 0);
+    const marketPc = Math.round(finiteNumber(meta.pcPrice) ?? 0);
+    // Both platforms or neither. Half a basis is not a basis: a market
+    // console figure beside an FFT PC one prices the two platforms off
+    // different markets, and the result reads as a platform discount nobody
+    // chose.
+    const marketPrices = marketConsole > 0 && marketPc > 0;
+    const basisConsole = marketPrices ? marketConsole : consolePrice;
+    const basisPc = marketPrices ? marketPc : pcPrice;
+
+    if (marketPrices) marketBasisIds.push(id);
+    else fftBasisIds.push(id);
+
     // The price authority is FFT, and this does not second-guess it: EasySBC
     // is only asked whether FFT's figure is a price at all. The two describe
     // the same squad from different angles - FFT builds it, EasySBC reads the
@@ -646,8 +683,8 @@ for (const [id, meta] of metadataById) {
         ...meta,
         id: Number.isSafeInteger(Number(id)) ? Number(id) : id,
         name: String(metaName).trim(),
-        psPrice: consolePrice,
-        pcPrice,
+        psPrice: basisConsole,
+        pcPrice: basisPc,
         sbcsCount: challenges,
         challengeAmount: challenges,
         endTime,
@@ -732,6 +769,9 @@ return [
                 droppedNoPrice: droppedNoPriceIds.length,
                 priceDisagreements: priceDisagreementIds.length,
                 priceDisagreementIds: priceDisagreementIds.slice(0, 50),
+                marketBasisCount: marketBasisIds.length,
+                fftBasisCount: fftBasisIds.length,
+                fftBasisIds: fftBasisIds.slice(0, 50),
                 priceDisagreementSamples: priceDisagreements.slice(0, 10),
                 droppedNoExpiry: droppedNoExpiryIds.length,
                 missingFftCount: missingFftIds.length,

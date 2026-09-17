@@ -6,6 +6,7 @@ import {
     asBuffer,
     asStream,
     env,
+    fftRecord,
     fftRecords,
     httpOk,
     metaRecord,
@@ -412,4 +413,47 @@ test('a provider failure reports the body as text, not as raw bytes', async () =
             ),
         /returned HTTP 500[\s\S]*Internal Server Error/,
     );
+});
+
+test('the coin basis is the market price, not what FFT charges to solve', async () => {
+    // Owner decision 2026-09-17. FFT priced Intro to SBCs at 212 coins while
+    // EasySBC read 5,750 and FUT.GG independently read 4,550: two market
+    // sources against one service quote. FFT still says WHETHER a set can be
+    // sold; it no longer says what the coins in it are worth.
+    const fft = [fftRecord(1, { consolePrice: 212, pcPrice: 212 })];
+    const meta = [metaRecord(1, { psPrice: 5_750, pcPrice: 5_700 })];
+    const merged = await merge({ fft, meta });
+    const record = merged.body.find((row) => row.fftSetID === '1');
+
+    assert.equal(record.psPrice, 5_750);
+    assert.equal(record.pcPrice, 5_700);
+    assert.equal(record.source, 'fft');
+    assert.equal(merged.sourceAudit.marketBasisCount, 1);
+    assert.equal(merged.sourceAudit.fftBasisCount, 0);
+});
+
+test('a set the market prices on one platform only falls back to FFT whole', async () => {
+    // Half a basis is not a basis: mixing a market console figure with an FFT
+    // PC one would price the two platforms off different markets and nobody
+    // could read the result.
+    const fft = [fftRecord(1, { consolePrice: 212, pcPrice: 212 })];
+    const meta = [metaRecord(1, { psPrice: 5_750, pcPrice: 0 })];
+    const merged = await merge({ fft, meta });
+    const record = merged.body.find((row) => row.fftSetID === '1');
+
+    assert.equal(record.psPrice, 212);
+    assert.equal(record.pcPrice, 212);
+    assert.equal(merged.sourceAudit.fftBasisCount, 1);
+});
+
+test('FFT far above the market still excludes the set, basis or no basis', async () => {
+    // We pay FFT. A solve that costs more than the customer is charged is the
+    // one disagreement that must never reach the storefront - the
+    // 100,700,000-coin Gold Upgrade against EasySBC's 7,800.
+    const fft = [fftRecord(1, { consolePrice: 100_700_000, pcPrice: 100_700_000 })];
+    const meta = [metaRecord(1, { psPrice: 7_800, pcPrice: 8_200 })];
+    const merged = await merge({ fft, meta });
+
+    assert.equal(merged.body.filter((row) => row.source === 'fft').length, 0);
+    assert.equal(merged.sourceAudit.priceDisagreements, 1);
 });
