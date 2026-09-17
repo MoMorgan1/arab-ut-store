@@ -166,10 +166,14 @@ export function CoinsConfigurator({
     // could actually deliver at the last pricing run. Every check that decides
     // whether an order may be placed reads the second one - a rail that shows
     // twenty million must still refuse to sell coins nobody has.
-    const available = Math.min(
+    const reported = Math.min(
         maximum,
         selectedDelivery?.available ?? selectedPlatform?.available ?? maximum,
     );
+    // A published ceiling is one buy's worth, not the pool's. While any market
+    // exists the smallest order the store takes stays buyable; only an empty
+    // market takes the platform off sale, and that is handled as sold out.
+    const available = reported <= 0 ? 0 : Math.max(reported, amount.minimum);
     const quantityIsValid =
         quantity !== null &&
         acceptsQuantity(

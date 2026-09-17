@@ -113,6 +113,7 @@ export type CoinsStoreTranslations = {
         minimum_label: string;
         maximum_label: string;
         limited_note: string;
+        sold_out_note: string;
         clamped: string;
         normal_delivery_suggestion: string;
         switch_to_fast: string;

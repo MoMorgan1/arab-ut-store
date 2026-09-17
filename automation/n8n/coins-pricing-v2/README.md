@@ -21,7 +21,7 @@ All exports in this directory use placeholder credential identifiers
 (`CONFIGURE_ARABUT_PRICING_API_CREDENTIAL_ID`, `CONFIGURE_TELEGRAM_CREDENTIAL_ID`)
 and environment expressions (`$env.OPS_TELEGRAM_CHAT_ID`).
 
-Import `workflow-v2.6.json` instead; its steps are at the end of this file.
+Import `workflow-v2.8.json` instead; its steps are at the end of this file.
 
 Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
 the unpatched workflow is the only unsafe combination.
@@ -38,9 +38,58 @@ the unpatched workflow is the only unsafe combination.
   whole riyals — if you ever re-import `workflow.json`, restore that stricter
   pairing or hourly runs will fail closed with `exact override is invalid`.
 
+## v2.8: the storefront is sold a share of the pool (2026-09-17)
+
+**`workflow-v2.8.json` is the current artifact.** `Config`, `Probe FFT` and
+`Prepare Coins Snapshot`.
+
+`observations.availableCoins` is now **half the provider's cycle pool**
+(`probe.cyclePoolSellableBps`), not the per-buy fill size the price is found
+against. Two different readings from the same endpoint, and the distinction
+matters:
+
+| Field | Role | What it is |
+| --- | --- | --- |
+| `cycleTotalCoins` | `seller` | Coins sitting in the cycle accounts. 312,929 across 12 accounts on 2026-09-17. |
+| `estimatedCoinsAtPrice` | `buyer` | What one buy at that price would actually fill. 18,000, from 8 willing accounts needing 34 senders. |
+
+The buyer figure is bounded by who is free right now, so it read 45,000 and
+18,000 within an hour while the pool stayed hundreds of thousands deep - and it
+did not move between 26 and 40 USD, so price was never its constraint.
+Fulfilment buys repeatedly over time, so the pool is the honest measure of what
+can be shipped; the fill size only sets the price.
+
+**Known narrowing.** The ceiling counts the cycle pool alone. FFT's targeted
+book and UTT's lots are separate supply with their own capacities
+(`maxK`, `maxTransferable`) and are not added in. Both were empty on
+2026-09-17, so this changes nothing today - revisit it against real numbers the
+first time either carries stock, rather than shipping a summing rule no data
+has ever exercised.
+
+## v2.7: one dead platform does not stop the other (2026-09-17)
+
+**`workflow-v2.8.json` is the current artifact.** It is v2.6 with edits in one
+Code node, `Prepare Coins Snapshot`.
+
+v2.6 got past the price and stopped at "A supplier cost basis could not be
+built for every platform". That was true and it was PC: FFT's targeted book was
+uncovered, UTT's lots were empty, and a cycle price is deliberately not a valid
+floor for a targeted-priced tier. Console had a real market the whole time and
+was stopped with it.
+
+Each platform now carries its own last published rates forward when no supplier
+quotes it, and only a platform with nothing to carry can stop the run. The
+carried rates are not smoothed and are not a price signal - they are the last
+thing known, held steady so fulfilment keeps a budget.
+
+**The rule that makes that safe:** a group publishing carried rates publishes
+`availableCoins: 0`. A price no supplier stands behind today reaches fulfilment
+and never reaches a customer. `console_normal` goes dark with `console_fast`,
+because both are priced from the same PlayStation book.
+
 ## v2.6: the price comes from the fill size, not the word (2026-09-17)
 
-**`workflow-v2.6.json` is the current artifact.** It is v2.5 with edits in two
+**`workflow-v2.8.json` is the current artifact.** It is v2.5 with edits in two
 Code nodes - `Probe FFT` and `Prepare Coins Snapshot` - and nothing else.
 
 ### Why

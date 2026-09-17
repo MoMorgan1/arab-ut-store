@@ -108,6 +108,7 @@ const store = {
         minimum_label: 'Minimum',
         maximum_label: 'Maximum',
         limited_note: ':amount Coins are available right now.',
+        sold_out_note: 'Coins are unavailable for this platform right now.',
         clamped: 'Amount adjusted to this delivery limit.',
         normal_delivery_suggestion:
             'Fast delivery supports more than 2M Coins.',
@@ -864,6 +865,42 @@ describe('Coins homepage', () => {
 
         // And a preset nobody can fill is not offered.
         expect(screen.queryByRole('button', { name: '5M' })).toBeNull();
+    });
+
+    it('takes a platform with no market off sale instead of offering a floor', () => {
+        // PC on 2026-09-17: nothing in FFT's pool, nothing in UTT's lots. Twice
+        // nothing is nothing, so the slider goes inert rather than falling back
+        // to the store's minimum and calling it available.
+        mockPage.props = {
+            ...availableProps(),
+            platforms: platforms.map((platform) =>
+                platform.value !== 'playstation'
+                    ? platform
+                    : {
+                          ...platform,
+                          available: 0,
+                          deliveries: platform.deliveries.map((delivery) => ({
+                              ...delivery,
+                              available: 0,
+                          })),
+                      },
+            ),
+        };
+
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        expect(
+            screen.getByText(
+                'Coins are unavailable for this platform right now.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('slider', {
+                name: store.amount_copy.slider_label,
+            }),
+        ).toBeDisabled();
+        expect(screen.queryByText(/available right now\./)).toBeNull();
     });
 
     it('says nothing about limits when the market covers the whole range', () => {

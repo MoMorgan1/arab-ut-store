@@ -2759,6 +2759,19 @@ html.admin-document {
         text-align: center;
     }
 
+    .coins-amount-sold-out {
+        margin-block-start: 0.5rem;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        color: var(--arabut-gold-bright);
+        text-align: center;
+    }
+
+    .coins-amount-slider:disabled {
+        cursor: not-allowed;
+        opacity: 0.4;
+    }
+
     .coins-amount-slider::-webkit-slider-runnable-track {
         height: var(--coins-slider-track);
         border-radius: 999px;
