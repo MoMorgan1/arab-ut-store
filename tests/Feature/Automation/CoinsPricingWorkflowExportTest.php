@@ -22,7 +22,7 @@ uses(RefreshDatabase::class);
 function workflowExportAnchors(): array
 {
     $export = json_decode(
-        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.7.json')),
+        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.8.json')),
         true,
         flags: JSON_THROW_ON_ERROR,
     );
@@ -47,7 +47,7 @@ function workflowExportAnchors(): array
 
 it('publishes an anchor field the contract recognises', function () {
     $export = json_decode(
-        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.7.json')),
+        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.8.json')),
         true,
         flags: JSON_THROW_ON_ERROR,
     );

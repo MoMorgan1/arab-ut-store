@@ -1,4 +1,4 @@
-// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.7.json the
+// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.8.json the
 // way n8n would - once with FFT answering, once with FFT down - and pins the
 // v2.5 rule: FFT down carries last time's rates forward and still publishes a
 // UTT cost table; with nothing to carry forward it stops as v2.4 did.
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.7.json', import.meta.url), 'utf8'));
+const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.8.json', import.meta.url), 'utf8'));
 const source = (name) => workflow.nodes.find((node) => node.name === name).parameters.jsCode;
 const configSrc = source('Config');
 const prepareSrc = source('Prepare Coins Snapshot');
@@ -104,8 +104,8 @@ test('the snapshot publishes what each group could actually be filled with', asy
         source: 'fft', failed: false,
         cycle: {
             // The real FC27 opening: 45,000 coins on console, nothing on PC.
-            ps: { usdPerM: 300, amountCoins: 45_000, coversTarget: false },
-            pc: { usdPerM: null, amountCoins: 0, coversTarget: false },
+            ps: { usdPerM: 300, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            pc: { usdPerM: null, amountCoins: 0, poolCoins: 0, coversTarget: false },
         },
         targeted: {
             ps: { tiers: tiers(caps, null, false), highestAvailable: null },
@@ -116,9 +116,10 @@ test('the snapshot publishes what each group could actually be filled with', asy
     const out = await runPrepare(config, fft, utt, {});
 
     assert.equal(out.valid, true);
+    // Half of the 312,929-coin pool, not the 45,000 one buy would fill.
     assert.deepEqual(out.snapshot.observations.availableCoins, {
-        console_normal: 45_000,
-        console_fast: 45_000,
+        console_normal: 156_464,
+        console_fast: 156_464,
         // Zero is published as zero. A platform with no market has to be able
         // to say so, or the storefront keeps offering twenty million coins.
         pc: 0,
@@ -139,8 +140,8 @@ test('a ceiling above what the store sells is clamped, never widened', async () 
     const fft = {
         source: 'fft', failed: false,
         cycle: {
-            ps: { usdPerM: 12, amountCoins: 90_000_000, coversTarget: true },
-            pc: { usdPerM: 20, amountCoins: 90_000_000, coversTarget: true },
+            ps: { usdPerM: 12, amountCoins: 90_000_000, poolCoins: 180_000_000, coversTarget: true },
+            pc: { usdPerM: 20, amountCoins: 90_000_000, poolCoins: 180_000_000, coversTarget: true },
         },
         targeted: {
             ps: { tiers: tiers(caps, null, false), highestAvailable: null },
@@ -171,8 +172,8 @@ test('a platform nobody quoted keeps the other one selling, and sells nothing it
     const fft = {
         source: 'fft', failed: false,
         cycle: {
-            ps: { usdPerM: 220, amountCoins: 45_000, coversTarget: false },
-            pc: { usdPerM: null, amountCoins: 0, coversTarget: false },
+            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            pc: { usdPerM: null, amountCoins: 0, poolCoins: 0, coversTarget: false },
         },
         targeted: {
             ps: { tiers: tiers(caps, null, false), highestAvailable: null },
@@ -203,7 +204,7 @@ test('a platform nobody quoted keeps the other one selling, and sells nothing it
     assert.equal(out.snapshot.observations.availableCoins.pc, 0);
 
     // Console priced from its real market and stays on sale.
-    assert.equal(out.snapshot.observations.availableCoins.console_fast, 45_000);
+    assert.equal(out.snapshot.observations.availableCoins.console_fast, 156_464);
     assert.ok(
         out.snapshot.rules.console_fast.tier_rates_halalah_per_million[0] >
             memory.lastSuccessfulRates.console_fast[0],
@@ -222,8 +223,8 @@ test('a run with nothing to carry forward still stops rather than guessing', asy
     const fft = {
         source: 'fft', failed: false,
         cycle: {
-            ps: { usdPerM: 220, amountCoins: 45_000, coversTarget: false },
-            pc: { usdPerM: null, amountCoins: 0, coversTarget: false },
+            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            pc: { usdPerM: null, amountCoins: 0, poolCoins: 0, coversTarget: false },
         },
         targeted: {
             ps: { tiers: tiers(caps, null, false), highestAvailable: null },
@@ -234,5 +235,42 @@ test('a run with nothing to carry forward still stops rather than guessing', asy
     await assert.rejects(
         () => runPrepare(config, fft, utt, {}),
         /no supplier cost basis for pc/,
+    );
+});
+
+test('the ceiling follows the pool, not the buy that priced it', async () => {
+    // 2026-09-17: one buy filled 45,000 and an hour later 18,000, while the
+    // pool behind it was still hundreds of thousands deep. Selling against the
+    // jumpier number would move the storefront's ceiling every hour.
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, 0.26), highestAvailable: null },
+    };
+    const run = (amountCoins, poolCoins) => runPrepare(config, {
+        source: 'fft', failed: false,
+        cycle: {
+            ps: { usdPerM: 220, amountCoins, poolCoins, coversTarget: false },
+            pc: { usdPerM: 240, amountCoins, poolCoins, coversTarget: false },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    }, utt, {});
+
+    const busy = await run(45_000, 312_929);
+    const quiet = await run(18_000, 312_929);
+
+    assert.equal(
+        busy.snapshot.observations.availableCoins.console_fast,
+        quiet.snapshot.observations.availableCoins.console_fast,
+        'a jumpy fill size must not move the storefront ceiling',
+    );
+    assert.equal(
+        busy.snapshot.observations.availableCoins.console_fast,
+        156_464,
     );
 });
