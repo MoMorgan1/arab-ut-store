@@ -35,8 +35,8 @@ return [
         'maintenance' => 'The game servers are under EA maintenance. We resume automatically once it ends; press resume to try it now.',
         'paused' => 'Your order is paused for now and we resume automatically. Press resume to try it now, or message us for details.',
         'two_factor_off' => 'Two-factor is off on the account. Turn it on in your EA security settings, then press resume.',
-        'email_confirm' => 'EA wants the email address confirmed. Confirm it from EA\'s message and we carry on automatically.',
-        'web_app_locked' => 'The Web App has never been opened on this account. Open it once in a browser and we carry on automatically.',
+        'email_confirm' => 'EA wants the email address confirmed. Confirm it from the EA message, then press resume - or correct the address itself from edit details.',
+        'web_app_locked' => 'The Web App has never been opened on this account. Open it once in a browser, then press resume.',
         'below_minimum' => 'The remaining amount is below the minimum transfer. We are finishing the order; press resume to try it now.',
     ],
     'tracking_states' => [
