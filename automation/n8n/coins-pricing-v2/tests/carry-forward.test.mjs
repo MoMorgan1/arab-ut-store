@@ -499,18 +499,43 @@ test('a run with no memory of its own asks the store what was last published', a
     assert.equal(call.headers['X-ArabUT-Signature'], expected);
 });
 
-test('a run that already remembers does not ask the store', async () => {
+test('the store wins over a memory that disagrees with it', async () => {
+    // n8n does not persist static data written during a MANUAL execution, so a
+    // manual run publishes a price the workflow then forgets. The next
+    // scheduled run compared against the last SCHEDULED publish and reported
+    // "سريع 1M: 1681.01 ← 725.73 (-56.8%)" against a store already selling at
+    // 725.73. What the store charges is what a move is measured against.
+    const config = await runConfig();
+    const stale = {
+        console_normal: 168_101,
+        console_fast: [168_101, 168_101, 168_101, 168_101, 168_101, 168_101],
+        pc: [1777, 1836, 1836, 2132, 3968, 3968],
+    };
+    const out = await runPrepare(
+        config,
+        DEEP_MARKET,
+        deepUtt(config.settings.tierCapsK),
+        { lastSuccessfulRates: stale },
+        STORE_BASELINE,
+    );
+
+    assert.equal(out.pricingAudit.baselineSource, 'store');
+    assert.deepEqual(out.pricingAudit.baselineRates, STORE_BASELINE.rates);
+    assert.equal(out.__baselineCalls.length, 1);
+});
+
+test('a memory is what is left when the store cannot answer', async () => {
     const config = await runConfig();
     const out = await runPrepare(
         config,
         DEEP_MARKET,
         deepUtt(config.settings.tierCapsK),
         { lastSuccessfulRates: STORE_BASELINE.rates },
-        STORE_BASELINE,
+        null,
     );
 
     assert.equal(out.pricingAudit.baselineSource, 'memory');
-    assert.deepEqual(out.__baselineCalls, []);
+    assert.deepEqual(out.pricingAudit.baselineRates, STORE_BASELINE.rates);
 });
 
 test('a store that cannot answer leaves the run exactly as it was', async () => {

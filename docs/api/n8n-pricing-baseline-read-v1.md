@@ -76,4 +76,8 @@ Every response carries `Cache-Control: no-store`.
 
 ## How the workflow uses it
 
-`Prepare Coins Snapshot` reads `$getWorkflowStaticData('global').coinsPricingV2` first. Only when `lastSuccessfulRates` is missing does it call this endpoint, and a failure here is never fatal: a scheduled run with its own memory must not start failing because the endpoint had a bad minute. The run records which one it used in `pricingAudit.baselineSource` (`memory`, `store`, or `null`), and `Assess Price Move` compares against `pricingAudit.baselineRates` rather than reading the memory again - otherwise a manual run would find no baseline, no large move, and publish a season-turn price with nobody asked.
+`Prepare Coins Snapshot` calls this endpoint on **every** run and prefers its answer to the workflow's own memory, falling back to the memory only when the read fails. A failure here is never fatal: a scheduled run with its own memory must not start failing because the endpoint had a bad minute.
+
+Preferring the store is not belt-and-braces. n8n does not persist static data written during a manual execution, so a manual run publishes a price the workflow immediately forgets, and the next scheduled run compares against whatever the last *scheduled* publish left behind. On 2026-09-17 that read as `سريع 1M: 1681.01 ← 725.73 (-56.8%)` and asked the owner to approve a collapse, against a store already selling at 725.73. What the store is charging is what a price move is measured against; the memory is a cache of it.
+
+The run records which one it used in `pricingAudit.baselineSource` (`store`, `memory`, or `null`), and `Assess Price Move` compares against `pricingAudit.baselineRates` rather than reading the memory again - otherwise a manual run would find no baseline, no large move, and publish a season-turn price with nobody asked.
