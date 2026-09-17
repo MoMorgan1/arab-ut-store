@@ -223,13 +223,20 @@ class HomeController extends Controller
     }
 
     /**
-     * The order sizes the configurator offers, solved from money.
+     * The order sizes the configurator offers.
      *
-     * The floor and the quick amounts are commercial decisions about what an
-     * order is worth, and they are stored that way; the coin counts that carry
-     * them follow the applied rate and change with it. Falls back to the
-     * configured quantities when no rate is applied yet, because a storefront
-     * that renders is worth more than one that insists on being exact.
+     * The floor is a commercial decision about what an order is worth - the
+     * smallest one worth the work of placing it - so it is stored in money and
+     * the coin count that carries it follows the applied rate. Falls back to
+     * the configured quantity when no rate is applied yet, because a
+     * storefront that renders is worth more than one that insists on being
+     * exact.
+     *
+     * The quick amounts are not solved the same way. They were, and the rate
+     * turned them into 445K, 1,370K and 6,730K: correct to the riyal and
+     * unreadable as a row of buttons. They are round numbers a customer
+     * recognises, and the ones today's market cannot fill are dropped by the
+     * configurator rather than rewritten.
      *
      * @return array<string, mixed>
      */
@@ -265,20 +272,11 @@ class HomeController extends Controller
             (int) $anchors['minimum'],
         );
 
-        $targets = [];
-
-        foreach ((array) $anchors['presets'] as $halalah) {
-            $targets[] = (int) $halalah;
-        }
-
-        $presets = array_values(array_filter(
-            $this->solveQuantity->ladder($rule, $rules, $targets),
+        // A quick amount under the floor is a button that cannot be pressed.
+        $amount['presets'] = array_values(array_filter(
+            $amount['presets'],
             static fn (int $quantity): bool => $quantity >= $amount['minimum'],
         ));
-
-        if ($presets !== []) {
-            $amount['presets'] = $presets;
-        }
 
         return $amount;
     }
