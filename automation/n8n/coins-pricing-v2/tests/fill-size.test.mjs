@@ -1,4 +1,4 @@
-// Runs the Probe FFT node of workflow-v2.9.json against a fake FFT, and pins
+// Runs the Probe FFT node of workflow-v3.0.json against a fake FFT, and pins
 // the v2.6 rule: the clearing price comes from how many coins a price would
 // actually fill, not from whether the provider says the word "enough".
 //
@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const workflow = JSON.parse(
-    readFileSync(new URL('../workflow-v2.9.json', import.meta.url), 'utf8'),
+    readFileSync(new URL('../workflow-v3.0.json', import.meta.url), 'utf8'),
 );
 const source = (name) =>
     workflow.nodes.find((node) => node.name === name).parameters.jsCode;

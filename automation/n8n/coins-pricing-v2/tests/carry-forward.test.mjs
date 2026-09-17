@@ -1,4 +1,4 @@
-// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.9.json the
+// Runs the Config and Prepare Coins Snapshot nodes of workflow-v3.0.json the
 // way n8n would - once with FFT answering, once with FFT down - and pins the
 // v2.5 rule: FFT down carries last time's rates forward and still publishes a
 // UTT cost table; with nothing to carry forward it stops as v2.4 did.
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.9.json', import.meta.url), 'utf8'));
+const workflow = JSON.parse(readFileSync(new URL('../workflow-v3.0.json', import.meta.url), 'utf8'));
 const source = (name) => workflow.nodes.find((node) => node.name === name).parameters.jsCode;
 const configSrc = source('Config');
 const prepareSrc = source('Prepare Coins Snapshot');
@@ -273,4 +273,90 @@ test('the ceiling follows the pool, not the buy that priced it', async () => {
         busy.snapshot.observations.availableCoins.console_fast,
         156_464,
     );
+});
+
+test('the alert quotes what an order costs, not the rate per million', async () => {
+    // "Fast 2M: 7.22 -> 850" is the number the formula works in, and nobody
+    // buys it. The owner reads riyals per order, so that is what the snapshot
+    // publishes for the alert to format.
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, 0.26), highestAvailable: null },
+    };
+    const fft = {
+        source: 'fft', failed: false,
+        cycle: {
+            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            pc: { usdPerM: 240, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    };
+    const memory = {
+        lastSuccessfulRates: {
+            console_normal: 722,
+            console_fast: [722, 722, 722, 914, 1000, 1100],
+            pc: [1777, 1836, 1836, 2132, 3968, 3968],
+        },
+    };
+
+    const out = await runPrepare(config, fft, utt, memory);
+    const points = out.pricingAudit.pricePoints;
+
+    // Real order sizes, each with what it cost before and what it costs now.
+    assert.ok(points.console_fast.length > 0);
+
+    for (const point of points.console_fast) {
+        assert.ok(Number.isInteger(point.quantity) && point.quantity > 0);
+        assert.ok(Number.isInteger(point.currentHalalah) && point.currentHalalah > 0);
+        assert.ok(Number.isInteger(point.previousHalalah) && point.previousHalalah > 0);
+    }
+
+    // A million coins costs about a thousand times the rate per million, which
+    // is the whole reason the rate on its own tells the owner nothing.
+    const million = points.console_fast.find((p) => p.quantity === 1_000_000);
+    assert.ok(million, 'the one-million point must be quoted');
+    assert.ok(
+        million.currentHalalah > million.previousHalalah * 50,
+        'an FC27 market against FC26 rates must show as an enormous move',
+    );
+
+    // Slow console stops at two million, so it must not be asked for twenty.
+    assert.ok(
+        points.console_normal.every((p) => p.quantity <= 2_000_000),
+        'a group must only be quoted sizes it actually sells',
+    );
+});
+
+test('with no baseline the alert has nothing to compare and says so rather than inventing it', async () => {
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+    const utt = {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, 0.26), highestAvailable: null },
+    };
+    const fft = {
+        source: 'fft', failed: false,
+        cycle: {
+            ps: { usdPerM: 220, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+            pc: { usdPerM: 240, amountCoins: 45_000, poolCoins: 312_929, coversTarget: false },
+        },
+        targeted: {
+            ps: { tiers: tiers(caps, null, false), highestAvailable: null },
+            pc: { tiers: tiers(caps, null, false), highestAvailable: null },
+        },
+    };
+
+    const out = await runPrepare(config, fft, utt, {});
+
+    for (const point of out.pricingAudit.pricePoints.console_fast) {
+        assert.equal(point.previousHalalah, null);
+        assert.ok(point.currentHalalah > 0);
+    }
 });
