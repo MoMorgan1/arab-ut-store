@@ -112,6 +112,74 @@ test('EasySBC prices are not required, because FFT prices what it lists', async 
     assert.equal(merged.sourceAudit.metadataInvalid, 0);
 });
 
+test('a price the two providers disagree on by thousands is skipped, not sold', async () => {
+    // Production, 2026-09-17: FFT priced a one-squad Gold Upgrade at
+    // 100,700,000 coins against EasySBC's 8,200, and the store published it at
+    // 6,458 SAR. One typo at a provider must not become a price on a shelf.
+    const fft = fftRecords();
+    fft[0].consolePrice = 100_700_000;
+    fft[0].pcPrice = 100_700_000;
+
+    const merged = await merge({ fft });
+    const audit = merged.sourceAudit;
+
+    assert.equal(audit.priceDisagreements, 1);
+    assert.deepEqual(audit.priceDisagreementIds, ['1']);
+    assert.ok(audit.priceDisagreementSamples[0].ratio > 1000);
+
+    assert.equal(
+        merged.body.find((record) => record.id === 1),
+        undefined,
+        'the disagreed record must not reach the catalogue',
+    );
+    assert.ok(
+        merged.body.length > 100,
+        'every other challenge still publishes',
+    );
+});
+
+test('the same typo in the other direction is skipped too', async () => {
+    // A price far BELOW the market figure is the dangerous one commercially:
+    // it sells a real challenge for a fraction of what solving it costs.
+    const fft = fftRecords();
+    fft[0].consolePrice = 5;
+    fft[0].pcPrice = 5;
+
+    const merged = await merge({ fft });
+
+    assert.equal(merged.sourceAudit.priceDisagreements, 1);
+    assert.equal(
+        merged.body.find((record) => record.id === 1),
+        undefined,
+    );
+});
+
+test('the ordinary spread between the two providers is left alone', async () => {
+    // Real FC27 figures, 2026-09-17: FFT is always the cheaper of the two
+    // because it builds the squad better than the open market. Observed 0.14x
+    // and 0.76x, and neither is a typo.
+    const fft = fftRecords();
+    fft[0].consolePrice = Math.round(metaRecord(1).psPrice * 0.14);
+    fft[1].consolePrice = Math.round(metaRecord(2).psPrice * 0.76);
+
+    const merged = await merge({ fft });
+
+    assert.equal(merged.sourceAudit.priceDisagreements, 0);
+    assert.ok(merged.body.find((record) => record.id === 1));
+    assert.ok(merged.body.find((record) => record.id === 2));
+});
+
+test('a metadata price of zero is no evidence, so FFT is taken at its word', async () => {
+    const meta = metaRecords(120);
+    meta[0].psPrice = 0;
+    meta[0].pcPrice = 0;
+
+    const merged = await merge({ meta });
+
+    assert.equal(merged.sourceAudit.priceDisagreements, 0);
+    assert.ok(merged.body.find((record) => record.id === 1));
+});
+
 test('join integrity and FFT coverage are measured separately', async () => {
     // FFT is a coin-farming service: it structurally does not sell daily
     // freebies or OVR Token Swaps. Roughly a quarter of EasySBC is absent while

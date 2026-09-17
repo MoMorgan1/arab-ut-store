@@ -475,19 +475,17 @@ function isRepeatableBundle(record) {
     );
 }
 
+// No coin floor here either. Owner decision 2026-09-17: a challenge a supplier
+// will actually solve belongs on the storefront whatever it costs, so the only
+// questions left are whether it is live, whether it expires too soon to sell,
+// whether it is one of the bronze/silver sets the store does not carry, and
+// whether both prices are real. The price-sanity question is answered upstream
+// in Merge Provider Sources, where both providers' figures are still in hand.
 function ineligibilityReason(record) {
     if (!record.active) return 'inactive';
     if (record.endTime <= expiryCutoff) return 'inside_expiry_lead';
     if (excludedNamePattern.test(record.name)) return 'excluded_name';
-    if (Number(record.psPrice) < settings.eligibility.minConsoleCoins)
-        return 'ps_below_minimum';
-    if (
-        !isRepeatableBundle(record) &&
-        Number(record.psPrice) <
-            settings.eligibility.minNonRepeatableConsoleCoins
-    ) {
-        return 'nonrepeatable_ps_below_minimum';
-    }
+    if (Number(record.psPrice) <= 0) return 'ps_not_positive';
     if (Number(record.pcPrice) <= 0) return 'pc_not_positive';
     return null;
 }

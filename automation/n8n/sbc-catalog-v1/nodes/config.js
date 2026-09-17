@@ -82,8 +82,25 @@ return [
                 minimumExpiryLeadSeconds: 7200,
 
                 eligibility: {
-                    minConsoleCoins: 1500,
-                    minNonRepeatableConsoleCoins: 20000,
+                    // No coin floor. Owner decision 2026-09-17: every
+                    // challenge a supplier will actually solve belongs on the
+                    // storefront, whatever it costs. The floors that used to
+                    // live here threw away the only two sellable FC27
+                    // challenges - 2,332 and 18,815 coins against a 20,000
+                    // minimum - and left the catalogue showing one badly
+                    // priced set and nothing else.
+                    //
+                    // How far the two providers may disagree before the price
+                    // is treated as a typo rather than a price. FFT is always
+                    // the cheaper of the two in practice - it builds the squad
+                    // better than the open market - and the observed spread on
+                    // 2026-09-17 was 0.14x to 0.76x, so these bounds are wide
+                    // enough to never touch a real listing. They exist for
+                    // FFT's 100,700,000-coin Gold Upgrade, a set EasySBC
+                    // prices at 8,200: a data-entry error that reached the
+                    // storefront as a 6,458 SAR product.
+                    maxProviderPriceRatio: 10,
+                    minProviderPriceRatio: 0.02,
                     // Double backslash is REQUIRED: this is a JS string that becomes a
                     // RegExp, so '\b' would be a backspace character (U+0008) and the
                     // filter would silently match nothing. Build & Price Snapshot
