@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fulfillment;
 
+use App\Enums\DeliveryPhase;
 use App\Enums\FulfillmentAlarmKind;
 use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
@@ -13,16 +14,19 @@ use App\Support\Orders\AwaitingPlacement;
 use App\Support\Orders\PlacementBlockers;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Brings the alarm table level with what is actually silent right now.
  *
- * Two silences, neither of which anything else can report. An automated item
+ * Three silences, none of which anything else can report. An automated item
  * that was paid for and never placed is invisible to n8n - from its side the
  * placement succeeded and the callback was lost - and invisible to the poller,
  * which only reads jobs that already carry a supplier reference. A placed item
  * whose reads keep coming back empty is visible to the poller, which dutifully
- * backs off and retries it forever without ever saying so out loud.
+ * backs off and retries it forever without ever saying so out loud. And a job
+ * whose readings simply stopped arriving is invisible to both, because a read
+ * that is never attempted never fails.
  *
  * The first of those waits a length of time that depends on why it is stuck:
  * a request the store is refusing to compose will read the same tomorrow, so
@@ -34,6 +38,14 @@ use Illuminate\Database\Eloquent\Builder;
 final class SweepFulfillmentAlarms
 {
     /**
+     * The cadence-table key for a job carrying no delivery phase.
+     *
+     * A plain coins job can have a null phase, and null is not an array key,
+     * so the table names that case rather than leaving it to a cast.
+     */
+    private const PHASELESS = 'none';
+
+    /**
      * @return array{raised: int, resolved: int, open: int}
      */
     public function execute(): array
@@ -42,16 +54,19 @@ final class SweepFulfillmentAlarms
 
         $unplaced = $this->unplaced($now);
         $silent = $this->silent();
+        $stalled = $this->stalled($now);
 
         $raised = $this->raise(FulfillmentAlarmKind::Unplaced, $this->raisable($unplaced), $now)
-            + $this->raise(FulfillmentAlarmKind::Silent, $silent, $now);
+            + $this->raise(FulfillmentAlarmKind::Silent, $silent, $now)
+            + $this->raise(FulfillmentAlarmKind::Stalled, $stalled, $now);
 
         // Resolution reads the unwindowed sets on purpose. An alarm is closed
         // when its condition is gone, never because the item aged out of the
         // window that was allowed to raise it - an order that stayed lost for
         // three days is still lost.
         $resolved = $this->resolve(FulfillmentAlarmKind::Unplaced, array_keys($unplaced), $now)
-            + $this->resolve(FulfillmentAlarmKind::Silent, array_keys($silent), $now);
+            + $this->resolve(FulfillmentAlarmKind::Silent, array_keys($silent), $now)
+            + $this->resolve(FulfillmentAlarmKind::Stalled, array_keys($stalled), $now);
 
         return [
             'raised' => $raised,
@@ -179,6 +194,105 @@ final class SweepFulfillmentAlarms
         }
 
         return $described;
+    }
+
+    /**
+     * Placed jobs whose newest reading is older than their phase allows.
+     *
+     * One query per configured phase rather than one query with the cadences
+     * OR'd together: there are at most three of them, they run every five
+     * minutes over the handful of jobs a supplier is working on, and the
+     * predicate for one phase is legible in a way the union of three is not.
+     *
+     * An unconfigured phase is skipped entirely, so an unset table selects
+     * nothing at all - see {@see self::stallCadence()}.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function stalled(CarbonImmutable $now): array
+    {
+        $described = [];
+
+        foreach ($this->stallCadence() as $phase => $minutes) {
+            $cutoff = $now->subMinutes($minutes);
+
+            foreach ($this->stalledInPhase($phase, $cutoff) as $job) {
+                $item = $job->orderItem;
+
+                if (! $item instanceof OrderItem) {
+                    continue;
+                }
+
+                $described[$item->id] = [
+                    'order_number' => (string) $item->order->order_number,
+                    // The item as well as its order, for the same reason the
+                    // other two passes carry it: one order can hold several
+                    // items at different suppliers, and every recovery step
+                    // takes the item id.
+                    'order_item_public_id' => (string) $item->public_id,
+                    'service' => $item->service_type->value,
+                    'supplier' => $job->supplier?->value,
+                    'supplier_order_id' => $job->supplier_order_id,
+                    'phase' => $phase,
+                    'observed_state' => $job->observed_state,
+                    // Absolute, because Carbon signs a difference by the order
+                    // the two instants were given and a negative age in an
+                    // operator's mail is a number nobody trusts again.
+                    'quiet_minutes' => $job->observed_at === null
+                        ? null
+                        : (int) $job->observed_at->diffInMinutes($now, true),
+                ];
+            }
+        }
+
+        return $described;
+    }
+
+    /**
+     * The stalled jobs of one phase, as of one cutoff.
+     *
+     * Built on the same owed set the silence pass reads, plus the rest of the
+     * poller's own selection (`PollFulfillmentJobs::selectDueJobs`). That is
+     * here for a reason rather than for symmetry: this alarm means "the poller
+     * should be reading this and no reading is arriving", so anything the
+     * poller is deliberately not reading cannot be stalled. A null
+     * `next_poll_at` is the reconciler's "stop polling this" marker, and
+     * without it - or without the finished orders and items `owed()` removes -
+     * work closed by an admin would raise an alarm no observation could ever
+     * resolve.
+     *
+     * @return Collection<int, FulfillmentJob>
+     */
+    private function stalledInPhase(string $phase, CarbonImmutable $cutoff): Collection
+    {
+        return $this->owed()
+            ->whereNotNull('supplier')
+            ->whereNotNull('supplier_order_id')
+            ->where('supplier_order_id', '!=', '')
+            ->whereNotNull('next_poll_at')
+            ->when(
+                $phase === self::PHASELESS,
+                fn ($query) => $query->whereNull('delivery_phase'),
+                fn ($query) => $query->where('delivery_phase', $phase),
+            )
+            ->where(function ($query) use ($cutoff): void {
+                $query->where('observed_at', '<', $cutoff)
+                    // Never read at all, and old enough that it should have
+                    // been. Measured from the newest placement rather than
+                    // from the job row, which can predate any supplier being
+                    // handed the work (`RecordSupplierPlacement` adopts an
+                    // existing row). A job with no placement row is left alone:
+                    // there is no honest instant to measure it from, and
+                    // guessing one is how an alarm starts crying wolf.
+                    ->orWhere(function ($query) use ($cutoff): void {
+                        $query->whereNull('observed_at')
+                            ->has('placements')
+                            ->whereDoesntHave('placements', function ($placements) use ($cutoff): void {
+                                $placements->where('placed_at', '>=', $cutoff);
+                            });
+                    });
+            })
+            ->get();
     }
 
     /**
@@ -312,5 +426,49 @@ final class SweepFulfillmentAlarms
     private function raiseWindowHours(): int
     {
         return max(1, (int) config('services.suppliers.alarm.raise_window_hours', 48));
+    }
+
+    /**
+     * The phase cadence table, reduced to the phases that carry a real number.
+     *
+     * An entry that is unset, unreadable or not positive is not a threshold,
+     * it is an unanswered question - and the answer to an unanswered question
+     * is to watch nothing. The inverse, letting a missing number fall through
+     * to zero the way `(int) null` would, calls every open job in that phase
+     * stalled the moment it ships. There is no default argument to `config()`
+     * here for the same reason: a default is a guess with a hiding place.
+     *
+     * A key the enum does not name is ignored, so a typo in the table turns
+     * its phase off rather than on.
+     *
+     * @return array<string, int>
+     */
+    private function stallCadence(): array
+    {
+        $configured = config('services.suppliers.alarm.stalled_after_minutes');
+
+        if (! is_array($configured)) {
+            return [];
+        }
+
+        $phases = array_map(
+            static fn (DeliveryPhase $phase): string => $phase->value,
+            DeliveryPhase::cases(),
+        );
+        $phases[] = self::PHASELESS;
+
+        $cadence = [];
+
+        foreach ($phases as $phase) {
+            $minutes = $configured[$phase] ?? null;
+
+            if (! is_numeric($minutes) || (int) $minutes <= 0) {
+                continue;
+            }
+
+            $cadence[$phase] = (int) $minutes;
+        }
+
+        return $cadence;
     }
 }

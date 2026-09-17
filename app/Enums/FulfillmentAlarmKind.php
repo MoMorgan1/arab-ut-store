@@ -5,7 +5,7 @@ namespace App\Enums;
 /**
  * Why an operator is being told about an item nobody else can see.
  *
- * Both cases are silence rather than failure: a failed placement already
+ * Every case is silence rather than failure: a failed placement already
  * reaches Mohamed through n8n's own alerting, and a failed read already backs
  * off and retries. What neither can report is that nothing is happening at
  * all - so these are deliberately operator vocabulary, and no case here ever
@@ -31,4 +31,21 @@ enum FulfillmentAlarmKind: string
      * has been unreachable long enough to stop being a blip.
      */
     case Silent = 'silent';
+
+    /**
+     * A placed item the poller should be reading, whose newest observation is
+     * older than its delivery phase allows.
+     *
+     * The distinction from {@see self::Silent} is what is broken. Silent
+     * counts reads that were attempted and came back useless, so it only fires
+     * while something is still trying. This one measures the age of the last
+     * reading that landed, and therefore also catches the case nothing else
+     * can see: reads that stopped being attempted at all - a dead scheduler
+     * cron, a lease that leaked, a job selection that quietly stopped matching
+     * - where the failure counter never moves because nothing ever fails.
+     *
+     * How old is too old is a per-phase number, and it is not in this codebase
+     * yet. See the cadence table in `config/services.php`.
+     */
+    case Stalled = 'stalled';
 }

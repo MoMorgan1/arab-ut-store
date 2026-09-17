@@ -7,8 +7,13 @@ found twenty-five issues in the first draft; approved and dispatched since.
 (#134, #136, #137, #138, #141), and **B4** - the store composes the placement request itself
 (this branch). Contract: `docs/api/n8n-fulfillment-v1.md`, *The placement request*.
 
-**Not started:** D3b (waits on the cadence numbers D3a's instrumentation produces), E1, E2,
-F1-F3.
+**Not started:** E1, F1-F3.
+
+**E2 shipped** (2026-09-17, #205): a paid item nobody placed, and a placed item whose reads keep
+coming back empty, are both said out loud - with the wait graded by why the item is stuck.
+
+**D3b's mechanism is built and switched off** - its phase cadence table is unset because D3a's
+instrumentation has recorded nothing to set it from; see the D3b section below.
 
 **G2's repository half is done** (2026-09-17): every reference in the store that sent a customer or
 a reader to `track.arab-ut.com` now names the in-store page, and the cutover procedure is written
@@ -904,6 +909,31 @@ that state only moves when a customer opens the page.
 job whose newest observation is older than the cadence expected for its phase" needs a phase
 cadence table nobody has written, and the only honest source for one is the latency D3a's
 instrumentation is there to measure. So it waits for a week of D3a's numbers rather than guessing.
+
+**The week of numbers does not exist, and waiting another week would not produce it — 2026-09-17.**
+Three findings, checked against production:
+
+- **D3a's instrumentation has never written a line.** It is one `Log::info` per tick, and
+  production runs `LOG_LEVEL=warning` (both the `daily` and `single` channels resolve to it), so
+  every tick since D3a shipped on 2026-09-13 has been discarded at the handler. `grep` over every
+  file in `storage/logs` finds zero occurrences of `Fulfillment poll completed.`
+- **Nothing durable records an observation gap either.** There is no observations table:
+  `fulfillment_jobs.observed_at` is a single column overwritten on every successful read, so the
+  database holds the newest reading and no history of the intervals between them. There is no query
+  that could produce a per-phase distribution, at any point in the future, from what is stored
+  today.
+- **There is also almost nothing to measure.** Production holds exactly **one** `fulfillment_jobs`
+  row store-wide (created 2026-09-15, UTT, phase `coins`, `observed_state` `entered`, 0 of 210,000
+  coins delivered, `poll_failure_count` 0) against 31,984 orders — the store is taking no orders
+  while FIFA 26 winds down. Six supplier-sourced `order_status_history` rows exist in total. Even a
+  perfect recorder would have a sample size of one.
+
+So D3b ships as **the mechanism with the table unset**: a `stalled` alarm kind alongside B6's
+`unplaced` and `silent`, driven by `services.suppliers.alarm.stalled_after_minutes`, whose every
+entry is null. Unset means that phase is not watched; it never means everything in it is stalled.
+Setting a number is a decision for whoever has the numbers, and turning the numbers on is its own
+prerequisite: raise the production log level for this channel, or give the poller somewhere durable
+to write a gap.
 
 **D3c — notification.** Blocked on Mohamed, not on code: every message is customer-visible
 WhatsApp copy, and the catalogue ported from `Customer Notifier` has to be read and approved before

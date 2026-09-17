@@ -116,6 +116,30 @@ return [
             // after a deploy from opening one for every automated item the store
             // has ever sold through a pipeline that predates this table.
             'raise_window_hours' => 48,
+
+            // D3b's phase cadence table: the longest a placed job in each
+            // delivery phase may go without a reading landing before an
+            // operator is told it has stopped moving. Minutes. The key 'none'
+            // is a job carrying no phase at all.
+            //
+            // Every entry is deliberately unset, and unset means that phase is
+            // not watched - never that everything in it is stalled. The only
+            // honest source for these numbers is measured per-phase
+            // observation gaps, and on 2026-09-17 there were none to measure:
+            // D3a's instrumentation is a single Log::info line per tick and
+            // production runs at LOG_LEVEL=warning, so not one tick has ever
+            // been written, and nothing durable records an observation gap
+            // either - `fulfillment_jobs.observed_at` is one column that is
+            // overwritten on every read, not a history.
+            //
+            // Setting a number here turns the alarm on for that phase, so it
+            // is a decision, not a default. A guessed threshold would mail
+            // Mohamed about healthy orders until he stopped reading the mail.
+            'stalled_after_minutes' => [
+                'coins' => null,
+                'challenge' => null,
+                'none' => null,
+            ],
         ],
 
         'fft' => [
