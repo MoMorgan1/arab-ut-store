@@ -107,6 +107,7 @@ const store = {
         slider_label: 'Choose the Coins amount',
         minimum_label: 'Minimum',
         maximum_label: 'Maximum',
+        limited_note: ':amount Coins are available right now.',
         clamped: 'Amount adjusted to this delivery limit.',
         normal_delivery_suggestion:
             'Fast delivery supports more than 2M Coins.',
@@ -179,17 +180,20 @@ const platforms = [
             '/images/store/platforms/xbox-logo-white-80.webp',
         ],
         maximum: 20_000_000,
+        available: 20_000_000,
         deliveries: [
             {
                 value: 'normal',
                 label: 'Normal',
                 maximum: 2_000_000,
+                available: 2_000_000,
                 minutesPerMillion: 150,
             },
             {
                 value: 'fast',
                 label: 'Fast',
                 maximum: 20_000_000,
+                available: 20_000_000,
                 minutesPerMillion: 45,
             },
         ],
@@ -199,6 +203,7 @@ const platforms = [
         label: 'PC',
         iconUrls: ['/images/store/platforms/pc-logo.svg'],
         maximum: 2_000_000,
+        available: 2_000_000,
         deliveries: [],
     },
 ] as const;
@@ -815,6 +820,57 @@ describe('Coins homepage', () => {
                 .closest('label')
                 ?.querySelector('img'),
         ).toHaveAttribute('src', '/images/store/platforms/pc-logo.svg');
+    });
+
+    it('sells only what a supplier can deliver, and says so', () => {
+        // FC27 opened with the whole PS pool holding well under a million
+        // coins while the storefront still offered twenty. The rail keeps its
+        // full span so the range stays visible, but nothing past what the last
+        // pricing run could source is buyable.
+        mockPage.props = {
+            ...availableProps(),
+            platforms: platforms.map((platform) =>
+                platform.value !== 'playstation'
+                    ? platform
+                    : {
+                          ...platform,
+                          available: 500_000,
+                          deliveries: platform.deliveries.map((delivery) => ({
+                              ...delivery,
+                              available: 500_000,
+                          })),
+                      },
+            ),
+        };
+
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        expect(
+            screen.getByText('500K Coins are available right now.'),
+        ).toBeInTheDocument();
+
+        // The rail still spans the full twenty million it always did.
+        const range = screen.getByRole('slider', {
+            name: store.amount_copy.slider_label,
+        });
+        expect(range).toHaveAttribute('max', '20000000');
+
+        // Dragging past the available ceiling lands on it, not beyond.
+        fireEvent.change(range, { target: { value: '8000000' } });
+        expect(
+            screen.getByRole('textbox', { name: store.amount_copy.label }),
+        ).toHaveValue('500,000');
+
+        // And a preset nobody can fill is not offered.
+        expect(screen.queryByRole('button', { name: '5M' })).toBeNull();
+    });
+
+    it('says nothing about limits when the market covers the whole range', () => {
+        render(<StoreHome />);
+        selectConsoleDelivery('Fast');
+
+        expect(screen.queryByText(/available right now/)).toBeNull();
     });
 
     it('renders every WordPress amount control in its exact DOM order', () => {

@@ -5,6 +5,7 @@ namespace App\Services\Catalog;
 use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\PriceRule;
+use App\Models\PriceRun;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ServicePriceSchedule;
@@ -18,6 +19,9 @@ use Illuminate\Support\Facades\Config;
 final class CoinsCatalogReader
 {
     private const PRICING_GROUPS = ['console_normal', 'console_fast', 'pc'];
+
+    /** @var array<string, mixed>|null */
+    private ?array $legalRanges = null;
 
     public function __construct(private readonly CoinsPriceCalculator $calculator) {}
 
@@ -142,6 +146,47 @@ final class CoinsCatalogReader
         return $this->quantityRules ??= CoinsQuantityRules::fromConfiguration(
             $this->coinsConfiguration(),
         );
+    }
+
+    /**
+     * The largest quantity of this group a supplier could actually deliver
+     * when prices were last published, or null when the run did not say.
+     *
+     * The catalogue ceiling in config is what the store is willing to sell at
+     * its widest; this is what the market could answer on the hour. They are
+     * different questions, and conflating them is how a storefront ends up
+     * offering twenty million coins on a day the whole pool holds thirty
+     * thousand. The narrower of the two wins, and null means the run predates
+     * this field, so the configured ceiling stands unchanged.
+     */
+    public function availableMaximum(string $group): ?int
+    {
+        $ranges = $this->appliedLegalRanges();
+        $maximum = $ranges[$group]['maximum'] ?? null;
+
+        return is_int($maximum) && $maximum > 0 ? $maximum : null;
+    }
+
+    /**
+     * Read once per request. Every platform and delivery asks this, and the
+     * answer cannot change between two questions on the same page.
+     *
+     * @return array<string, mixed>
+     */
+    private function appliedLegalRanges(): array
+    {
+        if ($this->legalRanges !== null) {
+            return $this->legalRanges;
+        }
+
+        $payload = PriceRun::query()
+            ->where('status', 'applied')
+            ->latest('id')
+            ->value('payload');
+
+        $ranges = is_array($payload) ? ($payload['legalRanges'] ?? null) : null;
+
+        return $this->legalRanges = is_array($ranges) ? $ranges : [];
     }
 
     /**

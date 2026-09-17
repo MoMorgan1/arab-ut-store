@@ -68,7 +68,7 @@ class HomeController extends Controller
                 'tiers' => $quantityRules->tiers(),
                 'presets' => $quantityRules->presets(),
             ],
-            'platforms' => $this->platforms(),
+            'platforms' => $this->platforms($catalog),
             'homeContent' => [
                 'services' => $this->services($request),
                 'servicesTranslations' => trans('store.services_section'),
@@ -222,25 +222,48 @@ class HomeController extends Controller
     }
 
     /** @return list<array<string, mixed>> */
-    private function platforms(): array
+    private function platforms(CoinsCatalogReader $catalog): array
     {
         $platforms = [];
 
         foreach ([Platform::PlayStation, Platform::Pc] as $platform) {
+            $maximum = Config::integer("coins.platforms.{$platform->value}.maximum");
             $platforms[] = [
                 'value' => $platform->value,
                 'label' => $this->translation("store.platform.descriptions.{$platform->value}"),
                 'iconUrls' => Config::array("coins.platforms.{$platform->value}.icon_urls"),
-                'maximum' => Config::integer("coins.platforms.{$platform->value}.maximum"),
-                'deliveries' => $this->deliveries($platform),
+                'maximum' => $maximum,
+                // What the slider may reach today. The ceiling above is the
+                // store's own limit and does not move; this one is the market's
+                // answer at the last pricing run, and a season that starts with
+                // an empty pool has to be allowed to say so.
+                'available' => $this->available(
+                    $catalog,
+                    $platform === Platform::Pc ? 'pc' : 'console_fast',
+                    $maximum,
+                ),
+                'deliveries' => $this->deliveries($platform, $catalog),
             ];
         }
 
         return $platforms;
     }
 
-    /** @return list<array{value: string, label: string, maximum: int, minutesPerMillion: int}> */
-    private function deliveries(Platform $platform): array
+    /**
+     * The narrower of what the store offers and what a supplier could deliver.
+     *
+     * Never above the configured ceiling: a provider claiming it can source
+     * fifty million coins does not widen what this store is willing to sell.
+     */
+    private function available(CoinsCatalogReader $catalog, string $group, int $maximum): int
+    {
+        $reported = $catalog->availableMaximum($group);
+
+        return $reported === null ? $maximum : min($maximum, $reported);
+    }
+
+    /** @return list<array{value: string, label: string, maximum: int, available: int, minutesPerMillion: int}> */
+    private function deliveries(Platform $platform, CoinsCatalogReader $catalog): array
     {
         $configuredDeliveries = Config::array("coins.platforms.{$platform->value}.deliveries");
         $deliveries = [];
@@ -251,10 +274,16 @@ class HomeController extends Controller
             }
 
             $prefix = "coins.platforms.{$platform->value}.deliveries.{$delivery}";
+            $maximum = Config::integer("{$prefix}.maximum");
             $deliveries[] = [
                 'value' => $delivery,
                 'label' => $this->translation("store.delivery.options.{$delivery}"),
-                'maximum' => Config::integer("{$prefix}.maximum"),
+                'maximum' => $maximum,
+                'available' => $this->available(
+                    $catalog,
+                    $delivery === 'normal' ? 'console_normal' : 'console_fast',
+                    $maximum,
+                ),
                 'minutesPerMillion' => Config::integer("{$prefix}.minutes_per_million"),
             ];
         }

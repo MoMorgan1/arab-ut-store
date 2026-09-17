@@ -161,9 +161,23 @@ export function CoinsConfigurator({
     );
     const quantity = quantityFromInput(state.quantityInput);
     const maximum = selectedDelivery?.maximum ?? selectedPlatform?.maximum ?? 0;
+    // Two ceilings, and only one of them is buyable. `maximum` is the range
+    // the store offers and the rail draws; `available` is what a supplier
+    // could actually deliver at the last pricing run. Every check that decides
+    // whether an order may be placed reads the second one - a rail that shows
+    // twenty million must still refuse to sell coins nobody has.
+    const available = Math.min(
+        maximum,
+        selectedDelivery?.available ?? selectedPlatform?.available ?? maximum,
+    );
     const quantityIsValid =
         quantity !== null &&
-        acceptsQuantity(quantity, amount.minimum, maximum, amount.roundingUnit);
+        acceptsQuantity(
+            quantity,
+            amount.minimum,
+            available,
+            amount.roundingUnit,
+        );
     const isPc = selectedPlatform?.value === 'pc';
     const deliveryIsValid = isPc || selectedDelivery !== null;
     const requestDelivery = isPc ? null : (selectedDelivery?.value ?? null);
@@ -290,7 +304,7 @@ export function CoinsConfigurator({
         beginNewSubmission();
         dispatch({
             clampMessage: translations.amount_copy.clamped,
-            maximum: platform.maximum,
+            maximum: Math.min(platform.maximum, platform.available),
             selectionMessage: selectionAnnouncement(
                 translations.platform.options[value],
             ),
@@ -311,7 +325,7 @@ export function CoinsConfigurator({
         beginNewSubmission();
         dispatch({
             clampMessage: translations.amount_copy.clamped,
-            maximum: delivery.maximum,
+            maximum: Math.min(delivery.maximum, delivery.available),
             selectionMessage: selectionAnnouncement(
                 translations.delivery.options[value],
             ),
@@ -357,11 +371,11 @@ export function CoinsConfigurator({
         const isValid =
             nextQuantity !== null &&
             nextQuantity >= amount.minimum &&
-            nextQuantity <= maximum &&
+            nextQuantity <= available &&
             acceptsQuantity(
                 nextQuantity,
                 amount.minimum,
-                maximum,
+                available,
                 amount.roundingUnit,
             );
 
@@ -390,7 +404,7 @@ export function CoinsConfigurator({
         const committedQuantity = clampAndSnapQuantity(
             value,
             amount.minimum,
-            maximum,
+            available,
             amount.roundingUnit,
         );
         const quantityInputAlreadyMatches =
@@ -661,6 +675,7 @@ export function CoinsConfigurator({
                     focusRef={amountHeading}
                     isValid={quantityIsValid}
                     locale={locale}
+                    available={available}
                     maximum={maximum}
                     onAdjust={adjustQuantity}
                     onBack={goBack}

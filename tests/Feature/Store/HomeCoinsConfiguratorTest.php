@@ -5,11 +5,13 @@ use App\Enums\Platform;
 use App\Enums\ServiceType;
 use App\Models\ExchangeRate;
 use App\Models\PriceRule;
+use App\Models\PriceRun;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
@@ -241,10 +243,15 @@ test('the foreign-currency homepage builds every schedule from one pricing and r
     // It rose again to 12 when the FAQ moved from the language files to the
     // faq_entries table (one ordered read of a handful of rows), and to 13
     // when the hero proof started counting completed orders and served
-    // customers from the orders table (one aggregate, cached for 15 minutes).
+    // customers from the orders table (one aggregate, cached for 15 minutes),
+    // and to 14 when the configurator started asking the last pricing run what
+    // a supplier could actually deliver. That last one is asserted below as
+    // exactly one read: every platform and delivery asks, and the answer is
+    // memoised, so the number must not grow with the catalogue.
     expect($durationMilliseconds)->toBeLessThan(1_000)
-        ->and(count($queries))->toBeLessThanOrEqual(13)
+        ->and(count($queries))->toBeLessThanOrEqual(14)
         ->and($queriesFor('price_rules'))->toBe(1)
+        ->and($queriesFor('price_runs'))->toBe(1)
         ->and($queriesFor('exchange_rates'))->toBe(1);
 });
 
@@ -395,4 +402,58 @@ test('the quote schedule payload carries exactly the keys the storefront validat
 
         expect($keys)->toBe($expected, "the {$group} schedule no longer matches the storefront's key set");
     }
+});
+
+test('the storefront offers only what the last pricing run could source', function () {
+    // FC27 opened with the whole PlayStation pool under a million coins while
+    // the configured ceiling still said twenty. The ceiling is the store's own
+    // limit and does not move; what a supplier can deliver is the run's to say.
+    createHomeCatalog();
+
+    PriceRun::query()->create([
+        'run_id' => (string) Str::ulid(),
+        'event_id' => (string) Str::ulid(),
+        'status' => 'applied',
+        'mode' => 'apply',
+        'pricing_version' => 1,
+        'payload' => [
+            'legalRanges' => [
+                'console_normal' => ['minimum' => 50_000, 'maximum' => 300_000, 'increment' => 5_000],
+                'console_fast' => ['minimum' => 50_000, 'maximum' => 500_000, 'increment' => 5_000],
+                // Above the configured PC ceiling on purpose: a provider
+                // claiming fifty million does not widen what this store sells.
+                'pc' => ['minimum' => 50_000, 'maximum' => 50_000_000, 'increment' => 5_000],
+            ],
+        ],
+        'started_at' => now(),
+        'completed_at' => now(),
+    ]);
+
+    $this->get('/en')->assertInertia(function (Assert $page): void {
+        $platforms = collect($page->toArray()['props']['platforms']);
+        $console = $platforms->firstWhere('value', 'playstation');
+        $pc = $platforms->firstWhere('value', 'pc');
+        $deliveries = collect($console['deliveries']);
+
+        expect($console['maximum'])->toBe(20_000_000)
+            ->and($console['available'])->toBe(500_000)
+            ->and($deliveries->firstWhere('value', 'normal')['available'])->toBe(300_000)
+            ->and($deliveries->firstWhere('value', 'fast')['available'])->toBe(500_000)
+            // Clamped down to the configured ceiling, never up from it.
+            ->and($pc['available'])->toBe($pc['maximum']);
+    });
+});
+
+test('a run that names no ranges leaves the configured ceilings alone', function () {
+    createHomeCatalog();
+
+    $this->get('/en')->assertInertia(function (Assert $page): void {
+        foreach ($page->toArray()['props']['platforms'] as $platform) {
+            expect($platform['available'])->toBe($platform['maximum']);
+
+            foreach ($platform['deliveries'] as $delivery) {
+                expect($delivery['available'])->toBe($delivery['maximum']);
+            }
+        }
+    });
 });
