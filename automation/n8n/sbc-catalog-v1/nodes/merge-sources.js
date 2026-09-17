@@ -13,6 +13,7 @@ const META_NODE = 'Fetch EasySBC Sets';
 
 const config = $('Config').first().json;
 const limits = config.settings.source;
+const eligibility = config.settings.eligibility;
 
 function fail(reason) {
     throw new Error(`[merge_sources] ${reason}`);
@@ -470,6 +471,8 @@ if (metadataSource.records.length >= limits.metadataLimit) {
 
 const mergedRecords = [];
 const identityMismatchIds = [];
+const priceDisagreementIds = [];
+const priceDisagreements = [];
 const challengeMismatchIds = [];
 const missingFftIds = [];
 const missingFftUnusableIds = [];
@@ -502,6 +505,27 @@ function repeatCap(value) {
     const repeats = finiteNumber(value);
 
     return repeats != null && repeats > 0 ? Math.round(repeats) : null;
+}
+
+/**
+ * Whether FFT's coin price and EasySBC's are too far apart to both be prices.
+ *
+ * Returns null when they agree well enough, or the evidence when they do not.
+ * An absent or zero EasySBC price is not evidence of anything - plenty of sets
+ * carry no market figure - so those pass straight through on FFT's word.
+ */
+function priceDisagreement(consolePrice, meta) {
+    const reference = finiteNumber(meta.psPrice ?? meta.pcPrice);
+
+    if (reference == null || reference <= 0) return null;
+
+    const ratio = consolePrice / reference;
+    const { maxProviderPriceRatio: max, minProviderPriceRatio: min } =
+        eligibility;
+
+    if (ratio <= max && ratio >= min) return null;
+
+    return { fft: consolePrice, metadata: Math.round(reference), ratio };
 }
 
 for (const [id, meta] of metadataById) {
@@ -586,6 +610,24 @@ for (const [id, meta] of metadataById) {
     const pcPrice = Math.round(finiteNumber(fft.pcPrice) ?? 0);
     if (!(consolePrice > 0) || !(pcPrice > 0)) {
         droppedNoPriceIds.push(id);
+        continue;
+    }
+
+    // The price authority is FFT, and this does not second-guess it: EasySBC
+    // is only asked whether FFT's figure is a price at all. The two describe
+    // the same squad from different angles - FFT builds it, EasySBC reads the
+    // market - so they never match, but they stay in the same order of
+    // magnitude. When they are thousands of times apart, one of them has a
+    // typo in it, and publishing a typo means either selling a real challenge
+    // for nothing or listing one at a price no customer would ever pay.
+    //
+    // Skipped for this run only, and counted: the next hour republishes it the
+    // moment the provider corrects itself. Owner decision 2026-09-17, after
+    // FFT priced a one-squad Gold Upgrade at 100,700,000 coins.
+    const disagreement = priceDisagreement(consolePrice, meta);
+    if (disagreement) {
+        priceDisagreementIds.push(id);
+        priceDisagreements.push({ id, ...disagreement });
         continue;
     }
 
@@ -688,6 +730,9 @@ return [
                 challengeMismatchIds: challengeMismatchIds.slice(0, 50),
                 droppedNoChallenge: droppedNoChallengeIds.length,
                 droppedNoPrice: droppedNoPriceIds.length,
+                priceDisagreements: priceDisagreementIds.length,
+                priceDisagreementIds: priceDisagreementIds.slice(0, 50),
+                priceDisagreementSamples: priceDisagreements.slice(0, 10),
                 droppedNoExpiry: droppedNoExpiryIds.length,
                 missingFftCount: missingFftIds.length,
                 missingFftIds: missingFftIds.slice(0, 50),
