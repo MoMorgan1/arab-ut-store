@@ -19,9 +19,20 @@ describe('assistant links', () => {
             }),
         ]);
 
-        expect(linksIn('Track it at https://track.arab-ut.com')).toHaveLength(
-            1,
-        );
+        expect(
+            linksIn('Track it at https://store.arab-ut.com/my-account/orders'),
+        ).toHaveLength(1);
+    });
+
+    /**
+     * The legacy tracker is retired (G2), so its address is no longer one tap
+     * away. Old transcripts still hold it; they render it as readable text.
+     */
+    it('leaves the retired tracker address as plain text', () => {
+        expect(
+            linksIn('Track it at https://track.arab-ut.com/?id=12345'),
+        ).toHaveLength(0);
+        expect(isLinkableUrl('https://track.arab-ut.com')).toBe(false);
     });
 
     /**

@@ -109,8 +109,14 @@ function createMoneyRegex(): RegExp {
  * vector the moment a prompt injection or a hallucinated domain gets through.
  * Only the store's own hosts are linkified; every other URL stays plain text,
  * still readable and still copyable, but not one tap away.
+ *
+ * `track.arab-ut.com` was here until the legacy tracker was retired (G2).
+ * Tracking now lives on this host — the account order page, and the signed
+ * `/orders/track/{token}` link — so the retired address is no longer a place we
+ * make one tap away. Stale history that still contains it renders it as plain
+ * text, which is the right answer for an address that is being turned off.
  */
-const LINKABLE_HOSTS = ['store.arab-ut.com', 'track.arab-ut.com'];
+const LINKABLE_HOSTS = ['store.arab-ut.com'];
 
 // Trailing punctuation is excluded so "… on https://store.arab-ut.com." does
 // not carry the full stop into the href.

@@ -376,7 +376,7 @@
         },
         {
             "id": "order-tracking",
-            "url": "/orders",
+            "url": "/my-account/orders",
             "faq": true,
             "keywords_ar": [
                 "تتبع",
@@ -582,7 +582,7 @@
         },
         {
             "id": "issue-paused",
-            "url": "/orders",
+            "url": "/my-account/orders",
             "faq": false,
             "keywords_ar": ["الطلب متوقف", "ايقاف", "استئناف"],
             "keywords_en": ["paused order", "resume"],
