@@ -126,6 +126,16 @@ final class CoinsPricingRunRequest extends FormRequest
      * it - but once present it is the placement budget, so a malformed table
      * is refused here rather than stored and discovered by the first paid
      * order that cannot be dispatched.
+     *
+     * A group may come through empty, and that is an answer rather than a
+     * fault: FC27 opened with no PC market at all, so the run carried console
+     * costs and an empty PC table. Demanding both refused every run for a day
+     * - the store kept last season's prices on the one platform that did have
+     * a market. An empty group means nothing can be budgeted there, which
+     * SupplierCostTable raises when a PC shipment asks; it does not mean the
+     * console budget should be thrown away too. A table naming neither group
+     * is still a fault: that is a probe that failed, not a market that is
+     * empty.
      */
     private function validateCostTiers(Validator $validator): void
     {
@@ -141,14 +151,22 @@ final class CoinsPricingRunRequest extends FormRequest
             return;
         }
 
-        foreach (['console_fast', 'pc'] as $group) {
-            $rows = $tiers[$group] ?? null;
+        $groupsWithRows = 0;
 
-            if (! is_array($rows) || ! array_is_list($rows) || $rows === []) {
-                $validator->errors()->add("observations.tierCosts.{$group}", 'The supplier cost tiers must list every tier.');
+        foreach (['console_fast', 'pc'] as $group) {
+            $rows = $tiers[$group] ?? [];
+
+            if (! is_array($rows) || ! array_is_list($rows)) {
+                $validator->errors()->add("observations.tierCosts.{$group}", 'The supplier cost tiers must be a list.');
 
                 continue;
             }
+
+            if ($rows === []) {
+                continue;
+            }
+
+            $groupsWithRows += 1;
 
             $previousK = 0;
 
@@ -167,6 +185,13 @@ final class CoinsPricingRunRequest extends FormRequest
 
                 $previousK = $targetK;
             }
+        }
+
+        if ($groupsWithRows === 0) {
+            $validator->errors()->add(
+                'observations.tierCosts',
+                'The supplier cost tiers name no platform at all.',
+            );
         }
     }
 

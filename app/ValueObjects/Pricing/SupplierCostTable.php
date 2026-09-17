@@ -160,13 +160,23 @@ final readonly class SupplierCostTable
     }
 
     /**
+     * A group with no rows is a platform nobody is selling on, not a broken
+     * run. It stays empty here and `fromTier` raises when a shipment on that
+     * platform actually asks for a ceiling - one refused shipment rather than
+     * every shipment, which is what an eager throw here cost us when FC27
+     * opened with an empty PC market.
+     *
      * @return list<array{targetK: int, rawUsdPerM: float, source: string}>
      *
      * @throws DomainException
      */
     private static function rows(mixed $rows, string $group): array
     {
-        if (! is_array($rows) || ! array_is_list($rows) || $rows === []) {
+        if ($rows === null || $rows === []) {
+            return [];
+        }
+
+        if (! is_array($rows) || ! array_is_list($rows)) {
             throw new DomainException("The pricing run carries no {$group} cost tiers.");
         }
 

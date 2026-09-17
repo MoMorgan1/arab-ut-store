@@ -260,7 +260,6 @@ it('refuses a malformed cost table rather than storing a budget nothing can spen
 
     expect(PriceRun::count())->toBe(0);
 })->with([
-    'a missing platform' => [['console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 11.0]]]],
     'tiers out of order' => [[
         'console_fast' => [['targetK' => 2000, 'rawUsdPerM' => 11.0], ['targetK' => 1000, 'rawUsdPerM' => 11.5]],
         'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]],
@@ -269,8 +268,42 @@ it('refuses a malformed cost table rather than storing a budget nothing can spen
         'console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 0]],
         'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]],
     ]],
-    'an empty platform' => [['console_fast' => [], 'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]]]],
+    'a table that is not a list' => [[
+        'console_fast' => ['first' => ['targetK' => 1000, 'rawUsdPerM' => 11.0]],
+        'pc' => [['targetK' => 1000, 'rawUsdPerM' => 25.0]],
+    ]],
+    'neither platform' => [['console_fast' => [], 'pc' => []]],
 ]);
+
+it('takes the platform that has a market when the other one has none', function () {
+    // FC27 opened with no PC coins at any price. The run still carries a
+    // console budget, and refusing the whole table over the empty half is how
+    // the store spent a day publishing nothing at all while the console market
+    // moved a hundredfold.
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+    $payload['observations']['tierCosts'] = [
+        'console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 2308.6, 'selectedSource' => 'fft_cycle_ps']],
+        'pc' => [],
+    ];
+
+    signedCoinsPricingRun($payload)->assertCreated();
+
+    expect(PriceRun::sole()->payload['observations']['tierCosts'])->toEqual([
+        'console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 2308.6, 'source' => 'fft_cycle_ps']],
+        'pc' => [],
+    ]);
+});
+
+it('names a platform it was never told about as having no tiers rather than dropping it', function () {
+    $payload = coinsPricingRunPayload(['mode' => 'apply']);
+    $payload['observations']['tierCosts'] = [
+        'console_fast' => [['targetK' => 1000, 'rawUsdPerM' => 11.0, 'selectedSource' => 'fft_targeted_ps']],
+    ];
+
+    signedCoinsPricingRun($payload)->assertCreated();
+
+    expect(PriceRun::sole()->payload['observations']['tierCosts']['pc'])->toBe([]);
+});
 
 it('keeps the ceiling a supplier could actually fill, which legalRanges is not allowed to carry', function () {
     // legalRanges is checked for equality against the storefront's own
