@@ -3,7 +3,9 @@
 // v2.5 rule: FFT down carries last time's rates forward and still publishes a
 // UTT cost table; with nothing to carry forward it stops as v2.4 did.
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { test } from 'node:test';
 
 const workflow = JSON.parse(readFileSync(new URL('../workflow-v3.0.json', import.meta.url), 'utf8'));
@@ -23,14 +25,53 @@ function tiers(caps, price, covered = true) {
     return caps.map((targetK) => ({ targetK, covered, priceEurPer100K: price, maxTransferable: targetK * 1000 * 3 }));
 }
 
-async function runPrepare(config, fft, utt, memory) {
+/**
+ * `store` stands in for the baseline endpoint the node calls when the workflow
+ * memory is empty - which is every manual execution, since n8n hands those an
+ * empty static data object. `null` is a store that answers nothing.
+ */
+async function runPrepare(config, fft, utt, memory, store = null) {
     const staticData = { global: { coinsPricingV2: memory } };
     const lookup = (name) => ({ first: () => ({ json: name === 'Config' ? config : {} }) });
     const input = { all: () => [{ json: fft }, { json: utt }], first: () => ({ json: fft }) };
-    const fn = new AsyncFunction('$', '$input', '$getWorkflowStaticData', prepareSrc);
-    const out = await fn(lookup, input, (scope) => staticData[scope]);
+    const calls = [];
+    const context = {
+        helpers: {
+            async httpRequest(options) {
+                calls.push(options);
 
-    return out[0].json;
+                if (!store) {
+throw new Error('no baseline endpoint');
+}
+
+                return store;
+            },
+        },
+    };
+    // `require` is a module-scope binding, and an AsyncFunction is compiled in
+    // global scope where it does not exist. n8n's Code node has it; the
+    // harness has to hand it over or the signing below silently falls back.
+    const fn = new AsyncFunction(
+        '$',
+        '$input',
+        '$env',
+        '$getWorkflowStaticData',
+        'require',
+        `return (async function () { ${prepareSrc} }).call(this);`,
+    );
+    const out = await fn.call(
+        context,
+        lookup,
+        input,
+        { N8N_PRICING_SECRET: 'test-secret' },
+        (scope) => staticData[scope],
+        createRequire(import.meta.url),
+    );
+
+    const json = out[0].json;
+    json.__baselineCalls = calls;
+
+    return json;
 }
 
 test('FFT down carries the last published rates forward and still publishes UTT tier costs', async () => {
@@ -376,4 +417,127 @@ test('with no baseline the alert has nothing to compare and says so rather than 
         assert.equal(point.previousHalalah, null);
         assert.ok(point.currentHalalah > 0);
     }
+});
+
+/** Runs the Assess Price Move node over what Validate Snapshot would hand it. */
+async function runAssess(prepared, memory = {}) {
+    const staticData = { global: { coinsPricingV2: memory } };
+    const item = {
+        valid: true,
+        failureReason: null,
+        coinsPricingSnapshot: prepared.snapshot,
+        pricingAudit: prepared.pricingAudit,
+    };
+    const fn = new AsyncFunction(
+        '$input',
+        '$getWorkflowStaticData',
+        source('Assess Price Move'),
+    );
+    const out = await fn({ first: () => ({ json: item }) }, (scope) => staticData[scope]);
+
+    return out[0].json;
+}
+
+const DEEP_MARKET = {
+    source: 'fft', failed: false,
+    cycle: {
+        ps: { usdPerM: 150.1, amountCoins: 4_635_000, poolCoins: 55_421_381, coversTarget: true },
+        pc: { usdPerM: null, amountCoins: 0, poolCoins: 0, coversTarget: false },
+    },
+    targeted: {
+        ps: { tiers: [], highestAvailable: null },
+        pc: { tiers: [], highestAvailable: null },
+    },
+};
+
+function deepUtt(caps) {
+    return {
+        source: 'utt', ratioEuroUsd: 1.15958,
+        ps: { tiers: tiers(caps, 0.04), highestAvailable: null },
+        pc: { tiers: tiers(caps, 0.26), highestAvailable: null },
+    };
+}
+
+const STORE_BASELINE = {
+    schemaVersion: 1,
+    runId: '01M2QQ945KRHD19E2XQMNEB3FS',
+    pricingVersion: 7,
+    rates: {
+        console_normal: 722,
+        console_fast: [722, 722, 722, 914, 1000, 1100],
+        pc: [1777, 1836, 1836, 2132, 3968, 3968],
+    },
+    cyclePSUsdPerM: 0.2,
+    cyclePCUsdPerM: 0.2,
+};
+
+test('a run with no memory of its own asks the store what was last published', async () => {
+    // n8n hands a MANUAL execution an empty static data object, so every run
+    // someone pressed Execute on reported a healthy workflow as having nothing
+    // to carry forward. The store knows.
+    const config = await runConfig();
+    const out = await runPrepare(
+        config,
+        DEEP_MARKET,
+        deepUtt(config.settings.tierCapsK),
+        {},
+        STORE_BASELINE,
+    );
+
+    assert.equal(out.valid, true);
+    assert.equal(out.pricingAudit.baselineSource, 'store');
+    assert.deepEqual(out.pricingAudit.baselineRates, STORE_BASELINE.rates);
+
+    // Signed with the pricing secret over timestamp, method and path - the
+    // Code node cannot reach the HTTP credential the publish node uses.
+    const [call] = out.__baselineCalls;
+    assert.equal(call.method, 'GET');
+    assert.equal(call.url, config.settings.baselineEndpoint);
+    const expected = createHmac('sha256', 'test-secret')
+        .update(`${call.headers['X-ArabUT-Timestamp']}\nGET\n/api/automation/v1/pricing/coins/baseline\n`)
+        .digest('hex');
+    assert.equal(call.headers['X-ArabUT-Signature'], expected);
+});
+
+test('a run that already remembers does not ask the store', async () => {
+    const config = await runConfig();
+    const out = await runPrepare(
+        config,
+        DEEP_MARKET,
+        deepUtt(config.settings.tierCapsK),
+        { lastSuccessfulRates: STORE_BASELINE.rates },
+        STORE_BASELINE,
+    );
+
+    assert.equal(out.pricingAudit.baselineSource, 'memory');
+    assert.deepEqual(out.__baselineCalls, []);
+});
+
+test('a store that cannot answer leaves the run exactly as it was', async () => {
+    const config = await runConfig();
+    const out = await runPrepare(config, DEEP_MARKET, deepUtt(config.settings.tierCapsK), {}, null);
+
+    assert.equal(out.valid, true);
+    assert.equal(out.pricingAudit.baselineSource, null);
+    assert.equal(out.pricingAudit.baselineRates, null);
+});
+
+test('the approval gate reads the baseline the run resolved, not its own memory', async () => {
+    // Otherwise a manual run - which has no memory at all - finds no baseline,
+    // no large move, and publishes a season-turn price to the storefront
+    // without anyone being asked.
+    const config = await runConfig();
+    const prepared = await runPrepare(
+        config,
+        DEEP_MARKET,
+        deepUtt(config.settings.tierCapsK),
+        {},
+        STORE_BASELINE,
+    );
+    const assessed = await runAssess(prepared, {});
+
+    assert.equal(assessed.baselineFound, true);
+    assert.equal(assessed.approvalRequired, true);
+    assert.ok(assessed.priceMove.largeCount > 0);
+    assert.match(assessed.telegramMessage, /محتاجة اعتماد/);
 });

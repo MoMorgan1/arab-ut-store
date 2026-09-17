@@ -157,6 +157,16 @@ class AppServiceProvider extends ServiceProvider
                 ->by('automation-pricing:'.hash('sha256', $identity));
         });
 
+        RateLimiter::for('automation-pricing-baseline', function (Request $request): Limit {
+            // Keyed on the signature, not on a key header: this route carries
+            // no X-ArabUT-Key, and keying on the IP alone would let one bad
+            // caller lock the workflow out of its own baseline.
+            $identity = (string) ($request->header('X-ArabUT-Signature') ?: $request->ip());
+
+            return Limit::perMinute(10)
+                ->by('automation-pricing-baseline:'.hash('sha256', $identity));
+        });
+
         RateLimiter::for('automation-sbc-pricing-read', function (Request $request): Limit {
             $identity = (string) ($request->header('X-ArabUT-Key') ?: $request->ip());
 
