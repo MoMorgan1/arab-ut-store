@@ -1,0 +1,2210 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Arab UT · canvas · E1 admin fulfillment screen</title>
+        <style>
+            /* ============================================================
+               E1 — the admin fulfillment screen.
+
+               Every value below is lifted, not approximated:
+                 · palette            resources/css/app.css:103-139 (html.admin-document)
+                 · radius             resources/css/app.css:258 (--radius: 0.625rem, from :root —
+                                      the admin block does NOT redefine it)
+                 · fonts              resources/css/app.css:19-99, public/fonts/thmanyah/
+                 · font stack         resources/js/layouts/admin-layout.tsx:102
+                 · table geometry     resources/js/components/ui/table.tsx
+                 · badge geometry     resources/js/components/admin/admin-badge.tsx
+                 · page shell         resources/js/pages/admin/orders/index.tsx:165-187
+                 · shell padding      resources/js/layouts/admin-layout.tsx:127-130
+                 · sidebar            resources/js/components/admin/admin-sidebar.tsx:228-249
+
+               The admin surface is English-only (owner decision 2026-08-21,
+               .agents/skills/arab-ut-admin/references/design-system.md:36), so
+               these artboards are LTR. Arabic is the storefront's, not this screen's.
+
+               Serve with `npm run canvas:serve`, then open
+               http://127.0.0.1:5199/docs/design/e1-admin-fulfillment-screen.canvas.html
+               ============================================================ */
+
+            @font-face {
+                font-family: 'Thmanyah Sans';
+                src: url('/fonts/thmanyah/thmanyahsans-Regular.woff2') format('woff2');
+                font-weight: 400;
+                font-style: normal;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: 'Thmanyah Sans';
+                src: url('/fonts/thmanyah/thmanyahsans-Medium.woff2') format('woff2');
+                font-weight: 500;
+                font-style: normal;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: 'Thmanyah Sans';
+                src: url('/fonts/thmanyah/thmanyahsans-Bold.woff2') format('woff2');
+                font-weight: 700;
+                font-style: normal;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: 'Thmanyah Sans';
+                src: url('/fonts/thmanyah/thmanyahsans-Black.woff2') format('woff2');
+                font-weight: 900;
+                font-style: normal;
+                font-display: swap;
+            }
+            @font-face {
+                font-family: 'Thmanyah Serif Display';
+                src: url('/fonts/thmanyah/thmanyahserifdisplay-Bold.woff2') format('woff2');
+                font-weight: 700;
+                font-style: normal;
+                font-display: swap;
+            }
+
+            /* The admin token block, verbatim. */
+            .admin-document {
+                color-scheme: dark;
+                --background: #080705;
+                --foreground: #ede4d0;
+                --card: #14110e;
+                --card-foreground: #ede4d0;
+                --popover: #1c1814;
+                --popover-foreground: #ede4d0;
+                --primary: #d4a843;
+                --primary-foreground: #080705;
+                --secondary: #241e18;
+                --secondary-foreground: #ede4d0;
+                --muted: #241e18;
+                --muted-foreground: #a89880;
+                --accent: #241e18;
+                --accent-foreground: #ede4d0;
+                --destructive: #ffb4a9;
+                --border: rgb(212 168 67 / 16%);
+                --input: rgb(212 168 67 / 20%);
+                --ring: #d4a843;
+                --sidebar: #0d0b08;
+                --sidebar-foreground: #ede4d0;
+                --sidebar-accent: #1c1814;
+                --sidebar-border: rgb(212 168 67 / 16%);
+                --status-success: #67e89a;
+                --status-warning: #e4b756;
+                --status-info: #d4a843;
+                --status-danger: #ffb4a9;
+                --status-neutral: #a89880;
+
+                /* Not redefined by the admin block — inherited from :root. */
+                --radius: 0.625rem;
+                --radius-lg: var(--radius); /* 10px */
+                --radius-md: calc(var(--radius) - 2px); /* 8px */
+                --radius-sm: calc(var(--radius) - 4px); /* 6px */
+
+                --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+                --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            }
+
+            /* ---------- canvas workbench (not part of the design) ---------- */
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                background:
+                    radial-gradient(circle at 18% 0%, rgb(212 168 67 / 6%), transparent 42%),
+                    #050403;
+                color: #ede4d0;
+                font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+                -webkit-font-smoothing: antialiased;
+            }
+
+            .canvas {
+                max-width: 1640px;
+                margin: 0 auto;
+                padding: 2.5rem 2rem 5rem;
+                display: flex;
+                flex-direction: column;
+                gap: 3rem;
+            }
+
+            .canvas__intro h1 {
+                margin: 0 0 0.5rem;
+                font-family: 'Thmanyah Serif Display', Georgia, serif;
+                font-size: 1.85rem;
+                font-weight: 700;
+                color: #e4b756;
+                letter-spacing: -0.01em;
+            }
+
+            .canvas__intro p {
+                margin: 0 0 0.6rem;
+                max-width: 92ch;
+                color: #a89880;
+                font-size: 0.92rem;
+                line-height: 1.7;
+            }
+
+            .canvas__intro {
+                border-bottom: 1px solid rgb(212 168 67 / 16%);
+                padding-bottom: 1.6rem;
+            }
+
+            .gate {
+                margin-top: 0.9rem;
+                padding: 0.7rem 1rem;
+                border-radius: 10px;
+                border: 1px solid rgb(212 168 67 / 35%);
+                background: rgb(212 168 67 / 10%);
+                color: #e4b756;
+                font-size: 0.85rem;
+                font-weight: 700;
+                line-height: 1.6;
+            }
+
+            .art {
+                display: flex;
+                flex-direction: column;
+                gap: 0.9rem;
+            }
+
+            .art__caption {
+                display: flex;
+                align-items: baseline;
+                flex-wrap: wrap;
+                gap: 0.65rem;
+                font-size: 0.9rem;
+                font-weight: 700;
+            }
+
+            .art__caption b {
+                font-family: 'Thmanyah Serif Display', Georgia, serif;
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: #e4b756;
+            }
+
+            .art__tag {
+                border: 1px solid rgb(212 168 67 / 16%);
+                border-radius: 999px;
+                padding: 0.2rem 0.6rem;
+                font-size: 0.72rem;
+                font-weight: 700;
+                color: #a89880;
+            }
+
+            .art__notes {
+                margin: 0;
+                max-width: 96ch;
+                color: #a89880;
+                font-size: 0.82rem;
+                line-height: 1.65;
+            }
+
+            .art__notes code {
+                font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Menlo, monospace;
+                font-size: 0.78rem;
+                color: #e4b756;
+                background: rgb(255 255 255 / 6%);
+                padding: 0.1rem 0.3rem;
+                border-radius: 5px;
+            }
+
+            .frame {
+                width: fit-content;
+                max-width: 100%;
+                overflow-x: auto;
+                border-radius: 14px;
+                border: 1px solid rgb(212 168 67 / 22%);
+                background: #080705;
+            }
+
+            /* 390 of artboard plus the frame's own hairline on each side, so the
+               phone inside is exactly 390 and nothing is clipped. */
+            .frame--phone {
+                width: 392px;
+                overflow-x: hidden;
+                flex: 0 0 auto;
+            }
+
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 2rem;
+                align-items: flex-start;
+            }
+
+            /* ---------- the real admin shell ---------- */
+
+            .shell {
+                width: 1440px;
+                min-height: 720px;
+                display: grid;
+                grid-template-columns: 16rem minmax(0, 1fr);
+                background: var(--background);
+                color: var(--foreground);
+                font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+            }
+
+            .sidebar {
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+                width: 16rem;
+                padding: 1.25rem 1rem;
+                border-inline-end: 1px solid var(--sidebar-border);
+                background: var(--sidebar);
+                color: var(--sidebar-foreground);
+            }
+
+            .sidebar__brand {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                border-bottom: 1px solid var(--sidebar-border);
+                padding-bottom: 1rem;
+            }
+
+            .sidebar__mark {
+                width: 2.5rem;
+                height: 2.5rem;
+                flex: 0 0 auto;
+                border-radius: var(--radius-md);
+                background: linear-gradient(140deg, #e4b756, #b88725);
+                color: #080705;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 900;
+                font-size: 0.95rem;
+                letter-spacing: -0.03em;
+            }
+
+            .sidebar__wordmark {
+                font-family: 'Thmanyah Serif Display', Georgia, serif;
+                font-size: 1.125rem;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+                color: var(--sidebar-foreground);
+            }
+
+            .nav {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            .nav a {
+                display: flex;
+                min-height: 44px;
+                align-items: center;
+                gap: 0.75rem;
+                border-radius: var(--radius-md);
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: rgb(237 228 208 / 70%);
+                text-decoration: none;
+            }
+
+            .nav a[aria-current='page'] {
+                background: var(--sidebar-accent);
+                color: var(--sidebar-foreground);
+            }
+
+            .nav svg {
+                width: 18px;
+                height: 18px;
+                flex: 0 0 auto;
+            }
+
+            .sidebar__foot {
+                margin-top: auto;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                border-top: 1px solid var(--sidebar-border);
+                padding-top: 1rem;
+            }
+
+            .avatar {
+                width: 2.75rem;
+                height: 2.75rem;
+                flex: 0 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--border);
+                background: var(--accent);
+                font-size: 0.875rem;
+                font-weight: 700;
+                color: var(--foreground);
+            }
+
+            .main {
+                min-width: 0;
+                padding: 2rem 2.5rem 3rem;
+            }
+
+            .page {
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .page__header {
+                display: flex;
+                gap: 1rem;
+                align-items: flex-start;
+                justify-content: space-between;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 1.25rem;
+            }
+
+            .page__header h1 {
+                margin: 0;
+                font-size: 1.5rem;
+                font-weight: 700;
+                letter-spacing: -0.025em;
+                color: var(--foreground);
+            }
+
+            .page__header p {
+                margin: 0.25rem 0 0;
+                max-width: 65ch;
+                font-size: 0.875rem;
+                line-height: 1.625;
+                color: var(--muted-foreground);
+            }
+
+            /* ---------- controls ---------- */
+
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+                min-height: 44px;
+                padding: 0.5rem 1rem;
+                border-radius: var(--radius-md);
+                border: 1px solid transparent;
+                font-family: inherit;
+                font-size: 0.875rem;
+                font-weight: 500;
+                white-space: nowrap;
+                cursor: pointer;
+                box-shadow: var(--shadow-xs);
+            }
+
+            .btn--primary {
+                background: var(--primary);
+                color: var(--primary-foreground);
+            }
+
+            .btn--outline {
+                border-color: var(--input);
+                background: var(--background);
+                color: var(--foreground);
+            }
+
+            .btn--secondary {
+                background: var(--secondary);
+                color: var(--secondary-foreground);
+            }
+
+            .btn[disabled] {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .btn--xs {
+                font-size: 0.75rem;
+            }
+
+            .btn svg {
+                width: 1rem;
+                height: 1rem;
+                flex: 0 0 auto;
+            }
+
+            .toolbar {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .toolbar__row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .search {
+                position: relative;
+                flex: 1 1 200px;
+                min-width: 200px;
+            }
+
+            .search svg {
+                position: absolute;
+                inset-inline-start: 0.75rem;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 1rem;
+                height: 1rem;
+                color: var(--muted-foreground);
+                pointer-events: none;
+            }
+
+            .field {
+                width: 100%;
+                min-height: 44px;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--input);
+                background: transparent;
+                color: var(--foreground);
+                font-family: inherit;
+                font-size: 0.75rem;
+                padding: 0 0.75rem;
+            }
+
+            .search .field {
+                padding-inline-start: 2.25rem;
+                padding-inline-end: 3rem;
+            }
+
+            .select {
+                position: relative;
+                width: 9rem;
+            }
+
+            .select .field {
+                padding-inline-end: 1.75rem;
+                display: flex;
+                align-items: center;
+                text-align: start;
+            }
+
+            .select svg {
+                position: absolute;
+                inset-inline-end: 0.6rem;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 0.9rem;
+                height: 0.9rem;
+                color: var(--muted-foreground);
+                pointer-events: none;
+            }
+
+            .placeholder {
+                color: var(--muted-foreground);
+            }
+
+            /* ---------- table ---------- */
+
+            .table-shell {
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border);
+                background: var(--card);
+                box-shadow: var(--shadow-xs);
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                caption-side: bottom;
+                font-size: 0.875rem;
+            }
+
+            thead tr {
+                border-bottom: 1px solid var(--border);
+            }
+
+            th {
+                height: 44px;
+                padding: 0 0.75rem;
+                text-align: start;
+                vertical-align: middle;
+                font-weight: 500;
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+                white-space: nowrap;
+            }
+
+            th .sort {
+                display: inline-flex;
+                min-height: 44px;
+                align-items: center;
+                gap: 0.375rem;
+                background: none;
+                border: 0;
+                padding: 0;
+                font: inherit;
+                font-weight: 500;
+                color: var(--muted-foreground);
+                cursor: pointer;
+            }
+
+            th .sort--active {
+                color: var(--muted-foreground);
+            }
+
+            th .sort svg {
+                width: 0.875rem;
+                height: 0.875rem;
+            }
+
+            th .sort--active svg {
+                color: var(--primary);
+            }
+
+            th .sort:not(.sort--active) svg {
+                opacity: 0.5;
+            }
+
+            tbody tr {
+                border-bottom: 1px solid var(--border);
+            }
+
+            tbody tr:last-child {
+                border-bottom: 0;
+            }
+
+            tbody tr.is-hovered {
+                background: rgb(36 30 24 / 40%);
+            }
+
+            td {
+                padding: 0.75rem;
+                vertical-align: middle;
+            }
+
+            .cell-stack {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.125rem;
+            }
+
+            .link {
+                font-size: 0.875rem;
+                font-weight: 600;
+                white-space: nowrap;
+                color: var(--foreground);
+                font-variant-numeric: tabular-nums;
+                text-decoration: underline;
+                text-decoration-color: var(--border);
+                text-underline-offset: 4px;
+            }
+
+            .sub {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+                font-variant-numeric: tabular-nums;
+            }
+
+            .mono {
+                font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Menlo, monospace;
+                font-size: 0.75rem;
+                color: var(--foreground);
+            }
+
+            .mono--muted {
+                color: var(--muted-foreground);
+            }
+
+            .num {
+                font-size: 0.875rem;
+                font-weight: 600;
+                color: var(--foreground);
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }
+
+            .dash {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+            }
+
+            .tag {
+                display: inline-block;
+                border-radius: var(--radius-sm);
+                background: var(--secondary);
+                padding: 0.125rem 0.375rem;
+                font-size: 0.75rem;
+                color: var(--secondary-foreground);
+            }
+
+            .tag--outline {
+                background: transparent;
+                border: 1px solid var(--border);
+                color: var(--muted-foreground);
+            }
+
+            /* ---------- AdminBadge ---------- */
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.375rem;
+                border-radius: var(--radius-md);
+                border: 1px solid;
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .badge svg {
+                width: 0.875rem;
+                height: 0.875rem;
+                flex: 0 0 auto;
+            }
+
+            .badge--success {
+                border-color: rgb(103 232 154 / 30%);
+                background: rgb(103 232 154 / 10%);
+                color: var(--status-success);
+            }
+
+            .badge--warning {
+                border-color: rgb(228 183 86 / 30%);
+                background: rgb(228 183 86 / 10%);
+                color: var(--status-warning);
+            }
+
+            .badge--info {
+                border-color: rgb(212 168 67 / 30%);
+                background: rgb(212 168 67 / 10%);
+                color: var(--status-info);
+            }
+
+            .badge--danger {
+                border-color: rgb(255 180 169 / 30%);
+                background: rgb(255 180 169 / 10%);
+                color: var(--status-danger);
+            }
+
+            .badge--neutral {
+                border-color: rgb(168 152 128 / 30%);
+                background: rgb(168 152 128 / 10%);
+                color: var(--status-neutral);
+            }
+
+            /* ---------- empty state ---------- */
+
+            .empty {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
+                height: 9rem;
+                text-align: center;
+                color: var(--muted-foreground);
+            }
+
+            .empty p {
+                margin: 0;
+                font-size: 0.875rem;
+                font-weight: 500;
+            }
+
+            .empty--mobile {
+                height: auto;
+                border-radius: var(--radius-lg);
+                border: 1px dashed var(--border);
+                padding: 2.5rem 1.25rem;
+            }
+
+            /* ---------- pagination ---------- */
+
+            .pagination {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                padding: 0.75rem 0.5rem;
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+            }
+
+            .pagination strong {
+                color: var(--foreground);
+                font-variant-numeric: tabular-nums;
+            }
+
+            .pagination__count {
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+
+            .pagination__controls {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
+
+            .pager {
+                display: flex;
+                align-items: center;
+                gap: 0.25rem;
+            }
+
+            .pager button {
+                width: 44px;
+                height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--input);
+                background: var(--background);
+                color: var(--foreground);
+                cursor: pointer;
+                box-shadow: var(--shadow-xs);
+            }
+
+            .pager button svg {
+                width: 1rem;
+                height: 1rem;
+            }
+
+            .pager button[disabled] {
+                opacity: 0.5;
+            }
+
+            /* ---------- phone ---------- */
+
+            .phone {
+                width: 390px;
+                background: var(--background);
+                color: var(--foreground);
+                font-family: 'Thmanyah Sans', Tahoma, Arial, sans-serif;
+            }
+
+            .phone__bar {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                min-height: 3.5rem;
+                border-bottom: 1px solid var(--border);
+                background: var(--card);
+                padding: 0.5rem 1rem;
+            }
+
+            .phone__bar .sidebar__mark {
+                width: 2rem;
+                height: 2rem;
+                font-size: 0.75rem;
+            }
+
+            .phone__bar span {
+                font-family: 'Thmanyah Serif Display', Georgia, serif;
+                font-size: 1.125rem;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+            }
+
+            .phone__main {
+                padding: 1.5rem 1.25rem 2rem;
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .phone__header {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 1.25rem;
+            }
+
+            .phone__header h1 {
+                margin: 0;
+                font-size: 1.25rem;
+                font-weight: 700;
+                letter-spacing: -0.025em;
+            }
+
+            .phone__header p {
+                margin: 0;
+                font-size: 0.875rem;
+                line-height: 1.625;
+                color: var(--muted-foreground);
+            }
+
+            .cards {
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .card {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border);
+                background: var(--card);
+                padding: 0.75rem;
+                color: var(--card-foreground);
+            }
+
+            .card__top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+
+            .card__mid {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+
+            .card__foot {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.375rem;
+                font-size: 0.75rem;
+            }
+
+            .card__foot .ms-auto {
+                margin-inline-start: auto;
+                font-size: 11px;
+                color: var(--muted-foreground);
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* ---------- detail sheet ---------- */
+
+            .sheet-stage {
+                position: relative;
+                width: 1440px;
+                display: flex;
+                justify-content: flex-end;
+                background: var(--background);
+                min-height: 720px;
+                overflow: hidden;
+            }
+
+            .sheet-stage__scrim {
+                position: absolute;
+                inset: 0;
+                background: rgb(0 0 0 / 80%);
+            }
+
+            .sheet {
+                position: relative;
+                width: 36rem;
+                max-width: 100%;
+                display: flex;
+                flex-direction: column;
+                border-inline-start: 1px solid var(--border);
+                background: var(--background);
+                box-shadow: var(--shadow-lg);
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .sheet__header {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 1rem;
+            }
+
+            .sheet__header h2 {
+                margin: 0;
+                font-size: 1.125rem;
+                font-weight: 700;
+                color: var(--foreground);
+                font-variant-numeric: tabular-nums;
+            }
+
+            .sheet__header p {
+                margin: 0;
+                font-size: 0.75rem;
+                line-height: 1.625;
+                color: var(--muted-foreground);
+            }
+
+            .sheet__close {
+                position: absolute;
+                top: 1rem;
+                inset-inline-end: 1rem;
+                width: 44px;
+                height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: var(--radius-md);
+                border: 0;
+                background: transparent;
+                color: var(--muted-foreground);
+                cursor: pointer;
+            }
+
+            .sheet__body {
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+                flex: 1;
+            }
+
+            .sheet__footer {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.5rem;
+                border-top: 1px solid var(--border);
+                padding-top: 1rem;
+            }
+
+            .panel {
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                border-radius: var(--radius-md);
+                border: 1px solid rgb(212 168 67 / 20%);
+                background: var(--background);
+                padding: 0.75rem;
+                box-shadow: var(--shadow-xs);
+            }
+
+            .panel--alarm {
+                border-color: rgb(255 180 169 / 30%);
+                background: rgb(255 180 169 / 5%);
+            }
+
+            .panel__head {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                border-bottom: 1px solid rgb(212 168 67 / 10%);
+                padding-bottom: 0.5rem;
+            }
+
+            .panel__head svg {
+                width: 1rem;
+                height: 1rem;
+                flex: 0 0 auto;
+                color: var(--primary);
+            }
+
+            .panel--alarm .panel__head svg {
+                color: var(--status-danger);
+            }
+
+            .panel__head h3 {
+                margin: 0;
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: var(--foreground);
+            }
+
+            .fields {
+                display: flex;
+                flex-direction: column;
+                font-size: 0.75rem;
+            }
+
+            .fields > div {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+                min-height: 44px;
+                padding: 0.5rem 0;
+                border-top: 1px solid rgb(212 168 67 / 10%);
+            }
+
+            .fields > div:first-child {
+                border-top: 0;
+                padding-top: 0;
+            }
+
+            .fields > div:last-child {
+                padding-bottom: 0;
+            }
+
+            .fields dt,
+            .fields .k {
+                font-weight: 600;
+                color: var(--muted-foreground);
+            }
+
+            .fields .v {
+                color: var(--foreground);
+                font-variant-numeric: tabular-nums;
+                text-align: end;
+            }
+
+            .note {
+                margin: 0;
+                font-size: 0.75rem;
+                line-height: 1.6;
+                color: var(--muted-foreground);
+            }
+
+            /* ---------- canvas-only annotations ---------- */
+
+            .mark {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.3rem;
+                border: 1px dashed rgb(228 183 86 / 55%);
+                border-radius: 999px;
+                padding: 0.1rem 0.45rem;
+                font-size: 0.68rem;
+                font-weight: 700;
+                color: #e4b756;
+                background: rgb(228 183 86 / 8%);
+                white-space: nowrap;
+            }
+
+            .absent {
+                border: 1px solid rgb(212 168 67 / 22%);
+                border-radius: 14px;
+                background: rgb(20 17 14 / 70%);
+                padding: 1.4rem 1.6rem;
+            }
+
+            .absent h2 {
+                margin: 0 0 0.4rem;
+                font-family: 'Thmanyah Serif Display', Georgia, serif;
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #e4b756;
+            }
+
+            .absent > p {
+                margin: 0 0 1rem;
+                max-width: 92ch;
+                font-size: 0.85rem;
+                line-height: 1.7;
+                color: #a89880;
+            }
+
+            .absent table {
+                font-size: 0.82rem;
+            }
+
+            .absent th,
+            .absent td {
+                border-bottom: 1px solid rgb(212 168 67 / 12%);
+                padding: 0.55rem 0.75rem;
+                vertical-align: top;
+                text-align: start;
+            }
+
+            .absent th {
+                height: auto;
+                color: #e4b756;
+                font-weight: 700;
+                white-space: normal;
+            }
+
+            .absent td {
+                color: #a89880;
+                line-height: 1.6;
+            }
+
+            .absent td code,
+            .absent th code {
+                font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+                font-size: 0.76rem;
+                color: #ede4d0;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- prettier-ignore -->
+        <svg aria-hidden="true" style="display: none">
+            <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+            <symbol id="i-chevdown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+            <symbol id="i-chevleft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+            <symbol id="i-chevright" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+            <symbol id="i-chevsleft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></symbol>
+            <symbol id="i-chevsright" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></symbol>
+            <symbol id="i-arrowupdown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
+            <symbol id="i-arrowup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+            <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+            <symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></symbol>
+            <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+            <symbol id="i-radio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></symbol>
+            <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+            <symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+            <symbol id="i-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+            <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+            <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+            <symbol id="i-msg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+            <symbol id="i-pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+            <symbol id="i-mega" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+            <symbol id="i-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+            <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+            <symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+            <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+        </svg>
+
+        <main class="canvas">
+            <header class="canvas__intro">
+                <h1>E1 · Admin fulfillment screen</h1>
+                <p>
+                    Slice E1 of <code>docs/plans/2026-09-12-order-tracking-in-store.md</code> (lines 997–1001).
+                    Every paid item a supplier still owes, inside the existing Admin, with its permission,
+                    its server-side filter and sort allowlists, and its staff audit. The findings note beside
+                    this file — <code>docs/design/e1-admin-fulfillment-screen.md</code> — carries the evidence
+                    for every claim below, with file paths and line numbers.
+                </p>
+                <p>
+                    <strong style="color: #ede4d0">This canvas shows only columns the database can fill.</strong>
+                    The plan names six things — supplier, age, stall, failure, actual cost, retry. Four have
+                    writers. <em>Failure</em> and <em>retry</em>, as the plan words them, do not: see the last
+                    panel on this page. A mock showing a column the store cannot fill is worse than one that
+                    omits it, so those two are absent here, deliberately, and the panel says why.
+                </p>
+                <div class="gate">
+                    Nothing has been built. This is the UI gate in CLAUDE.md: inspect, canvas, approve, then
+                    code. Six questions need your answer before E1 is implementable — they are numbered Q1–Q6
+                    in the findings note, and the ones this canvas can show are marked on the artboards.
+                </div>
+            </header>
+
+            <!-- ============================ 1440 · LIST AT REST ============================ -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>1 · The list at rest</b>
+                    <span class="art__tag">desktop 1440</span>
+                    <span class="art__tag">English LTR</span>
+                    <span class="art__tag">extends /admin/orders</span>
+                </div>
+                <p class="art__notes">
+                    Same shell, same table primitive, same badge, same pagination as
+                    <code>/admin/orders</code> — only the columns differ. Sorted by <em>Waiting</em> ascending:
+                    the customer who has waited longest is first. That is the default because
+                    <code>orders.paid_at</code> is the only clock <em>every</em> row has — an unplaced item
+                    (row 4) has no placement and therefore no <code>placed_at</code> to sort on.
+                </p>
+                <div class="frame">
+                    <div class="shell admin-document">
+                        <aside class="sidebar">
+                            <div class="sidebar__brand">
+                                <div class="sidebar__mark">AUT</div>
+                                <div class="sidebar__wordmark">Arab UT</div>
+                            </div>
+                            <nav>
+                                <ul class="nav">
+                                    <li><a href="#"><svg><use href="#i-dash" /></svg>Overview</a></li>
+                                    <li><a href="#"><svg><use href="#i-bag" /></svg>Orders</a></li>
+                                    <li>
+                                        <a href="#" aria-current="page"
+                                            ><svg><use href="#i-truck" /></svg>Fulfillment</a
+                                        >
+                                    </li>
+                                    <li><a href="#"><svg><use href="#i-users" /></svg>Customers</a></li>
+                                    <li><a href="#"><svg><use href="#i-msg" /></svg>Conversations</a></li>
+                                    <li><a href="#"><svg><use href="#i-pkg" /></svg>Catalog</a></li>
+                                    <li><a href="#"><svg><use href="#i-mega" /></svg>Marketing</a></li>
+                                    <li><a href="#"><svg><use href="#i-cog" /></svg>Settings</a></li>
+                                </ul>
+                            </nav>
+                            <div class="sidebar__foot">
+                                <div class="avatar">M</div>
+                                <div>
+                                    <div style="font-size: 0.875rem; font-weight: 600; line-height: 1.4">
+                                        Mohamed
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: rgb(237 228 208 / 70%)">Admin</div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <div class="main">
+                            <article class="page">
+                                <header class="page__header">
+                                    <div>
+                                        <h1>Fulfillment</h1>
+                                        <p>Paid items a supplier still owes. Longest wait first.</p>
+                                    </div>
+                                    <button class="btn btn--outline" type="button">
+                                        <svg><use href="#i-radio" /></svg><span>Refresh</span>
+                                    </button>
+                                </header>
+
+                                <div class="toolbar">
+                                    <div class="toolbar__row">
+                                        <div class="search">
+                                            <svg><use href="#i-search" /></svg>
+                                            <div class="field" style="display: flex; align-items: center">
+                                                <span class="placeholder">Order number or supplier reference</span>
+                                            </div>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All suppliers</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All states</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All alarms</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All services</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <button class="btn btn--outline btn--xs" type="button">
+                                            <svg><use href="#i-filter" /></svg><span>Columns</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="table-shell">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 15%">Order</th>
+                                                <th style="width: 17%">Service</th>
+                                                <th style="width: 16%">Supplier</th>
+                                                <th style="width: 15%">
+                                                    <button class="sort sort--active" type="button">
+                                                        Waiting <svg><use href="#i-arrowup" /></svg>
+                                                    </button>
+                                                </th>
+                                                <th style="width: 18%">State</th>
+                                                <th style="width: 12%">
+                                                    <button class="sort" type="button">
+                                                        Signal <svg><use href="#i-arrowupdown" /></svg>
+                                                    </button>
+                                                </th>
+                                                <th style="width: 12%; text-align: end">
+                                                    <button class="sort" type="button">
+                                                        Cost <svg><use href="#i-arrowupdown" /></svg>
+                                                    </button>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- silent alarm -->
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1033</a>
+                                                        <span class="sub">paid 5h 08m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">310K / 600K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">FFT</span>
+                                                        <span class="mono mono--muted">882344</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">5h 02m</span>
+                                                        <span class="sub">read 41m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                        <span class="badge badge--danger"
+                                                            ><svg><use href="#i-alert" /></svg>Silent</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="dash">—</span>
+                                                        <span class="sub">8 failed reads</span>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: end">
+                                                    <span class="num">SAR 96.25</span>
+                                                </td>
+                                            </tr>
+
+                                            <!-- waiting for customer -->
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1036</a>
+                                                        <span class="sub">paid 3h 41m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">0 / 250K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">UTT</span>
+                                                        <span class="mono mono--muted">55120</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">3h 38m</span>
+                                                        <span class="sub">read 2m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                        <span class="badge badge--warning"
+                                                            ><svg><use href="#i-hourglass" /></svg>Backup codes</span
+                                                        >
+                                                        <span class="sub">Waiting for customer</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">LoginFailed2FA</span>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: end">
+                                                    <span class="num">SAR 63.75</span>
+                                                </td>
+                                            </tr>
+
+                                            <!-- healthy, hovered -->
+                                            <tr class="is-hovered">
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1041</a>
+                                                        <span class="sub">paid 1h 16m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">240K / 600K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">FFT</span>
+                                                        <span class="mono mono--muted">882417</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">1h 12m</span>
+                                                        <span class="sub">read 24s ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                        <span class="badge badge--info"
+                                                            ><svg><use href="#i-clock" /></svg>Transferring</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">Processing</span>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: end">
+                                                    <span class="num">SAR 118.40</span>
+                                                </td>
+                                            </tr>
+
+                                            <!-- unplaced: no job row at all -->
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1042</a>
+                                                        <span class="sub">paid 38m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">SBC</span>
+                                                        <span class="sub">—</span>
+                                                    </div>
+                                                </td>
+                                                <td><span class="dash">—</span></td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="dash">never placed</span>
+                                                        <span class="sub">no reading</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                        <span class="badge badge--danger"
+                                                            ><svg><use href="#i-alert" /></svg>Unplaced</span
+                                                        >
+                                                        <span class="sub">No fulfillment job</span>
+                                                    </div>
+                                                </td>
+                                                <td><span class="dash">—</span></td>
+                                                <td style="text-align: end"><span class="dash">—</span></td>
+                                            </tr>
+
+                                            <!-- challenge phase, held, no cost -->
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1039</a>
+                                                        <span class="sub">paid 26m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span>
+                                                            <span class="tag">SBC</span>
+                                                            <span class="tag tag--outline">Challenge</span>
+                                                        </span>
+                                                        <span class="sub">1 / 3 solves</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">FFT</span>
+                                                        <span class="mono mono--muted">882390 · 3 ids</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">22m</span>
+                                                        <span class="sub">read 1m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                        <span class="badge badge--info"
+                                                            ><svg><use href="#i-clock" /></svg>EA servers</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">EAServersDown</span>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: end">
+                                                    <span class="dash">not reported</span>
+                                                </td>
+                                            </tr>
+
+                                            <!-- healthy UTT -->
+                                            <tr>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <a class="link" href="#">AUT-1040</a>
+                                                        <span class="sub">paid 14m ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag">Coins</span>
+                                                        <span class="sub">600K / 600K</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="tag tag--outline">UTT</span>
+                                                        <span class="mono mono--muted">55118</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="num">12m</span>
+                                                        <span class="sub">read 18s ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack" style="gap: 0.25rem; align-items: flex-start">
+                                                        <span class="badge badge--success"
+                                                            ><svg><use href="#i-check" /></svg>Finishing</span
+                                                        >
+                                                        <span class="sub">In progress</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="cell-stack">
+                                                        <span class="mono">Sending</span>
+                                                    </div>
+                                                </td>
+                                                <td style="text-align: end">
+                                                    <span class="num">SAR 121.05</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="pagination">
+                                    <div class="pagination__count">
+                                        Showing <strong>1</strong> to <strong>6</strong> of <strong>6</strong> items
+                                    </div>
+                                    <div class="pagination__controls">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem">
+                                            <span style="font-size: 0.75rem">Rows per page</span>
+                                            <div class="select" style="width: 70px">
+                                                <div class="field" style="min-height: 44px">15</div>
+                                                <svg><use href="#i-chevdown" /></svg>
+                                            </div>
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: var(--foreground)">
+                                            Page <strong style="margin: 0 0.25rem">1</strong> of
+                                            <strong style="margin: 0 0.25rem">1</strong>
+                                        </div>
+                                        <div class="pager">
+                                            <button disabled type="button"><svg><use href="#i-chevsleft" /></svg></button>
+                                            <button disabled type="button"><svg><use href="#i-chevleft" /></svg></button>
+                                            <button disabled type="button"><svg><use href="#i-chevright" /></svg></button>
+                                            <button disabled type="button"><svg><use href="#i-chevsright" /></svg></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <span class="mark">Q2</span> <em>Waiting</em> is the customer's clock
+                    (<code>orders.paid_at</code>); the bold number under <em>Waiting</em> is time at the
+                    supplier (<code>fulfillment_placements.placed_at</code>) and the grey line is the age of
+                    the last reading (<code>fulfillment_jobs.observed_at</code>). Three real clocks, and the
+                    plan names one. Say which you want bold.
+                    &nbsp;·&nbsp; <span class="mark">§1.1</span> Supplier is read from the
+                    <em>placement</em>, not the job mirror — row 5's challenge phase can sit at a different
+                    supplier than the job column advertises.
+                    &nbsp;·&nbsp; <span class="mark">§3</span> Row 4 is an <code>unplaced</code> alarm: a paid
+                    item with <em>no fulfillment job row at all</em>. A jobs-only screen cannot show it, and
+                    it is the one silence nothing else in the store reports.
+                </p>
+            </section>
+
+            <!-- ============================ PHONE · LIST ============================ -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>2 · The list on a phone</b>
+                    <span class="art__tag">390</span>
+                    <span class="art__tag">compact record summary</span>
+                </div>
+                <p class="art__notes">
+                    The table is replaced, not squeezed — the same swap
+                    <code>admin-orders-table.tsx</code> already makes below <code>md</code>. Nothing critical
+                    is hidden: alarm, supplier, both ages and cost all survive. Filters move behind the
+                    bottom sheet the orders toolbar already uses.
+                </p>
+                <div class="row">
+                    <div class="frame frame--phone">
+                        <div class="phone admin-document">
+                            <div class="phone__bar">
+                                <div class="sidebar__mark">AUT</div>
+                                <span>Arab UT</span>
+                            </div>
+                            <div class="phone__main">
+                                <div class="phone__header">
+                                    <h1>Fulfillment</h1>
+                                    <p>Paid items a supplier still owes. Longest wait first.</p>
+                                </div>
+
+                                <div class="toolbar__row">
+                                    <div class="search" style="flex-basis: 100%">
+                                        <svg><use href="#i-search" /></svg>
+                                        <div class="field" style="display: flex; align-items: center; font-size: 1rem">
+                                            <span class="placeholder">Order or reference</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--outline" style="flex: 1" type="button">
+                                        <svg><use href="#i-filter" /></svg><span>Filters</span>
+                                    </button>
+                                </div>
+
+                                <div class="cards">
+                                    <article class="card">
+                                        <div class="card__top">
+                                            <a class="link" href="#">AUT-1033</a>
+                                            <span class="badge badge--danger"
+                                                ><svg><use href="#i-alert" /></svg>Silent</span
+                                            >
+                                        </div>
+                                        <div class="card__mid">
+                                            <span style="font-size: 0.875rem; font-weight: 600">FFT · 882344</span>
+                                            <strong class="num">SAR 96.25</strong>
+                                        </div>
+                                        <div class="card__foot">
+                                            <span class="tag">Coins</span>
+                                            <span class="tag tag--outline">310K / 600K</span>
+                                            <span class="ms-auto">5h 02m · read 41m ago</span>
+                                        </div>
+                                    </article>
+
+                                    <article class="card">
+                                        <div class="card__top">
+                                            <a class="link" href="#">AUT-1036</a>
+                                            <span class="badge badge--warning"
+                                                ><svg><use href="#i-hourglass" /></svg>Backup codes</span
+                                            >
+                                        </div>
+                                        <div class="card__mid">
+                                            <span style="font-size: 0.875rem; font-weight: 600">UTT · 55120</span>
+                                            <strong class="num">SAR 63.75</strong>
+                                        </div>
+                                        <div class="card__foot">
+                                            <span class="tag">Coins</span>
+                                            <span class="mono mono--muted">LoginFailed2FA</span>
+                                            <span class="ms-auto">3h 38m · read 2m ago</span>
+                                        </div>
+                                    </article>
+
+                                    <article class="card">
+                                        <div class="card__top">
+                                            <a class="link" href="#">AUT-1041</a>
+                                            <span class="badge badge--info"
+                                                ><svg><use href="#i-clock" /></svg>Transferring</span
+                                            >
+                                        </div>
+                                        <div class="card__mid">
+                                            <span style="font-size: 0.875rem; font-weight: 600">FFT · 882417</span>
+                                            <strong class="num">SAR 118.40</strong>
+                                        </div>
+                                        <div class="card__foot">
+                                            <span class="tag">Coins</span>
+                                            <span class="tag tag--outline">240K / 600K</span>
+                                            <span class="ms-auto">1h 12m · read 24s ago</span>
+                                        </div>
+                                    </article>
+
+                                    <article class="card">
+                                        <div class="card__top">
+                                            <a class="link" href="#">AUT-1042</a>
+                                            <span class="badge badge--danger"
+                                                ><svg><use href="#i-alert" /></svg>Unplaced</span
+                                            >
+                                        </div>
+                                        <div class="card__mid">
+                                            <span style="font-size: 0.875rem; font-weight: 600; color: var(--muted-foreground)"
+                                                >No supplier</span
+                                            >
+                                            <span class="dash">—</span>
+                                        </div>
+                                        <div class="card__foot">
+                                            <span class="tag">SBC</span>
+                                            <span class="ms-auto">paid 38m ago · never placed</span>
+                                        </div>
+                                    </article>
+
+                                    <article class="card">
+                                        <div class="card__top">
+                                            <a class="link" href="#">AUT-1039</a>
+                                            <span class="badge badge--info"
+                                                ><svg><use href="#i-clock" /></svg>EA servers</span
+                                            >
+                                        </div>
+                                        <div class="card__mid">
+                                            <span style="font-size: 0.875rem; font-weight: 600">FFT · 882390</span>
+                                            <span class="dash">not reported</span>
+                                        </div>
+                                        <div class="card__foot">
+                                            <span class="tag">SBC</span>
+                                            <span class="tag tag--outline">Challenge</span>
+                                            <span class="tag tag--outline">1 / 3</span>
+                                            <span class="ms-auto">22m · read 1m ago</span>
+                                        </div>
+                                    </article>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1 1 320px; min-width: 300px">
+                        <p class="art__notes">
+                            <strong style="color: #ede4d0">Why the phone card drops the Signal column.</strong>
+                            It does not — it moves. The supplier's own code
+                            (<code>observed_state</code>) sits in the foot row where it exists, and the alarm
+                            takes the badge slot because an alarm is the only thing on this screen that is
+                            worth waking someone for. Where both are present, the alarm wins the badge and the
+                            code stays in the foot.
+                        </p>
+                        <p class="art__notes" style="margin-top: 1rem">
+                            <strong style="color: #ede4d0">Touch and input rules already in force.</strong>
+                            Every control is 44px (<code>min-h-11</code>), and the phone search field is
+                            <code>1rem</code> rather than the desktop's <code>text-xs</code> so iOS never
+                            zooms — the owner rule from 2026-09-03, which
+                            <code>admin-orders-toolbar.tsx:260</code> already implements as
+                            <code>text-sm md:text-xs</code>.
+                        </p>
+                        <p class="art__notes" style="margin-top: 1rem">
+                            <strong style="color: #ede4d0">Cost renders as a dash, never as zero.</strong>
+                            <code>actual_cost_halalah</code> is null whenever the supplier payload carries no
+                            cost or no applied pricing run carries <code>ratioEuroUsd</code>. Showing
+                            <code>SAR 0.00</code> there would be the store inventing a number.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================ EMPTY STATE ============================ -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>3 · The empty state</b>
+                    <span class="art__tag">desktop 1440 + phone 390</span>
+                    <span class="art__tag">the ordinary day</span>
+                </div>
+                <p class="art__notes">
+                    This is what the screen shows most of the time, so it is a design surface, not an
+                    afterthought. Two different empties, exactly as
+                    <code>admin-orders-table.tsx:181-207</code> distinguishes them: nothing owed at all, and
+                    nothing matching the current filters. Only the second offers a reset.
+                </p>
+                <div class="frame">
+                    <div class="shell admin-document" style="min-height: 520px">
+                        <aside class="sidebar">
+                            <div class="sidebar__brand">
+                                <div class="sidebar__mark">AUT</div>
+                                <div class="sidebar__wordmark">Arab UT</div>
+                            </div>
+                            <nav>
+                                <ul class="nav">
+                                    <li><a href="#"><svg><use href="#i-dash" /></svg>Overview</a></li>
+                                    <li><a href="#"><svg><use href="#i-bag" /></svg>Orders</a></li>
+                                    <li>
+                                        <a href="#" aria-current="page"
+                                            ><svg><use href="#i-truck" /></svg>Fulfillment</a
+                                        >
+                                    </li>
+                                    <li><a href="#"><svg><use href="#i-users" /></svg>Customers</a></li>
+                                    <li><a href="#"><svg><use href="#i-msg" /></svg>Conversations</a></li>
+                                    <li><a href="#"><svg><use href="#i-pkg" /></svg>Catalog</a></li>
+                                    <li><a href="#"><svg><use href="#i-mega" /></svg>Marketing</a></li>
+                                    <li><a href="#"><svg><use href="#i-cog" /></svg>Settings</a></li>
+                                </ul>
+                            </nav>
+                            <div class="sidebar__foot">
+                                <div class="avatar">M</div>
+                                <div>
+                                    <div style="font-size: 0.875rem; font-weight: 600; line-height: 1.4">
+                                        Mohamed
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: rgb(237 228 208 / 70%)">Admin</div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <div class="main">
+                            <article class="page">
+                                <header class="page__header">
+                                    <div>
+                                        <h1>Fulfillment</h1>
+                                        <p>Paid items a supplier still owes. Longest wait first.</p>
+                                    </div>
+                                    <button class="btn btn--outline" type="button">
+                                        <svg><use href="#i-radio" /></svg><span>Refresh</span>
+                                    </button>
+                                </header>
+
+                                <div class="toolbar">
+                                    <div class="toolbar__row">
+                                        <div class="search">
+                                            <svg><use href="#i-search" /></svg>
+                                            <div class="field" style="display: flex; align-items: center">
+                                                <span class="placeholder">Order number or supplier reference</span>
+                                            </div>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All suppliers</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All states</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All alarms</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <div class="select">
+                                            <div class="field"><span class="placeholder">All services</span></div>
+                                            <svg><use href="#i-chevdown" /></svg>
+                                        </div>
+                                        <button class="btn btn--outline btn--xs" type="button">
+                                            <svg><use href="#i-filter" /></svg><span>Columns</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="table-shell">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 15%">Order</th>
+                                                <th style="width: 17%">Service</th>
+                                                <th style="width: 16%">Supplier</th>
+                                                <th style="width: 15%">
+                                                    <button class="sort sort--active" type="button">
+                                                        Waiting <svg><use href="#i-arrowup" /></svg>
+                                                    </button>
+                                                </th>
+                                                <th style="width: 18%">State</th>
+                                                <th style="width: 12%">Signal</th>
+                                                <th style="width: 12%; text-align: end">Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="7">
+                                                    <div class="empty">
+                                                        <p>No supplier owes anything right now.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="pagination">
+                                    <div class="pagination__count">
+                                        Showing <strong>0</strong> items
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row" style="margin-top: 0.5rem">
+                    <div class="frame frame--phone">
+                        <div class="phone admin-document">
+                            <div class="phone__bar">
+                                <div class="sidebar__mark">AUT</div>
+                                <span>Arab UT</span>
+                            </div>
+                            <div class="phone__main">
+                                <div class="phone__header">
+                                    <h1>Fulfillment</h1>
+                                    <p>Paid items a supplier still owes. Longest wait first.</p>
+                                </div>
+                                <div class="toolbar__row">
+                                    <div class="search" style="flex-basis: 100%">
+                                        <svg><use href="#i-search" /></svg>
+                                        <div class="field" style="display: flex; align-items: center; font-size: 1rem">
+                                            <span class="placeholder">Order or reference</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--outline" style="flex: 1" type="button">
+                                        <svg><use href="#i-filter" /></svg><span>Filters</span>
+                                    </button>
+                                </div>
+                                <div class="empty empty--mobile">
+                                    <p>No supplier owes anything right now.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="frame frame--phone">
+                        <div class="phone admin-document">
+                            <div class="phone__bar">
+                                <div class="sidebar__mark">AUT</div>
+                                <span>Arab UT</span>
+                            </div>
+                            <div class="phone__main">
+                                <div class="phone__header">
+                                    <h1>Fulfillment</h1>
+                                    <p>Paid items a supplier still owes. Longest wait first.</p>
+                                </div>
+                                <div class="toolbar__row">
+                                    <div class="search" style="flex-basis: 100%">
+                                        <svg><use href="#i-search" /></svg>
+                                        <div class="field" style="display: flex; align-items: center; font-size: 1rem">
+                                            <span style="color: var(--foreground)">AUT-1099</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--outline" style="flex: 1" type="button">
+                                        <svg><use href="#i-filter" /></svg><span>Filters</span>
+                                    </button>
+                                </div>
+                                <div
+                                    style="
+                                        display: flex;
+                                        flex-wrap: wrap;
+                                        align-items: center;
+                                        gap: 0.375rem;
+                                        font-size: 0.75rem;
+                                    "
+                                >
+                                    <span style="font-weight: 500; color: var(--muted-foreground)"
+                                        >Active filters:</span
+                                    >
+                                    <span
+                                        style="
+                                            display: inline-flex;
+                                            align-items: center;
+                                            gap: 0.25rem;
+                                            border-radius: var(--radius-md);
+                                            border: 1px solid var(--border);
+                                            background: rgb(36 30 24 / 40%);
+                                            padding: 0.125rem 0.5rem;
+                                        "
+                                        >Search: "AUT-1099"
+                                        <svg style="width: 0.75rem; height: 0.75rem; color: var(--muted-foreground)">
+                                            <use href="#i-x" /></svg
+                                    ></span>
+                                    <span
+                                        style="
+                                            display: inline-flex;
+                                            align-items: center;
+                                            gap: 0.25rem;
+                                            border-radius: var(--radius-md);
+                                            border: 1px solid var(--border);
+                                            background: rgb(36 30 24 / 40%);
+                                            padding: 0.125rem 0.5rem;
+                                        "
+                                        >Supplier: UTT
+                                        <svg style="width: 0.75rem; height: 0.75rem; color: var(--muted-foreground)">
+                                            <use href="#i-x" /></svg
+                                    ></span>
+                                </div>
+                                <div class="empty empty--mobile">
+                                    <p>No items match these filters.</p>
+                                    <button class="btn btn--outline" type="button">Reset filters</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1 1 280px; min-width: 260px">
+                        <p class="art__notes">
+                            <strong style="color: #ede4d0">Left: nothing owed.</strong> One sentence, no
+                            reset, no illustration. Admin copy is "concise, operational English"
+                            (<code>design-system.md:39-45</code>) and an empty ops queue is good news that
+                            needs no explaining.
+                        </p>
+                        <p class="art__notes" style="margin-top: 1rem">
+                            <strong style="color: #ede4d0">Right: nothing matching.</strong> Different
+                            sentence, and a reset — because here the operator has done something and the
+                            screen has to give it back. The active-filter chips stay visible above the empty
+                            so it is obvious <em>why</em> it is empty.
+                        </p>
+                        <p class="art__notes" style="margin-top: 1rem">
+                            Both strings are new; they follow the two the orders table already ships
+                            (<code>noOrders</code> / <code>noOrdersMatching</code>).
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================ ROW DETAIL ============================ -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>4 · Row detail — an item that failed to place</b>
+                    <span class="art__tag">desktop 1440</span>
+                    <span class="art__tag">Sheet, side=right</span>
+                    <span class="art__tag">AUT-1042</span>
+                </div>
+                <p class="art__notes">
+                    The established admin drawer (<code>ui/sheet.tsx</code>, as used by the coupon and manual
+                    order drawers) rather than an expanding table row — admin has no expandable-row pattern
+                    and this is not the place to invent one. The row opened here is the
+                    <code>unplaced</code> alarm: <strong style="color: #ede4d0">an item with no
+                    fulfillment job at all</strong>, which is why most of this panel is honest emptiness
+                    rather than diagnostics.
+                </p>
+                <div class="frame">
+                    <div class="sheet-stage admin-document">
+                        <div class="sheet-stage__scrim"></div>
+                        <div class="sheet">
+                            <button class="sheet__close" type="button"><svg><use href="#i-x" /></svg></button>
+                            <div class="sheet__header">
+                                <h2>AUT-1042</h2>
+                                <p>SBC · Console · paid 38m ago. No supplier has been asked for this item.</p>
+                            </div>
+
+                            <div class="sheet__body">
+                                <div class="panel panel--alarm">
+                                    <div class="panel__head">
+                                        <svg><use href="#i-alert" /></svg>
+                                        <h3>Unplaced</h3>
+                                    </div>
+                                    <div class="fields">
+                                        <div><span class="k">Raised</span><span class="v">23m ago</span></div>
+                                        <div><span class="k">You were mailed</span><span class="v">23m ago</span></div>
+                                        <div><span class="k">Resolved</span><span class="v">still open</span></div>
+                                    </div>
+                                    <p class="note">
+                                        Paid, automated, and no placement was ever recorded. n8n cannot report
+                                        this one — from its side the placement succeeded and the callback was
+                                        lost.
+                                    </p>
+                                </div>
+
+                                <div class="panel">
+                                    <div class="panel__head">
+                                        <svg><use href="#i-bag" /></svg>
+                                        <h3>The item</h3>
+                                    </div>
+                                    <div class="fields">
+                                        <div><span class="k">Order</span><span class="v">AUT-1042</span></div>
+                                        <div><span class="k">Service</span><span class="v">SBC</span></div>
+                                        <div><span class="k">Platform</span><span class="v">Console</span></div>
+                                        <div><span class="k">Item status</span><span class="v">Received</span></div>
+                                        <div><span class="k">Paid at</span><span class="v">17 Sep 2026, 14:02 UTC</span></div>
+                                    </div>
+                                </div>
+
+                                <div class="panel">
+                                    <div class="panel__head">
+                                        <svg><use href="#i-truck" /></svg>
+                                        <h3>At the supplier</h3>
+                                    </div>
+                                    <div class="fields">
+                                        <div><span class="k">Supplier</span><span class="v dash">—</span></div>
+                                        <div><span class="k">Reference</span><span class="v dash">—</span></div>
+                                        <div><span class="k">Placed at</span><span class="v dash">—</span></div>
+                                        <div><span class="k">Last reading</span><span class="v dash">—</span></div>
+                                        <div><span class="k">Actual cost</span><span class="v dash">—</span></div>
+                                    </div>
+                                    <p class="note">
+                                        There is no fulfillment job row for this item, so there is nothing to
+                                        read, nothing to poll, and nothing to retry. Every field above is
+                                        absent rather than unknown.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="sheet__footer">
+                                <button class="btn btn--outline" type="button">
+                                    <svg><use href="#i-external" /></svg><span>Open order</span>
+                                </button>
+                                <button class="btn btn--primary" disabled type="button">
+                                    <span>Place with supplier</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p class="art__notes">
+                    <span class="mark">Q1</span> <strong style="color: #ede4d0">The gold button is
+                    disabled and that is the question.</strong> The plan promised the admin's own resume
+                    button — "the customer's button on the card, and the admin's when the admin surface
+                    exists" (<code>2026-09-12-order-tracking-in-store.md:1032-1035</code>). No admin route,
+                    permission or audit event for it exists today, and pressing it would spend money at a
+                    supplier and change what a customer sees, so it is yours to decide. Read-only E1 ships
+                    sooner; the control is drawn here so "yes" does not cost a second canvas.
+                    &nbsp;·&nbsp; <span class="mark">Q6</span> There is no "mark resolved" control.
+                    <code>fulfillment_alarms.resolved_at</code> is written only by the sweep when the
+                    condition actually ends, so an item you fixed outside the store stays listed until the
+                    sweep agrees. A manual resolve is a write that can lie, and it needs an audit event.
+                </p>
+            </section>
+
+            <!-- ============================ ABSENT COLUMNS ============================ -->
+            <section class="art">
+                <div class="art__caption">
+                    <b>5 · What is deliberately not on these artboards</b>
+                    <span class="art__tag">read this before approving</span>
+                </div>
+                <div class="absent">
+                    <h2>Two of the plan's six columns have no data behind them</h2>
+                    <p>
+                        The plan asks for supplier, age, stall, failure, actual cost and retry. Four are
+                        drawn above. The other two are listed here instead of being drawn empty, because a
+                        mock showing a column the store cannot fill is a promise the code will not keep. Full
+                        evidence with line numbers is in <code>docs/design/e1-admin-fulfillment-screen.md</code>.
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 18%">Column</th>
+                                <th style="width: 30%">What the plan implies</th>
+                                <th style="width: 52%">What the code actually holds</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th>failure</th>
+                                <td>A stored error per item.</td>
+                                <td>
+                                    <code>fulfillment_jobs.last_error</code> and
+                                    <code>last_error_code</code> are <strong style="color: #ffb4a9">never written
+                                    non-null</strong> — the only writers set them to <code>null</code>
+                                    (<code>RecordSupplierPlacement.php:227,242</code>). The
+                                    <code>fulfillment_attempts</code> table has a model, a relation and
+                                    <strong style="color: #ffb4a9">no writer anywhere</strong>.
+                                    <code>attempt_count</code> is never incremented.
+                                    <code>FulfillmentStatus::Failed</code> is
+                                    <strong style="color: #ffb4a9">never assigned</strong> in app, database or
+                                    tests — a "Failed" filter would return zero rows forever. What exists
+                                    instead is the <em>Signal</em> column drawn above:
+                                    <code>observed_state</code> (the supplier's own code, "carried for
+                                    diagnosis only"), <code>poll_failure_count</code>, and the alarm.
+                                    The read-failure <em>reason</em> lives only in memory and the log.
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>retry</th>
+                                <td>An operator retry, with a count.</td>
+                                <td>
+                                    <code>ResumeItemDelivery</code> and <code>RetryItemChallenge</code> are
+                                    <strong style="color: #ffb4a9">customer</strong> actions — their only
+                                    routes are storefront routes, and both fail closed unless the job's own
+                                    <code>allowed_actions</code> lists the action.
+                                    <code>challenge_retries</code> is not an operator log: it counts the
+                                    <em>automatic</em> challenge retry, per challenge id. There is no admin
+                                    route, no permission and no audit event. See Q1.
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>actual cost</th>
+                                <td>A number on every row.</td>
+                                <td>
+                                    Real writer, conditional data. <code>actual_cost_halalah</code> is written
+                                    only when the supplier payload carries a cost <em>and</em> an applied
+                                    pricing run carries <code>ratioEuroUsd</code> — "a cost we cannot convert
+                                    is not a cost we should invent". With pricing runs currently failing,
+                                    expect many nulls. Rows 5 and 4 above show the null rendering:
+                                    <em>not reported</em> and <em>—</em>, never <code>SAR 0.00</code>.
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>customer name</th>
+                                <td>—</td>
+                                <td>
+                                    Left off on purpose. This screen answers "what is stuck", not "whose".
+                                    The order number is a link, and the customer is one click away on the
+                                    order. Adding a name column widens every row for information the operator
+                                    does not act on here.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </body>
+</html>
