@@ -54,6 +54,34 @@ test('an event at the attempt ceiling is retired as failed instead of staying pe
         ->and($retirement->context['attempts'])->toBe(10);
 });
 
+// The retirement used to overwrite `last_error` with `max_attempts_exceeded`,
+// which threw away the only column saying WHY the ten attempts failed - and
+// that column is what the alarm sweep grades a stranded paid order on. "Ten
+// attempts, failed" was already on the row twice over, in `attempts` and in
+// `status`.
+test('retiring an event keeps the reason its attempts actually failed for', function (): void {
+    $event = publisherEvent([
+        'attempts' => 10,
+        'available_at' => now()->subMinute(),
+        'last_error' => 'budget_unavailable',
+    ]);
+
+    $logged = [];
+    Log::listen(function ($log) use (&$logged): void {
+        $logged[] = $log;
+    });
+
+    $this->artisan('orders:publish-paid-events')->assertSuccessful();
+
+    expect($event->fresh()->status)->toBe('failed')
+        ->and($event->fresh()->last_error)->toBe('budget_unavailable');
+
+    $retirement = collect($logged)->first(
+        fn ($log): bool => $log->level === 'error' && str_contains((string) $log->message, 'retired'),
+    );
+    expect($retirement?->context['reason'] ?? null)->toBe('budget_unavailable');
+});
+
 test('the attempt ceiling follows configuration', function (): void {
     config()->set('services.n8n.order_paid_max_attempts', 3);
     Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);

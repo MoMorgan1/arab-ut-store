@@ -68,7 +68,7 @@ final class AlertOwnerOfFulfillmentSilence
         return $pending->count();
     }
 
-    /** @return array{kind: string, order: string, detail: string} */
+    /** @return array{kind: string, order: string, detail: string, blocked: bool} */
     private function row(FulfillmentAlarm $alarm): array
     {
         $context = is_array($alarm->context) ? $alarm->context : [];
@@ -77,6 +77,10 @@ final class AlertOwnerOfFulfillmentSilence
             'kind' => $alarm->kind->value,
             'order' => is_string($context['order_number'] ?? null) ? $context['order_number'] : '',
             'detail' => $this->detail($context),
+            // Says that no retry will clear this one, so the mail can ask for a
+            // person rather than for patience. Absent on an alarm raised before
+            // the store had a reason to record, which is read as "not yet".
+            'blocked' => ($context['blocked'] ?? false) === true,
         ];
     }
 
@@ -91,6 +95,15 @@ final class AlertOwnerOfFulfillmentSilence
 
         if (is_string($context['supplier'] ?? null) && $context['supplier'] !== '') {
             $parts[] = $context['supplier'];
+        }
+
+        // The publisher's own word for what stopped it - `budget_unavailable`,
+        // `credentials_purged` - passed through rather than translated. It is
+        // the string in the log and in `integration_events.last_error`, and an
+        // operator searching for the order wants the same spelling in all
+        // three. The same is true of the service and supplier codes above.
+        if (is_string($context['reason'] ?? null) && $context['reason'] !== '') {
+            $parts[] = $context['reason'];
         }
 
         return implode(' / ', $parts);

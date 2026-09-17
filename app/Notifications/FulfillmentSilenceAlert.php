@@ -25,7 +25,7 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
     use Queueable;
 
     /**
-     * @param  list<array{kind: string, order: string, detail: string}>  $rows
+     * @param  list<array{kind: string, order: string, detail: string, blocked: bool}>  $rows
      * @param  int  $total  Every alarm this mail accounts for, listed or not.
      */
     public function __construct(
@@ -46,7 +46,7 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
         $mail = (new MailMessage)
             ->subject("تنبيه تنفيذ: {$this->total} عنصر بلا حركة")
             ->greeting('عناصر مدفوعة توقفت عن الحركة')
-            ->line('كل سطر هنا عنصر مدفوع لم يصل لمورد، أو عنصر عند مورد توقفت قراءاته:');
+            ->line('كل سطر هنا عنصر مدفوع لم يصل لمورد، أو عنصر عند مورد توقفت قراءاته، أو عنصر لم تصل عنه أي قراءة جديدة:');
 
         foreach ($this->rows as $row) {
             $mail->line('- '.$this->describe($row));
@@ -63,12 +63,19 @@ final class FulfillmentSilenceAlert extends Notification implements ShouldQueue
             ->salutation('متجر عرب التيميت');
     }
 
-    /** @param array{kind: string, order: string, detail: string} $row */
+    /** @param array{kind: string, order: string, detail: string, blocked: bool} $row */
     private function describe(array $row): string
     {
-        $label = $row['kind'] === 'unplaced'
-            ? 'لم يُرسل لأي مورد'
-            : 'المورد توقف عن الرد عليه';
+        $label = match (true) {
+            // Two sentences for one kind, because they ask for different
+            // things. A request the store cannot compose will read the same
+            // tomorrow, so the line has to say so rather than look like one
+            // more order still on its way.
+            $row['kind'] === 'unplaced' && $row['blocked'] => 'متوقف ولن يُرسل بدون تدخل',
+            $row['kind'] === 'unplaced' => 'لم يُرسل لأي مورد بعد',
+            $row['kind'] === 'stale' => 'لا توجد قراءة جديدة من المورد',
+            default => 'المورد توقف عن الرد عليه',
+        };
 
         $order = $row['order'] === '' ? '-' : $row['order'];
         $detail = trim($row['detail']);
