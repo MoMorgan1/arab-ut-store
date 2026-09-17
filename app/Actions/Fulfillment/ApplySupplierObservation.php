@@ -8,10 +8,12 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\Supplier;
 use App\Enums\SupplierAction;
 use App\Fulfillment\SupplierCostInHalalah;
 use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Models\FulfillmentJob;
+use App\Models\FulfillmentObservationGap;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
@@ -29,18 +31,27 @@ final class ApplySupplierObservation
         private readonly InviteOrderReview $inviteOrderReview,
         private readonly SupplierCostInHalalah $supplierCost,
         private readonly EnqueueChallengeSolve $enqueueChallengeSolve,
+        private readonly RecordObservationGap $recordObservationGap,
     ) {}
 
     /**
      * Applies a supplier observation to canonical order and fulfillment state.
      *
      * @param  array<string, mixed>  $rawPayload
+     * @param  Supplier|null  $observedBy  Which supplier answered this read.
+     *                                     Only the reading path knows: a
+     *                                     challenge read goes to the challenge
+     *                                     placement's supplier while the job
+     *                                     row keeps the first placement's, so
+     *                                     it is passed in rather than derived
+     *                                     here from a second copy of that rule.
      */
     public function execute(
         FulfillmentJob $job,
         TranslatedState $state,
         CarbonImmutable $observedAt,
         array $rawPayload,
+        ?Supplier $observedBy = null,
     ): void {
         // Rule 4: A supplier can never produce Refunded.
         // Refunded is a store-owned financial status that only refund flows can set.
@@ -61,7 +72,12 @@ final class ApplySupplierObservation
 
         $orderId = $item->order_id;
 
-        DB::transaction(function () use ($job, $state, $observedAt, $rawPayload, $orderId): void {
+        // Measured under the lock, written after the commit. The measurement
+        // is the only thing in this action that a customer's order must not
+        // depend on, so it is the only thing that leaves the transaction.
+        $gap = null;
+
+        DB::transaction(function () use ($job, $state, $observedAt, $rawPayload, $orderId, $observedBy, &$gap): void {
             // Lock order first, then items ordered by ID, then the fulfillment job.
             // Consistent lock acquisition order prevents deadlocks between concurrent writers.
             /** @var Order $order */
@@ -100,13 +116,14 @@ final class ApplySupplierObservation
             if ($orderIsTerminal) {
                 // Storing the observation on the job preserves diagnostic context for staff
                 // and auditing without mutating the order or its items.
-                $this->persistJobObservation(
+                $gap = $this->persistJobObservation(
                     job: $lockedJob,
                     state: $state,
                     observedAt: $observedAt,
                     rawPayload: $rawPayload,
                     withheldDueToAdmin: false,
                     orderIsTerminal: true,
+                    observedBy: $observedBy,
                 );
 
                 return;
@@ -214,13 +231,14 @@ final class ApplySupplierObservation
             }
 
             // Persist the observation to the fulfillment job
-            $this->persistJobObservation(
+            $gap = $this->persistJobObservation(
                 job: $lockedJob,
                 state: $state,
                 observedAt: $observedAt,
                 rawPayload: $rawPayload,
                 withheldDueToAdmin: $isAdminHold,
                 orderIsTerminal: false,
+                observedBy: $observedBy,
             );
 
             // A challenge whose coins have just landed is handed to the solve
@@ -230,6 +248,11 @@ final class ApplySupplierObservation
                 $this->enqueueChallengeSolve->execute($targetItem, $lockedJob);
             }
         }, attempts: 3);
+
+        // Best-effort, and deliberately after `attempts: 3`: a retried
+        // transaction measures again, and only the attempt that committed
+        // reaches this line.
+        $this->recordObservationGap->record($gap);
 
         $job->refresh();
     }
@@ -270,6 +293,9 @@ final class ApplySupplierObservation
     /**
      * Persists observation diagnostics, masked payload, and progress onto the job.
      *
+     * Returns the gap this reading earned, unsaved, for the caller to write
+     * once the transaction has committed - or null when it earned none.
+     *
      * @param  array<string, mixed>  $rawPayload
      */
     private function persistJobObservation(
@@ -279,9 +305,28 @@ final class ApplySupplierObservation
         array $rawPayload,
         bool $withheldDueToAdmin,
         bool $orderIsTerminal,
-    ): void {
-        $job->observed_at = $observedAt;
-        $job->observed_state = $state->observedState;
+        ?Supplier $observedBy = null,
+    ): ?FulfillmentObservationGap {
+        // Read before the overwrite, because the overwrite is what destroys
+        // it. How long this job went between readings exists as a computable
+        // value on this line and nowhere else, ever again.
+        $before = ObservationSnapshot::of($job);
+
+        // An unsupported observation does not advance the clock. It is a
+        // response we could not read - a challenge id collision, an answer
+        // naming none of our ids, a status the translator does not recognise -
+        // and the rest of this method already treats it as carrying no news.
+        // Moving `observed_at` for one would say the opposite: a supplier
+        // answering with an unrecognised status every three minutes would keep
+        // the job looking freshly read forever, so the stall alarm would never
+        // fire, the silence alarm could not fire either (these are successful
+        // reads, so the failure counter never moves), and the gap table would
+        // fill with rows asserting a healthy cadence for a job nobody can read.
+        if ($state->supported) {
+            $job->observed_at = $observedAt;
+            $job->observed_state = $state->observedState;
+        }
+
         $job->observation_supported = $state->supported;
         // Rule 8: A later phase re-opens polling without un-completing the earlier phase
         $isChallenge = $this->isChallengePhase($job, $state, $rawPayload);
@@ -369,7 +414,11 @@ final class ApplySupplierObservation
             }
             $job->save();
 
-            return;
+            // No measurement. A terminal order is still read once or twice on
+            // its way out, and those last intervals describe an order being
+            // closed rather than an order being worked - keeping them would
+            // put end-of-life samples into a distribution about live ones.
+            return null;
         }
 
         // Job lifecycle transitions based on translated status
@@ -386,7 +435,18 @@ final class ApplySupplierObservation
             $job->status = FulfillmentStatus::InProgress;
         }
 
+        // Measured last, so the phase, the counters and the failure count on
+        // the row are the ones this reading produced rather than the ones it
+        // arrived to. Unsupported answers never advanced the clock above, so
+        // they have no interval; saying so here rather than relying on that
+        // keeps the two facts from drifting apart.
+        $gap = $state->supported
+            ? $this->recordObservationGap->measure($job, $before, $observedBy)
+            : null;
+
         $job->save();
+
+        return $gap;
     }
 
     /**

@@ -143,6 +143,10 @@ final class ObserveFulfillmentJob
             $translated,
             CarbonImmutable::now(),
             $bulk,
+            // The challenge placement's supplier, which is not always the
+            // job's: the job row advertises the first placement, and a job can
+            // fund its coins at one supplier and solve at another.
+            $challengeSupplier,
         );
 
         // v14's automatic retrySBCAPI on a transient solve status, on its
@@ -198,6 +202,7 @@ final class ObserveFulfillmentJob
             $translated,
             $observation->fetchedAt,
             $observation->payload,
+            $supplier,
         );
 
         return new ObservationOutcome(ObservationResult::Observed, null, $latencyMs);

@@ -85,6 +85,19 @@ return [
             'backoff_ceiling_seconds' => 600,
             'lease_seconds' => 30,
             'deadline_seconds' => 50,
+
+            // How long a measured observation gap is kept
+            // (`fulfillment_observation_gaps`, pruned daily by
+            // `fulfillment:prune-observation-gaps`).
+            //
+            // Fourteen days because the question the table answers is
+            // answered by weeks, not months: D3's own plan asked for "a week
+            // of numbers", and two weeks gives that twice over while bounding
+            // the table. One open job polled on the background cadence writes
+            // about 480 rows a day, so the window is roughly seven thousand
+            // rows per job a supplier is working on - a size shared hosting
+            // does not notice, which a year of the same rows would be.
+            'gap_retention_days' => 14,
         ],
 
         // The silence alarm's thresholds. Literals for the same reason as the
@@ -116,6 +129,44 @@ return [
             // after a deploy from opening one for every automated item the store
             // has ever sold through a pipeline that predates this table.
             'raise_window_hours' => 48,
+
+            // D3b's stall detection: the longest a placed job may go without a
+            // reading landing before an operator is told it has stopped moving.
+            //
+            // What a phase with no entry of its own uses, so detection works
+            // from the day it deploys rather than waiting on a measurement.
+            // Per band, because one number cannot serve both: the bands differ
+            // by more than seven times, and an hour is twenty missed reads on
+            // the background cadence but a hundred and forty on the attention
+            // one, by which time the customer has already opened a ticket.
+            //
+            // Both are floors derived from the poller rather than measurements.
+            // A job whose reads keep failing backs off from its band cadence,
+            // doubling to the ten-minute ceiling, and the silence alarm takes
+            // it over at the sixth failure - so up to that handover it can be
+            // legitimately quiet for the sum of five backoffs plus their
+            // jitter: about 23 minutes on the attention cadence (50+100+200+
+            // 400+600s, jitter <= 6s each) and about 50 on the background one
+            // (360+600+600+600+600s, jitter <= 45s each). A threshold under
+            // those fires on a job that is merely backing off, with a less
+            // specific message than the alarm about to take it.
+            'stalled_fallback_minutes' => [
+                'attention' => 30,
+                'background' => 60,
+            ],
+
+            // The per-phase table that replaces the fallback once
+            // `fulfillment:observation-gaps` has something to say. Minutes,
+            // keyed by delivery phase, with 'none' for a job carrying no phase.
+            //
+            // A phase named here with a null is deliberately NOT watched. A
+            // phase absent from here has no opinion recorded and falls back to
+            // the number above. That difference is the off switch, so it is
+            // the presence of the key that matters, not its value.
+            //
+            // Empty on purpose: nothing has measured a per-phase gap yet, and
+            // a guessed per-phase number is worse than the honest global one.
+            'stalled_after_minutes' => [],
         ],
 
         'fft' => [
