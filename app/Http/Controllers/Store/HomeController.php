@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Store;
 
 use App\Actions\Cart\ResolveCartOwner;
 use App\Actions\Pricing\BuildCoinsQuoteSchedule;
+use App\Actions\Pricing\SolveCoinsQuantityForPrice;
 use App\Enums\Platform;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
@@ -14,6 +15,7 @@ use App\Services\Reviews\StoreReviewReader;
 use App\Services\Store\StoreProofReader;
 use App\Support\Seo\StorePageSeo;
 use App\Validation\CoinsSelectionRules;
+use App\ValueObjects\Pricing\CoinsQuantityRules;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -25,6 +27,10 @@ use ValueError;
 
 class HomeController extends Controller
 {
+    public function __construct(
+        private readonly SolveCoinsQuantityForPrice $solveQuantity,
+    ) {}
+
     public function __invoke(
         Request $request,
         CoinsSelectionRules $selectionRules,
@@ -62,12 +68,7 @@ class HomeController extends Controller
                 'initialSelection' => $this->initialSelection($request, $selectionRules),
                 'replaceCredentialsUrl' => $this->replaceCredentialsUrl($request),
             ],
-            'amount' => [
-                'minimum' => $quantityRules->minimum(),
-                'roundingUnit' => $quantityRules->roundingUnit(),
-                'tiers' => $quantityRules->tiers(),
-                'presets' => $quantityRules->presets(),
-            ],
+            'amount' => $this->amount($catalog, $quantityRules),
             'platforms' => $this->platforms($catalog),
             'homeContent' => [
                 'services' => $this->services($request),
@@ -219,6 +220,67 @@ class HomeController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * The order sizes the configurator offers, solved from money.
+     *
+     * The floor and the quick amounts are commercial decisions about what an
+     * order is worth, and they are stored that way; the coin counts that carry
+     * them follow the applied rate and change with it. Falls back to the
+     * configured quantities when no rate is applied yet, because a storefront
+     * that renders is worth more than one that insists on being exact.
+     *
+     * @return array<string, mixed>
+     */
+    private function amount(CoinsCatalogReader $catalog, CoinsQuantityRules $rules): array
+    {
+        $amount = [
+            'minimum' => $rules->minimum(),
+            'roundingUnit' => $rules->roundingUnit(),
+            'tiers' => $rules->tiers(),
+            'presets' => $rules->presets(),
+        ];
+
+        $anchors = Config::array('coins.money_anchors');
+
+        try {
+            $rule = $catalog->pricingRules(['console_normal'])['console_normal'];
+        } catch (DomainException) {
+            return $amount;
+        }
+
+        // Only an anchored curve can price a quantity it was not given a point
+        // for; a threshold map refuses anything below its first entry, which is
+        // exactly what a search for "the smallest order worth five riyals" asks
+        // it. The configured quantities stand in that case - the same rule the
+        // pricing contract already applies to a declared minimum.
+        if (! $rule->isAnchored()) {
+            return $amount;
+        }
+
+        $amount['minimum'] = $this->solveQuantity->execute(
+            $rule,
+            $rules,
+            (int) $anchors['minimum'],
+        );
+
+        $targets = [];
+
+        foreach ((array) $anchors['presets'] as $halalah) {
+            $targets[] = (int) $halalah;
+        }
+
+        $presets = array_values(array_filter(
+            $this->solveQuantity->ladder($rule, $rules, $targets),
+            static fn (int $quantity): bool => $quantity >= $amount['minimum'],
+        ));
+
+        if ($presets !== []) {
+            $amount['presets'] = $presets;
+        }
+
+        return $amount;
     }
 
     /** @return list<array<string, mixed>> */

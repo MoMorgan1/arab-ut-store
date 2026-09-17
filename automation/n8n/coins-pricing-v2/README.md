@@ -21,7 +21,7 @@ All exports in this directory use placeholder credential identifiers
 (`CONFIGURE_ARABUT_PRICING_API_CREDENTIAL_ID`, `CONFIGURE_TELEGRAM_CREDENTIAL_ID`)
 and environment expressions (`$env.OPS_TELEGRAM_CHAT_ID`).
 
-Import `workflow-v2.8.json` instead; its steps are at the end of this file.
+Import `workflow-v3.0.json` instead; its steps are at the end of this file.
 
 Ordering rule: patched-n8n against old Laravel is safe; new-Laravel against
 the unpatched workflow is the only unsafe combination.
@@ -40,7 +40,7 @@ the unpatched workflow is the only unsafe combination.
 
 ## v2.8: the storefront is sold a share of the pool (2026-09-17)
 
-**`workflow-v2.8.json` is the current artifact.** `Config`, `Probe FFT` and
+**`workflow-v3.0.json` is the current artifact.** `Config`, `Probe FFT` and
 `Prepare Coins Snapshot`.
 
 `observations.availableCoins` is now **half the provider's cycle pool**
@@ -68,7 +68,7 @@ has ever exercised.
 
 ## v2.7: one dead platform does not stop the other (2026-09-17)
 
-**`workflow-v2.8.json` is the current artifact.** It is v2.6 with edits in one
+**`workflow-v3.0.json` is the current artifact.** It is v2.6 with edits in one
 Code node, `Prepare Coins Snapshot`.
 
 v2.6 got past the price and stopped at "A supplier cost basis could not be
@@ -89,7 +89,7 @@ because both are priced from the same PlayStation book.
 
 ## v2.6: the price comes from the fill size, not the word (2026-09-17)
 
-**`workflow-v2.8.json` is the current artifact.** It is v2.5 with edits in two
+**`workflow-v3.0.json` is the current artifact.** It is v2.5 with edits in two
 Code nodes - `Probe FFT` and `Prepare Coins Snapshot` - and nothing else.
 
 ### Why

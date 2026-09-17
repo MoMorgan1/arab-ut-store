@@ -31,8 +31,33 @@ return [
      *
      * These are defaults. The live values are editable from the admin.
      */
+    /*
+     * The commercial decisions about order size, held in money.
+     *
+     * Quantities were the wrong unit for them. "Start at fifty thousand coins"
+     * was a sound floor while a million cost seven riyals and an absurd one the
+     * morning a million cost eight hundred - the same number, the same words, a
+     * floor that moved from a third of a riyal to forty without anybody
+     * deciding it should. These hold their meaning across a season turn, and
+     * the quantity is solved for on every read against the applied rate.
+     *
+     * Owner decision 2026-09-17: start at roughly five riyals, quick amounts up
+     * to a thousand. All halalah.
+     */
+    'money_anchors' => [
+        'minimum' => 500,
+        'presets' => [500, 1_000, 5_000, 20_000, 50_000, 100_000],
+    ],
+
     'quantity' => [
-        'minimum' => 50_000,
+        /*
+         * The absolute floor, below which nothing is buyable whatever the
+         * money says. It cannot drop below the lowest quantity the pricing
+         * run's multiplier curve covers - today 5,000 - because a quantity
+         * under that clamps to the first anchor instead of being priced on
+         * its own terms.
+         */
+        'minimum' => 5_000,
 
         // What a customer may actually buy: any multiple of this between the
         // floor and the ceiling. The bands below only decide where the slider
