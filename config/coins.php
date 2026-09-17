@@ -41,12 +41,17 @@ return [
      * deciding it should. These hold their meaning across a season turn, and
      * the quantity is solved for on every read against the applied rate.
      *
-     * Owner decision 2026-09-17: start at roughly five riyals, quick amounts up
-     * to a thousand. All halalah.
+     * Owner decision 2026-09-17: start at roughly five riyals. All halalah.
+     *
+     * Only the floor is held in money. The quick amounts were too, briefly,
+     * and solving them against the rate produced 445K, 1,370K and 6,730K -
+     * arithmetically right and unreadable as a row of buttons. Owner decision,
+     * same day: the quick amounts stay the round numbers in `quantity.presets`
+     * and the storefront simply stops offering the ones the market cannot
+     * fill.
      */
     'money_anchors' => [
         'minimum' => 500,
-        'presets' => [500, 1_000, 5_000, 20_000, 50_000, 100_000],
     ],
 
     'quantity' => [

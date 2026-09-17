@@ -18,9 +18,9 @@ use App\ValueObjects\Pricing\CoinsQuantityRules;
  * offering. Those hold their meaning across a season turn, so they are what the
  * store stores, and the quantity is solved for on every read.
  *
- * Solved against the reference rate - slow console delivery - because the quick
- * amounts are quantities shared by every platform and one of them has to be the
- * yardstick. A PC buyer sees the same coin counts at their own higher price.
+ * Solved against the reference rate - slow console delivery - because the floor
+ * is a quantity shared by every platform and one of them has to be the
+ * yardstick. A PC buyer sees the same coin count at their own higher price.
  */
 final readonly class SolveCoinsQuantityForPrice
 {
@@ -65,37 +65,6 @@ final readonly class SolveCoinsQuantityForPrice
         }
 
         return $high * $unit;
-    }
-
-    /**
-     * The quantities for a ladder of prices, in order and without repeats.
-     *
-     * Two targets can solve to the same quantity when the rounding grain is
-     * coarser than the gap between them - five and ten riyals both land on ten
-     * thousand coins at some markets - and offering the same chip twice helps
-     * nobody.
-     *
-     * @param  list<int>  $halalah
-     * @return list<int>
-     */
-    public function ladder(
-        CoinsPricingRule $rule,
-        CoinsQuantityRules $rules,
-        array $halalah,
-    ): array {
-        $quantities = [];
-
-        foreach ($halalah as $target) {
-            $quantity = $this->execute($rule, $rules, $target);
-
-            if (! in_array($quantity, $quantities, true)) {
-                $quantities[] = $quantity;
-            }
-        }
-
-        sort($quantities);
-
-        return $quantities;
     }
 
     private function costOf(CoinsPricingRule $rule, int $quantity): int

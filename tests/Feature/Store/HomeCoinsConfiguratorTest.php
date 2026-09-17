@@ -541,14 +541,16 @@ test('the smallest order and the quick amounts are solved from money, not stored
             expect($costOf($amount['minimum'] - $unit))->toBeLessThan(500);
         }
 
-        // Quick amounts climb, never repeat, and never sit below the floor.
-        expect($amount['presets'])->not->toBeEmpty()
-            ->and($amount['presets'])->toBe(array_values(array_unique($amount['presets'])))
-            ->and($amount['presets'])->toBe(collect($amount['presets'])->sort()->values()->all())
+        // The quick amounts stay the round numbers the store configured, minus
+        // any that now sit below the floor. Solving them from money the way
+        // the floor is solved produced 445,000, 1,370,000 and 6,730,000, which
+        // is right to the riyal and unreadable as a row of buttons.
+        expect($amount['presets'])->toBe(array_values(array_filter(
+            config('coins.quantity.presets'),
+            static fn (int $quantity): bool => $quantity >= $amount['minimum'],
+        )))
+            ->and($amount['presets'])->not->toBeEmpty()
             ->and(min($amount['presets']))->toBeGreaterThanOrEqual($amount['minimum']);
-
-        // And the top one is the thousand-riyal rung the owner asked for.
-        expect($costOf(max($amount['presets'])))->toBeGreaterThanOrEqual(100_000);
     });
 });
 
