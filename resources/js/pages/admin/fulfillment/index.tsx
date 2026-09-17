@@ -67,10 +67,15 @@ export default function AdminFulfillmentPage() {
     const { props, url } = usePage<AdminFulfillmentPageProps>();
     const copy = props.adminUi.fulfillment;
     const pathname = new URL(url, window.location.origin).pathname;
+    // The instant the server read the rows, not the browser's clock: the ages
+    // on the page then match the query that selected them, and the render
+    // stays pure.
+    const now = Date.parse(props.generatedAt);
 
     const [isNavigating, setIsNavigating] = useState(false);
     const [queryFailed, setQueryFailed] = useState(false);
-    const [failedFilters, setFailedFilters] = useState<AdminFulfillmentQueryState | null>(null);
+    const [failedFilters, setFailedFilters] =
+        useState<AdminFulfillmentQueryState | null>(null);
     const [openRow, setOpenRow] = useState<AdminFulfillmentRow | null>(null);
     const [pending, setPending] = useState<{
         row: AdminFulfillmentRow;
@@ -142,7 +147,10 @@ export default function AdminFulfillmentPage() {
     const resendHttp = useHttp<
         { action: string; reason_code: string },
         { data: { outcome: string; action: string } }
-    >('post', props.resendUrlTemplate, { action: 'send', reason_code: 'never_placed' });
+    >('post', props.resendUrlTemplate, {
+        action: 'send',
+        reason_code: 'never_placed',
+    });
 
     /**
      * Sends the press, then reports the word the SERVER used.
@@ -172,8 +180,12 @@ export default function AdminFulfillmentPage() {
             setResult(null);
 
             try {
+                // The payload goes on the hook, not into `submit` - the
+                // established admin idiom (see the wallet adjust dialog),
+                // because `submit` takes no data of its own.
+                resendHttp.setData({ action, reason_code: reasonCode });
+
                 await resendHttp.submit('post', target, {
-                    data: { action, reason_code: reasonCode },
                     headers: { Accept: 'application/json' },
                     onFinish: () => {
                         setSubmitting(false);
@@ -184,7 +196,9 @@ export default function AdminFulfillmentPage() {
                             action,
                             outcome:
                                 outcomeOf(response) ??
-                                (response.status === 503 ? 'refused' : 'not_actionable'),
+                                (response.status === 503
+                                    ? 'refused'
+                                    : 'not_actionable'),
                         });
 
                         return false;
@@ -195,7 +209,10 @@ export default function AdminFulfillmentPage() {
                         return false;
                     },
                     onSuccess: (response) => {
-                        setResult({ action, outcome: outcomeOf(response) ?? 'queued' });
+                        setResult({
+                            action,
+                            outcome: outcomeOf(response) ?? 'queued',
+                        });
                         setOpenRow(null);
                         router.reload({ only: ['items', 'pagination'] });
                     },
@@ -249,7 +266,9 @@ export default function AdminFulfillmentPage() {
                         <span>{copy.loadFailed}</span>
                         <Button
                             className="min-h-11"
-                            onClick={() => visit(failedFilters ?? props.filters)}
+                            onClick={() =>
+                                visit(failedFilters ?? props.filters)
+                            }
                             type="button"
                             variant="outline"
                         >
@@ -259,7 +278,13 @@ export default function AdminFulfillmentPage() {
                 </Alert>
             ) : null}
 
-            {result ? <ResultBanner copy={copy} onDismiss={() => setResult(null)} result={result} /> : null}
+            {result ? (
+                <ResultBanner
+                    copy={copy}
+                    onDismiss={() => setResult(null)}
+                    result={result}
+                />
+            ) : null}
 
             <AdminFulfillmentToolbar
                 adminUi={props.adminUi}
@@ -280,6 +305,7 @@ export default function AdminFulfillmentPage() {
                 isNavigating={isNavigating}
                 items={props.items}
                 locale={props.locale}
+                now={now}
                 onAction={startAction}
                 onOpenRow={setOpenRow}
                 onResetFilters={resetFilters}
@@ -308,6 +334,7 @@ export default function AdminFulfillmentPage() {
                     canSeeCost={props.canSeeCost}
                     isPending={submitting && pending?.row.id === openRow.id}
                     locale={props.locale}
+                    now={now}
                     onAction={startAction}
                     onClose={() => setOpenRow(null)}
                     orderUrlTemplate={props.orderUrlTemplate}

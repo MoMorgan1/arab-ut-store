@@ -17,6 +17,7 @@ const inertia = vi.hoisted(() => ({
 }));
 
 const http = vi.hoisted(() => ({
+    setData: vi.fn(),
     submit: vi.fn(),
 }));
 
@@ -38,7 +39,7 @@ vi.mock('@inertiajs/react', () => ({
         data: {},
         errors: {},
         processing: false,
-        setData: vi.fn(),
+        setData: http.setData,
         submit: http.submit,
     }),
     usePage: () => ({
@@ -163,6 +164,9 @@ function baseProps(
         canAct: true,
         canSeeCost: true,
         direction: 'ltr',
+        // The clock the page measures ages from, matching the frozen system
+        // time below so the assertions stay deterministic.
+        generatedAt: '2026-09-17T14:40:00+00:00',
         filterOptions: {
             alarms: [
                 { label: 'All alarms', value: 'all' },
@@ -201,7 +205,11 @@ function baseProps(
             to: 3,
             total: 3,
         },
-        permissions: ['fulfillment.view', 'fulfillment.view_cost', 'fulfillment.act'],
+        permissions: [
+            'fulfillment.view',
+            'fulfillment.view_cost',
+            'fulfillment.act',
+        ],
         resendUrlTemplate: '/admin/api/fulfillment/__ID__/resend',
         ...overrides,
     };
@@ -260,13 +268,17 @@ describe('the list', () => {
         // The open alarm outranks it: an alarm is the only thing on this screen
         // worth waking somebody for.
         expect(within(row as HTMLElement).getByText('Stalled')).toBeTruthy();
-        expect(within(row as HTMLElement).getByText('interrupted')).toBeTruthy();
+        expect(
+            within(row as HTMLElement).getByText('interrupted'),
+        ).toBeTruthy();
     });
 
     it('prints time since paid as the bold age, with the supplier age under it', () => {
         renderPage();
 
-        const row = within(table()).getByText('AUT-1033').closest('tr') as HTMLElement;
+        const row = within(table())
+            .getByText('AUT-1033')
+            .closest('tr') as HTMLElement;
 
         // Paid 09:34, now 14:40.
         expect(within(row).getByText('5h 06m')).toBeTruthy();
@@ -276,7 +288,9 @@ describe('the list', () => {
     it('says never placed rather than inventing a supplier age', () => {
         renderPage();
 
-        const row = within(table()).getByText('AUT-1042').closest('tr') as HTMLElement;
+        const row = within(table())
+            .getByText('AUT-1042')
+            .closest('tr') as HTMLElement;
 
         expect(within(row).getByText('never placed')).toBeTruthy();
         expect(within(row).getByText('No fulfillment job')).toBeTruthy();
@@ -336,8 +350,14 @@ describe('the empty state', () => {
     it('says nothing is owed, with no reset, when no filter is on', () => {
         renderPage({ items: [] });
 
-        expect(screen.getByText('No supplier owes anything right now.')).toBeTruthy();
-        expect(screen.queryByRole('button', { name: 'Reset filters' })).toBeNull();
+        // Twice on purpose: the desktop table and the phone card list each
+        // carry the shared empty state, the way /admin/orders does.
+        expect(
+            screen.getAllByText('No supplier owes anything right now.').length,
+        ).toBeGreaterThan(0);
+        expect(
+            screen.queryByRole('button', { name: 'Reset filters' }),
+        ).toBeNull();
     });
 
     it('offers a reset when a filter is what emptied it', () => {
@@ -352,7 +372,9 @@ describe('the empty state', () => {
             items: [],
         });
 
-        expect(screen.getAllByText('No items match these filters.').length).toBeGreaterThan(0);
+        expect(
+            screen.getAllByText('No items match these filters.').length,
+        ).toBeGreaterThan(0);
         expect(
             screen.getAllByRole('button', { name: 'Reset filters' }).length,
         ).toBeGreaterThan(0);
@@ -368,7 +390,9 @@ describe('the confirm dialog', () => {
 
         const dialog = screen.getByRole('dialog');
 
-        expect(within(dialog).getByText('Send AUT-1042 to a supplier')).toBeTruthy();
+        expect(
+            within(dialog).getByText('Send AUT-1042 to a supplier'),
+        ).toBeTruthy();
         expect(
             within(dialog).getByText(/decrypted for this send only/),
         ).toBeTruthy();
@@ -401,8 +425,14 @@ describe('the confirm dialog', () => {
 
         const dialog = screen.getByRole('dialog');
         await user.click(within(dialog).getByRole('combobox'));
-        await user.click(await screen.findByRole('option', { name: 'Callback never arrived' }));
-        await user.click(within(dialog).getByRole('button', { name: 'Send to supplier' }));
+        await user.click(
+            await screen.findByRole('option', {
+                name: 'Callback never arrived',
+            }),
+        );
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Send to supplier' }),
+        );
 
         expect(http.submit).toHaveBeenCalledTimes(1);
 
@@ -410,23 +440,32 @@ describe('the confirm dialog', () => {
 
         expect(method).toBe('post');
         expect(target).toBe('/admin/api/fulfillment/item-unplaced/resend');
-        expect(options.data).toEqual({
+        // The payload rides on the hook rather than the submit call, the way
+        // every other admin dialog sends one.
+        expect(http.setData).toHaveBeenCalledWith({
             action: 'send',
             reason_code: 'callback_lost',
         });
+        expect(options.headers).toEqual({ Accept: 'application/json' });
     });
 
     it('says resume rather than send for a placed item', async () => {
         const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
         renderPage({ items: [stalled] });
 
-        await user.click(within(table()).getByRole('button', { name: 'Resume' }));
+        await user.click(
+            within(table()).getByRole('button', { name: 'Resume' }),
+        );
 
         const dialog = screen.getByRole('dialog');
 
-        expect(within(dialog).getByText('Resume AUT-1033 at the supplier')).toBeTruthy();
+        expect(
+            within(dialog).getByText('Resume AUT-1033 at the supplier'),
+        ).toBeTruthy();
         expect(within(dialog).getByText(/places nothing new/)).toBeTruthy();
         // A placed item's request carries no freshly composed credentials.
-        expect(within(dialog).queryByText(/decrypted for this send only/)).toBeNull();
+        expect(
+            within(dialog).queryByText(/decrypted for this send only/),
+        ).toBeNull();
     });
 });

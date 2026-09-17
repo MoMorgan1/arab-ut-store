@@ -64,13 +64,13 @@ export function hasActiveFulfillmentFilters(
 ): boolean {
     return Boolean(
         (filters.search && filters.search.trim() !== '') ||
-            filters.supplier ||
-            filters.phase ||
-            filters.status ||
-            filters.alarm ||
-            filters.hold ||
-            filters.service ||
-            filters.paid_from ||
-            filters.paid_to,
+        filters.supplier ||
+        filters.phase ||
+        filters.status ||
+        filters.alarm ||
+        filters.hold ||
+        filters.service ||
+        filters.paid_from ||
+        filters.paid_to,
     );
 }

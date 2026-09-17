@@ -34,10 +34,18 @@ export type AdminFulfillmentTableProps = {
     isNavigating: boolean;
     items: AdminFulfillmentRow[];
     locale: 'ar' | 'en';
-    onAction: (row: AdminFulfillmentRow, action: AdminFulfillmentAction) => void;
+    /** The server's clock, so every age on the page counts from one instant. */
+    now: number;
+    onAction: (
+        row: AdminFulfillmentRow,
+        action: AdminFulfillmentAction,
+    ) => void;
     onOpenRow: (row: AdminFulfillmentRow) => void;
     onResetFilters: () => void;
-    onSortChange: (sort: AdminFulfillmentSort, direction: 'asc' | 'desc') => void;
+    onSortChange: (
+        sort: AdminFulfillmentSort,
+        direction: 'asc' | 'desc',
+    ) => void;
     pendingRowId: string | null;
 };
 
@@ -51,6 +59,7 @@ export default function AdminFulfillmentTable({
     isNavigating,
     items,
     locale,
+    now,
     onAction,
     onOpenRow,
     onResetFilters,
@@ -58,9 +67,6 @@ export default function AdminFulfillmentTable({
     pendingRowId,
 }: AdminFulfillmentTableProps) {
     const copy = adminUi.fulfillment;
-    // One clock for the whole render, so two rows a millisecond apart cannot
-    // disagree about what "now" is and print ages that do not line up.
-    const now = Date.now();
     const columnCount = 6 + (canSeeCost ? 1 : 0) + (canAct ? 1 : 0);
 
     return (
@@ -88,9 +94,15 @@ export default function AdminFulfillmentTable({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[13%]">{copy.columnOrder}</TableHead>
-                            <TableHead className="w-[14%]">{copy.columnService}</TableHead>
-                            <TableHead className="w-[13%]">{copy.columnSupplier}</TableHead>
+                            <TableHead className="w-[13%]">
+                                {copy.columnOrder}
+                            </TableHead>
+                            <TableHead className="w-[14%]">
+                                {copy.columnService}
+                            </TableHead>
+                            <TableHead className="w-[13%]">
+                                {copy.columnSupplier}
+                            </TableHead>
                             <SortableHead
                                 direction={currentDirection}
                                 label={copy.columnWaiting}
@@ -99,7 +111,9 @@ export default function AdminFulfillmentTable({
                                 currentSort={currentSort}
                                 width="13%"
                             />
-                            <TableHead className="w-[16%]">{copy.columnState}</TableHead>
+                            <TableHead className="w-[16%]">
+                                {copy.columnState}
+                            </TableHead>
                             <SortableHead
                                 direction={currentDirection}
                                 label={copy.columnSignal}
@@ -121,7 +135,9 @@ export default function AdminFulfillmentTable({
                             ) : null}
                             {canAct ? (
                                 <TableHead className="w-[9%] text-end">
-                                    <span className="sr-only">{copy.columnAction}</span>
+                                    <span className="sr-only">
+                                        {copy.columnAction}
+                                    </span>
                                 </TableHead>
                             ) : null}
                         </TableRow>
@@ -137,7 +153,9 @@ export default function AdminFulfillmentTable({
                                             <div className="flex flex-col items-start gap-0.5">
                                                 <button
                                                     className="text-sm font-semibold whitespace-nowrap text-foreground tabular-nums underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
-                                                    onClick={() => onOpenRow(row)}
+                                                    onClick={() =>
+                                                        onOpenRow(row)
+                                                    }
                                                     type="button"
                                                 >
                                                     <bdi>{row.orderNumber}</bdi>
@@ -146,7 +164,10 @@ export default function AdminFulfillmentTable({
                                                     {row.paidAt
                                                         ? copy.paidAgo.replace(
                                                               ':age',
-                                                              formatShortAge(row.paidAt, now),
+                                                              formatShortAge(
+                                                                  row.paidAt,
+                                                                  now,
+                                                              ),
                                                           )
                                                         : '—'}
                                                 </span>
@@ -156,17 +177,26 @@ export default function AdminFulfillmentTable({
                                             <div className="flex flex-col items-start gap-0.5">
                                                 <span className="flex flex-wrap gap-1">
                                                     <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">
-                                                        {adminUi.orders.services[row.service] ??
-                                                            row.service}
+                                                        {adminUi.orders
+                                                            .services[
+                                                            row.service
+                                                        ] ?? row.service}
                                                     </span>
-                                                    {row.placement?.phase === 'challenge' ? (
+                                                    {row.placement?.phase ===
+                                                    'challenge' ? (
                                                         <span className="rounded-sm border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
-                                                            {copy.phase.challenge}
+                                                            {
+                                                                copy.phase
+                                                                    .challenge
+                                                            }
                                                         </span>
                                                     ) : null}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground tabular-nums">
-                                                    <Progress copy={copy} row={row} />
+                                                    <Progress
+                                                        copy={copy}
+                                                        row={row}
+                                                    />
                                                 </span>
                                             </div>
                                         </TableCell>
@@ -178,8 +208,13 @@ export default function AdminFulfillmentTable({
                                                     </span>
                                                     <span className="font-mono text-xs text-muted-foreground">
                                                         <bdi>
-                                                            {row.placement.reference}
-                                                            {row.placement.challengeCount > 0
+                                                            {
+                                                                row.placement
+                                                                    .reference
+                                                            }
+                                                            {row.placement
+                                                                .challengeCount >
+                                                            0
                                                                 ? ` · ${copy.challengeCount.replace(':count', String(row.placement.challengeCount))}`
                                                                 : ''}
                                                         </bdi>
@@ -196,7 +231,10 @@ export default function AdminFulfillmentTable({
                                                 <span className="text-sm font-semibold whitespace-nowrap text-foreground tabular-nums">
                                                     <bdi>
                                                         {row.paidAt
-                                                            ? formatShortAge(row.paidAt, now)
+                                                            ? formatShortAge(
+                                                                  row.paidAt,
+                                                                  now,
+                                                              )
                                                             : '—'}
                                                     </bdi>
                                                 </span>
@@ -205,7 +243,8 @@ export default function AdminFulfillmentTable({
                                                         ? copy.atSupplier.replace(
                                                               ':age',
                                                               formatShortAge(
-                                                                  row.placement.placedAt,
+                                                                  row.placement
+                                                                      .placedAt,
                                                                   now,
                                                               ),
                                                           )
@@ -225,8 +264,9 @@ export default function AdminFulfillmentTable({
                                                 ) : null}
                                                 <span className="text-xs text-muted-foreground">
                                                     {row.job
-                                                        ? (adminUi.statuses[row.job.status] ??
-                                                          row.job.status)
+                                                        ? (adminUi.statuses[
+                                                              row.job.status
+                                                          ] ?? row.job.status)
                                                         : copy.noJob}
                                                 </span>
                                             </div>
@@ -235,7 +275,12 @@ export default function AdminFulfillmentTable({
                                             <div className="flex flex-col items-start gap-0.5">
                                                 {row.job?.observedState ? (
                                                     <span className="font-mono text-xs text-foreground">
-                                                        <bdi>{row.job.observedState}</bdi>
+                                                        <bdi>
+                                                            {
+                                                                row.job
+                                                                    .observedState
+                                                            }
+                                                        </bdi>
                                                     </span>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">
@@ -243,8 +288,14 @@ export default function AdminFulfillmentTable({
                                                     </span>
                                                 )}
                                                 <span className="text-xs text-muted-foreground tabular-nums">
-                                                    {signalDetail(row, adminUi, (iso) =>
-                                                        formatShortAge(iso, now),
+                                                    {signalDetail(
+                                                        row,
+                                                        adminUi,
+                                                        (iso) =>
+                                                            formatShortAge(
+                                                                iso,
+                                                                now,
+                                                            ),
                                                     )}
                                                 </span>
                                             </div>
@@ -254,12 +305,17 @@ export default function AdminFulfillmentTable({
                                                 {row.cost ? (
                                                     <span className="text-sm font-semibold text-foreground tabular-nums">
                                                         <bdi>
-                                                            {formatAdminMoney(row.cost, locale)}
+                                                            {formatAdminMoney(
+                                                                row.cost,
+                                                                locale,
+                                                            )}
                                                         </bdi>
                                                     </span>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">
-                                                        {row.job ? copy.notReported : '—'}
+                                                        {row.job
+                                                            ? copy.notReported
+                                                            : '—'}
                                                     </span>
                                                 )}
                                             </TableCell>
@@ -268,8 +324,12 @@ export default function AdminFulfillmentTable({
                                             <TableCell className="text-end">
                                                 <AdminFulfillmentRowAction
                                                     copy={copy}
-                                                    isPending={pendingRowId === row.id}
-                                                    onAction={(action) => onAction(row, action)}
+                                                    isPending={
+                                                        pendingRowId === row.id
+                                                    }
+                                                    onAction={(action) =>
+                                                        onAction(row, action)
+                                                    }
                                                     row={row}
                                                 />
                                             </TableCell>
@@ -279,7 +339,10 @@ export default function AdminFulfillmentTable({
                             })
                         ) : (
                             <TableRow>
-                                <TableCell className="h-36 text-center" colSpan={columnCount}>
+                                <TableCell
+                                    className="h-36 text-center"
+                                    colSpan={columnCount}
+                                >
                                     <EmptyFulfillment
                                         copy={copy}
                                         isFiltered={isFiltered}
@@ -339,23 +402,39 @@ function SortableHead({
     currentSort: AdminFulfillmentSort;
     direction: 'asc' | 'desc';
     label: string;
-    onSortChange: (sort: AdminFulfillmentSort, direction: 'asc' | 'desc') => void;
+    onSortChange: (
+        sort: AdminFulfillmentSort,
+        direction: 'asc' | 'desc',
+    ) => void;
     sort: AdminFulfillmentSort;
     width: string;
 }) {
     const isActive = currentSort === sort;
-    const Icon = isActive ? (direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+    const Icon = isActive
+        ? direction === 'asc'
+            ? ArrowUp
+            : ArrowDown
+        : ArrowUpDown;
 
     return (
         <TableHead
-            aria-sort={isActive ? (direction === 'asc' ? 'ascending' : 'descending') : undefined}
+            aria-sort={
+                isActive
+                    ? direction === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                    : undefined
+            }
             className={align === 'end' ? 'text-end' : undefined}
             style={{ width }}
         >
             <button
                 className="inline-flex min-h-11 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                 onClick={() =>
-                    onSortChange(sort, isActive && direction === 'asc' ? 'desc' : 'asc')
+                    onSortChange(
+                        sort,
+                        isActive && direction === 'asc' ? 'desc' : 'asc',
+                    )
                 }
                 type="button"
             >
@@ -363,7 +442,9 @@ function SortableHead({
                 <Icon
                     aria-hidden="true"
                     className={
-                        isActive ? 'size-3.5 text-primary' : 'size-3.5 opacity-50'
+                        isActive
+                            ? 'size-3.5 text-primary'
+                            : 'size-3.5 opacity-50'
                     }
                 />
             </button>
@@ -420,7 +501,10 @@ function MobileCard({
     isPending: boolean;
     locale: 'ar' | 'en';
     now: number;
-    onAction: (row: AdminFulfillmentRow, action: AdminFulfillmentAction) => void;
+    onAction: (
+        row: AdminFulfillmentRow,
+        action: AdminFulfillmentAction,
+    ) => void;
     onOpenRow: (row: AdminFulfillmentRow) => void;
     row: AdminFulfillmentRow;
 }) {
@@ -444,7 +528,11 @@ function MobileCard({
                     <bdi>{row.orderNumber}</bdi>
                 </button>
                 {badge ? (
-                    <AdminBadge className="shrink-0" icon={badge.icon} variant={badge.variant}>
+                    <AdminBadge
+                        className="shrink-0"
+                        icon={badge.icon}
+                        variant={badge.variant}
+                    >
                         {badge.label}
                     </AdminBadge>
                 ) : null}
@@ -455,7 +543,9 @@ function MobileCard({
                     {row.placement ? (
                         <bdi>{`${row.placement.supplier.toUpperCase()} · ${row.placement.reference}`}</bdi>
                     ) : (
-                        <span className="text-muted-foreground">{copy.noJob}</span>
+                        <span className="text-muted-foreground">
+                            {copy.noJob}
+                        </span>
                     )}
                 </span>
                 {canSeeCost ? (
@@ -484,7 +574,9 @@ function MobileCard({
                     <bdi>
                         {row.paidAt ? formatShortAge(row.paidAt, now) : '—'}
                         {' · '}
-                        {signalDetail(row, adminUi, (iso) => formatShortAge(iso, now))}
+                        {signalDetail(row, adminUi, (iso) =>
+                            formatShortAge(iso, now),
+                        )}
                     </bdi>
                 </span>
             </div>

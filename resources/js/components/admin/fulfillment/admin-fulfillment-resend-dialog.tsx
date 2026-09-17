@@ -60,7 +60,10 @@ export default function AdminFulfillmentResendDialog({
     reasonCodes,
     row,
 }: AdminFulfillmentResendDialogProps) {
-    const [reasonCode, setReasonCode] = useState<string | null>(null);
+    // Empty string rather than null: Radix reads undefined as "uncontrolled",
+    // and a select that starts uncontrolled and becomes controlled on the
+    // first choice is the React warning nobody ever comes back to fix.
+    const [reasonCode, setReasonCode] = useState('');
     const [showRequired, setShowRequired] = useState(false);
 
     const isSend = action === 'send';
@@ -92,7 +95,7 @@ export default function AdminFulfillmentResendDialog({
             open
         >
             <DialogContent
-                className="sm:max-w-lg motion-reduce:animate-none"
+                className="motion-reduce:animate-none sm:max-w-lg"
                 closeLabel={copy.dialog.cancel}
             >
                 <DialogHeader>
@@ -101,16 +104,23 @@ export default function AdminFulfillmentResendDialog({
                 </DialogHeader>
 
                 <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="resend-reason">{copy.dialog.reasonLabel}</Label>
+                    <Label htmlFor="resend-reason">
+                        {copy.dialog.reasonLabel}
+                    </Label>
                     <Select
                         onValueChange={(value) => {
                             setReasonCode(value);
                             setShowRequired(false);
                         }}
-                        value={reasonCode ?? undefined}
+                        value={reasonCode}
                     >
-                        <SelectTrigger className="min-h-11 w-full text-sm" id="resend-reason">
-                            <SelectValue placeholder={copy.dialog.reasonPlaceholder} />
+                        <SelectTrigger
+                            className="min-h-11 w-full text-sm"
+                            id="resend-reason"
+                        >
+                            <SelectValue
+                                placeholder={copy.dialog.reasonPlaceholder}
+                            />
                         </SelectTrigger>
                         <SelectContent className="motion-reduce:animate-none">
                             {reasonCodes.map((option) => (
@@ -125,7 +135,10 @@ export default function AdminFulfillmentResendDialog({
                         </SelectContent>
                     </Select>
                     {showRequired ? (
-                        <p className="text-xs font-medium text-destructive" role="alert">
+                        <p
+                            className="text-xs font-medium text-destructive"
+                            role="alert"
+                        >
                             {copy.dialog.reasonRequired}
                         </p>
                     ) : null}
@@ -169,7 +182,7 @@ export default function AdminFulfillmentResendDialog({
                         className="min-h-11 gap-2"
                         disabled={isSubmitting}
                         onClick={() => {
-                            if (reasonCode === null) {
+                            if (reasonCode === '') {
                                 setShowRequired(true);
 
                                 return;
@@ -184,7 +197,9 @@ export default function AdminFulfillmentResendDialog({
                         ) : (
                             <Truck aria-hidden="true" className="size-4" />
                         )}
-                        <span>{isSubmitting ? copy.action.sending : confirmLabel}</span>
+                        <span>
+                            {isSubmitting ? copy.action.sending : confirmLabel}
+                        </span>
                     </Button>
                 </DialogFooter>
             </DialogContent>

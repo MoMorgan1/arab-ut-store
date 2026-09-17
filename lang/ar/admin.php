@@ -129,6 +129,7 @@ return [
             'silentItems' => 'عناصر مدفوعة لا يعمل عليها أحد',
             'silentSince' => 'الأقدم منذ',
             'silentItemsHint' => 'هذه العناصر مدفوعة ولم يُطلب من أي مورد تنفيذها، أو أن المورد توقف عن الرد عنها. اتبع docs/operations/fulfillment-recovery.md.',
+            'silentItemsLink' => 'افتح قائمة التنفيذ',
         ],
         'attentionRailTitle' => 'التركيز التشغيلي',
         'attentionStripTitle' => 'يتطلب متابعة',

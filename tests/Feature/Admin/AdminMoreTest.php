@@ -127,7 +127,7 @@ test('Admin more page tile URLs are all real named routes', function (): void {
     $page = app(AdminMorePage::class)->for($admin, 'en');
 
     $allTiles = collect($page['groups'])->flatMap(fn (array $group) => $group['tiles']);
-    expect($allTiles)->toHaveCount(6);
+    expect($allTiles)->toHaveCount(7);
 
     foreach ($allTiles as $tile) {
         expect($tile['url'])->toBeString()->not->toBeEmpty();
@@ -136,7 +136,8 @@ test('Admin more page tile URLs are all real named routes', function (): void {
     }
 
     $urlMap = $allTiles->pluck('url', 'key')->all();
-    expect($urlMap['categories'])->toBe('/admin/categories')
+    expect($urlMap['fulfillment'])->toBe('/admin/fulfillment')
+        ->and($urlMap['categories'])->toBe('/admin/categories')
         ->and($urlMap['coupons'])->toBe('/admin/marketing/coupons')
         ->and($urlMap['promotions'])->toBe('/admin/marketing/promotions')
         ->and($urlMap['loyalty'])->toBe('/admin/marketing/loyalty')
@@ -144,15 +145,22 @@ test('Admin more page tile URLs are all real named routes', function (): void {
         ->and($urlMap['settings'])->toBe('/admin/settings');
 });
 
-test('Admin more page filters tiles for Staff actor with only order permissions', function (): void {
+test('Admin more page shows Staff the fulfillment tile and nothing else', function (): void {
     $staff = adminMoreActor(UserRole::Staff, 'en');
 
     $response = $this->actingAs($staff)->get('/admin/more');
 
+    // Staff hold `fulfillment.view` and nothing else this page offers, and on
+    // a phone this tile is their only route to the queue - the tab bar carries
+    // a fixed five keys and the sidebar is desktop-only. Every other group
+    // stays hidden, so the page proves the filter still filters.
     $response->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/more')
-            ->has('groups', 0)
+            ->has('groups', 1)
+            ->where('groups.0.key', 'system')
+            ->has('groups.0.tiles', 1)
+            ->where('groups.0.tiles.0.key', 'fulfillment')
         );
 });
 

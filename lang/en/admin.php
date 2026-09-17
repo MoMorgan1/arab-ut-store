@@ -129,6 +129,7 @@ return [
             'silentItems' => 'Paid items nobody is working on',
             'silentSince' => 'Oldest since',
             'silentItemsHint' => 'These were paid for and no supplier was ever asked to deliver them, or the supplier stopped answering about them. Follow docs/operations/fulfillment-recovery.md.',
+            'silentItemsLink' => 'Open the fulfillment queue',
         ],
         'attentionRailTitle' => 'Operational focus',
         'attentionStripTitle' => 'Needs attention',

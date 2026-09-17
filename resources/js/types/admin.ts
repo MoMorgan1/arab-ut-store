@@ -127,6 +127,7 @@ export type AdminTranslations = {
             silentItems: string;
             silentSince: string;
             silentItemsHint: string;
+            silentItemsLink: string;
         };
         viewAllOrders: string;
         viewUnresolvedOrders: string;
@@ -1829,6 +1830,7 @@ export type AdminNavigationItem = {
     key:
         | 'overview'
         | 'orders'
+        | 'fulfillment'
         | 'customers'
         | 'conversations'
         | 'catalog'
@@ -3250,11 +3252,7 @@ export type AdminFulfillmentAlarm = {
 export type AdminFulfillmentAction = 'send' | 'resume' | 'retry_challenge';
 
 export type AdminFulfillmentSort =
-    | 'paid_at'
-    | 'placed_at'
-    | 'observed_at'
-    | 'poll_failures'
-    | 'actual_cost';
+    'paid_at' | 'placed_at' | 'observed_at' | 'poll_failures' | 'actual_cost';
 
 export type AdminFulfillmentQueryState = {
     search?: string | null;
@@ -3286,6 +3284,8 @@ export type AdminFulfillmentFilterOptions = {
 export type AdminFulfillmentPageProps = {
     locale: 'ar' | 'en';
     direction: 'rtl' | 'ltr';
+    /** The instant the rows were read; every age on the page counts from it. */
+    generatedAt: string;
     adminUi: AdminTranslations;
     adminIdentity: AdminIdentity;
     adminNavigation: AdminNavigationItem[];

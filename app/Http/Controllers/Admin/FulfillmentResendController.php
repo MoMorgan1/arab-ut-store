@@ -20,29 +20,6 @@ use Illuminate\Support\Facades\Gate;
  */
 final class FulfillmentResendController extends Controller
 {
-    /**
-     * Outcome to HTTP status.
-     *
-     * `queued` is deliberately not 201: nothing was created and nothing was
-     * placed. An outbox row went back to pending, which is a state change on
-     * an existing row and the caller is told so in the body.
-     *
-     * @var array<string, int>
-     */
-    private const STATUSES = [
-        'queued' => 200,
-        'resume_accepted' => 200,
-        'retry_accepted' => 200,
-        // The first press is still running, or the publisher has the row.
-        // Nothing was sent twice, and nothing is wrong.
-        'busy' => 409,
-        'in_flight' => 409,
-        // The row moved between the render and the press.
-        'not_actionable' => 409,
-        // The supplier said no, or the guarded update affected nothing.
-        'refused' => 503,
-    ];
-
     public function __construct(private readonly ResendFulfillmentItem $action) {}
 
     public function __invoke(ResendRequest $request, string $item): JsonResponse
@@ -66,10 +43,10 @@ final class FulfillmentResendController extends Controller
 
         return response()->json([
             'data' => [
-                'outcome' => $result['outcome'],
+                'outcome' => $result['outcome']->value,
                 'action' => $result['action'],
             ],
-        ], self::STATUSES[$result['outcome']] ?? 409)
+        ], $result['outcome']->httpStatus())
             ->header('Cache-Control', 'no-store, private')
             ->header('Content-Type', 'application/json');
     }

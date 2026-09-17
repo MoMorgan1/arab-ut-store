@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\AdminPermission;
+use App\Enums\FulfillmentResendAction;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -26,9 +27,6 @@ final class ResendFulfillmentItem extends FormRequest
         'customer_report',
     ];
 
-    /** @var list<string> */
-    public const ACTIONS = ['send', 'resume', 'retry_challenge'];
-
     public function authorize(): bool
     {
         $user = $this->user();
@@ -40,7 +38,7 @@ final class ResendFulfillmentItem extends FormRequest
     public function rules(): array
     {
         return [
-            'action' => ['required', 'string', Rule::in(self::ACTIONS)],
+            'action' => ['required', 'string', Rule::enum(FulfillmentResendAction::class)],
             'reason_code' => ['required', 'string', Rule::in(self::REASON_CODES)],
             // The challenge's position on the card, not a supplier id. The
             // position is what `RetryItemChallenge` resolves against the
@@ -50,13 +48,9 @@ final class ResendFulfillmentItem extends FormRequest
         ];
     }
 
-    /** @return 'send'|'resume'|'retry_challenge' */
-    public function action(): string
+    public function action(): FulfillmentResendAction
     {
-        /** @var 'send'|'resume'|'retry_challenge' $action */
-        $action = (string) $this->validated()['action'];
-
-        return $action;
+        return FulfillmentResendAction::from((string) $this->validated()['action']);
     }
 
     public function reasonCode(): string

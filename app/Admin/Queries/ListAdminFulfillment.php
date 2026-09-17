@@ -2,7 +2,6 @@
 
 namespace App\Admin\Queries;
 
-use App\Checkout\OrderNumber;
 use App\Enums\FulfillmentAlarmKind;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;

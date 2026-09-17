@@ -1,4 +1,10 @@
-import { CircleAlert, CircleCheck, Clock3, Hourglass, RotateCcw } from 'lucide-react';
+import {
+    CircleAlert,
+    CircleCheck,
+    Clock3,
+    Hourglass,
+    RotateCcw,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { AdminBadgeVariant } from '@/components/admin/admin-badge';
@@ -37,7 +43,11 @@ const GOOD_PRESENTATIONS = new Set(['completed', 'finishing']);
 const WARN_PRESENTATIONS = new Set(['stopped', 'needs_review']);
 
 /** Presentation values that are neither progress nor trouble. */
-const NEUTRAL_PRESENTATIONS = new Set(['cancelled', 'refunded', 'not_reported']);
+const NEUTRAL_PRESENTATIONS = new Set([
+    'cancelled',
+    'refunded',
+    'not_reported',
+]);
 
 export type AdminFulfillmentBadge = {
     label: string;

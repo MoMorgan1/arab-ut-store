@@ -9,6 +9,7 @@ use App\Enums\FulfillmentStatus;
 use App\Enums\ServiceType;
 use App\Enums\Supplier;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 final readonly class AdminFulfillmentPage
 {
@@ -35,6 +36,12 @@ final readonly class AdminFulfillmentPage
         return [
             'locale' => $locale,
             'direction' => $locale === 'en' ? 'ltr' : 'rtl',
+            // The clock every age on the page is measured from. Read here
+            // rather than in the browser: the rows were selected against this
+            // instant, so measuring them against a later one would print an
+            // age the query did not use - and a component that asks the
+            // browser for the time during render is not a pure render.
+            'generatedAt' => CarbonImmutable::now()->toIso8601String(),
             'adminUi' => (array) trans('admin', locale: $locale),
             ...$this->shell->for($actor, $locale),
             'items' => $page['items'],

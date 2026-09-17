@@ -281,8 +281,8 @@ test('the Admin shell exposes only safe identity exact permissions and implement
         ->and($shell['permissions'])->toBe($expectedPermissions)
         ->and(array_column($shell['adminNavigation'], 'key'))->toBe(
             $role === UserRole::Admin
-                ? ['overview', 'orders', 'customers', 'conversations', 'catalog', 'marketing', 'settings', 'more']
-                : ['overview', 'orders', 'settings', 'more'],
+                ? ['overview', 'orders', 'fulfillment', 'customers', 'conversations', 'catalog', 'marketing', 'settings', 'more']
+                : ['overview', 'orders', 'fulfillment', 'settings', 'more'],
         )
         ->and(array_column($shell['adminNavigation'], 'url'))->toBe($expectedUrls)
         ->and($shell['logoutUrl'])->toBe('/logout');
@@ -309,6 +309,9 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'orders.cancel',
             'orders.refund',
             'order_credentials.view',
+            'fulfillment.view',
+            'fulfillment.view_cost',
+            'fulfillment.act',
             'customers.view',
             'customers.update_status',
             'customers.update_contact',
@@ -342,8 +345,11 @@ test('the Admin shell exposes only safe identity exact permissions and implement
             'orders.update',
             'orders.cancel',
             'order_credentials.view',
+            // The owner's Q5 answer: Staff read the queue, and the cost column
+            // and the re-send stay Admin.
+            'fulfillment.view',
         ],
-        ['/admin', '/admin/orders', '/admin/settings', '/admin/more'],
+        ['/admin', '/admin/orders', '/admin/fulfillment', '/admin/settings', '/admin/more'],
     ],
 ]);
 

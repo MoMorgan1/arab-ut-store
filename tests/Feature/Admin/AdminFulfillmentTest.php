@@ -72,12 +72,16 @@ function fulfillmentItem(
         ...$jobAttributes,
     ]);
 
+    // The first placement, always the coins one, keyed the way
+    // `RecordSupplierPlacement` keys it - one row per item and phase. A test
+    // that wants a later phase adds its own row; the job's mirror columns stay
+    // on this one, which is the asymmetry the screen has to read around.
     FulfillmentPlacement::query()->create([
         'fulfillment_job_id' => $job->id,
-        'delivery_phase' => $job->delivery_phase ?? DeliveryPhase::Coins,
+        'delivery_phase' => DeliveryPhase::Coins,
         'supplier' => $job->supplier ?? Supplier::Fft,
         'supplier_order_id' => (string) $job->supplier_order_id,
-        'idempotency_key' => 'fulfillment-placement:'.$item->public_id.':'.($job->delivery_phase?->value ?? 'coins'),
+        'idempotency_key' => 'fulfillment-placement:'.$item->public_id.':coins',
         'placed_at' => now()->subHours(2),
     ]);
 
@@ -133,10 +137,11 @@ it('lists a paid item that has no fulfillment job at all', function (): void {
 });
 
 it('reads the supplier from the placement rather than the job mirror', function (): void {
+    // The job's supplier and reference still advertise the first (coins)
+    // placement, which is exactly the trap: its phase has advanced - that one
+    // column `ApplySupplierObservation` does maintain - and the reference
+    // beside it has not. Only the placement rows know who holds the challenge.
     [, $item, $job] = fulfillmentItem(jobAttributes: [
-        // The job mirror still advertises the first (coins) placement, which
-        // is exactly the trap: the item has moved on to its challenge phase at
-        // a different reference.
         'supplier' => Supplier::Fft,
         'supplier_order_id' => '574339',
         'delivery_phase' => DeliveryPhase::Challenge,

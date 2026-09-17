@@ -56,11 +56,31 @@ export default function AdminFulfillmentToolbar({
         label: string;
         options: AdminFilterOption[];
     }[] = [
-        { key: 'supplier', label: copy.filterSupplier, options: filterOptions.suppliers },
-        { key: 'status', label: copy.filterStatus, options: filterOptions.statuses },
-        { key: 'alarm', label: copy.filterAlarm, options: filterOptions.alarms },
-        { key: 'service', label: copy.filterService, options: filterOptions.services },
-        { key: 'phase', label: copy.filterPhase, options: filterOptions.phases },
+        {
+            key: 'supplier',
+            label: copy.filterSupplier,
+            options: filterOptions.suppliers,
+        },
+        {
+            key: 'status',
+            label: copy.filterStatus,
+            options: filterOptions.statuses,
+        },
+        {
+            key: 'alarm',
+            label: copy.filterAlarm,
+            options: filterOptions.alarms,
+        },
+        {
+            key: 'service',
+            label: copy.filterService,
+            options: filterOptions.services,
+        },
+        {
+            key: 'phase',
+            label: copy.filterPhase,
+            options: filterOptions.phases,
+        },
         { key: 'hold', label: copy.filterHold, options: filterOptions.holds },
     ];
 
@@ -136,10 +156,15 @@ export default function AdminFulfillmentToolbar({
                             key={String(select.key)}
                             label={select.label}
                             onChange={(value) =>
-                                onFilterChange({ [select.key]: value } as Partial<AdminFulfillmentQueryState>)
+                                onFilterChange({
+                                    [select.key]: value,
+                                } as Partial<AdminFulfillmentQueryState>)
                             }
                             options={select.options}
-                            value={(filters[select.key] as string | null | undefined) ?? null}
+                            value={
+                                (filters[select.key] as
+                                    string | null | undefined) ?? null
+                            }
                         />
                     ))}
                 </div>
@@ -155,28 +180,40 @@ export default function AdminFulfillmentToolbar({
                     </SheetHeader>
                     <div className="grid grid-cols-1 gap-3 p-4 pt-2 sm:grid-cols-2">
                         {selects.map((select) => (
-                            <div className="flex flex-col gap-1.5" key={`sheet-${String(select.key)}`}>
+                            <div
+                                className="flex flex-col gap-1.5"
+                                key={`sheet-${String(select.key)}`}
+                            >
                                 <Label className="text-xs font-medium text-muted-foreground">
                                     {select.label}
                                 </Label>
                                 <FilterSelect
                                     label={select.label}
                                     onChange={(value) =>
-                                        onFilterChange({ [select.key]: value } as Partial<AdminFulfillmentQueryState>)
+                                        onFilterChange({
+                                            [select.key]: value,
+                                        } as Partial<AdminFulfillmentQueryState>)
                                     }
                                     options={select.options}
-                                    value={(filters[select.key] as string | null | undefined) ?? null}
+                                    value={
+                                        (filters[select.key] as
+                                            string | null | undefined) ?? null
+                                    }
                                 />
                             </div>
                         ))}
                         <DateFilter
                             label={copy.filterPaidFrom}
-                            onChange={(value) => onFilterChange({ paid_from: value })}
+                            onChange={(value) =>
+                                onFilterChange({ paid_from: value })
+                            }
                             value={filters.paid_from ?? ''}
                         />
                         <DateFilter
                             label={copy.filterPaidTo}
-                            onChange={(value) => onFilterChange({ paid_to: value })}
+                            onChange={(value) =>
+                                onFilterChange({ paid_to: value })
+                            }
                             value={filters.paid_to ?? ''}
                         />
                     </div>
@@ -293,7 +330,9 @@ function DateFilter({
 }) {
     return (
         <div className="flex w-full flex-col gap-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">
+                {label}
+            </Label>
             <Input
                 aria-label={label}
                 className="min-h-11 w-full text-sm md:text-xs"
@@ -316,12 +355,16 @@ function activeChips(
     options: AdminFulfillmentFilterOptions,
     copy: AdminTranslations['fulfillment'],
 ): { key: keyof AdminFulfillmentQueryState; label: string }[] {
-    const chips: { key: keyof AdminFulfillmentQueryState; label: string }[] = [];
+    const chips: { key: keyof AdminFulfillmentQueryState; label: string }[] =
+        [];
     const labelFor = (list: AdminFilterOption[], value: string): string =>
         list.find((option) => option.value === value)?.label ?? value;
 
     if (filters.search && filters.search.trim() !== '') {
-        chips.push({ key: 'search', label: `${copy.searchLabel}: "${filters.search}"` });
+        chips.push({
+            key: 'search',
+            label: `${copy.searchLabel}: "${filters.search}"`,
+        });
     }
 
     if (filters.supplier) {
@@ -367,11 +410,17 @@ function activeChips(
     }
 
     if (filters.paid_from) {
-        chips.push({ key: 'paid_from', label: `${copy.filterPaidFrom}: ${filters.paid_from}` });
+        chips.push({
+            key: 'paid_from',
+            label: `${copy.filterPaidFrom}: ${filters.paid_from}`,
+        });
     }
 
     if (filters.paid_to) {
-        chips.push({ key: 'paid_to', label: `${copy.filterPaidTo}: ${filters.paid_to}` });
+        chips.push({
+            key: 'paid_to',
+            label: `${copy.filterPaidTo}: ${filters.paid_to}`,
+        });
     }
 
     return chips;

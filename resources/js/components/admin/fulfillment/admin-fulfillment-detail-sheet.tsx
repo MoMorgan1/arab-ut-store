@@ -32,7 +32,12 @@ export type AdminFulfillmentDetailSheetProps = {
     canSeeCost: boolean;
     isPending: boolean;
     locale: 'ar' | 'en';
-    onAction: (row: AdminFulfillmentRow, action: AdminFulfillmentAction) => void;
+    /** The server's clock, so every age on the page counts from one instant. */
+    now: number;
+    onAction: (
+        row: AdminFulfillmentRow,
+        action: AdminFulfillmentAction,
+    ) => void;
     onClose: () => void;
     orderUrlTemplate: string;
     row: AdminFulfillmentRow;
@@ -56,13 +61,13 @@ export default function AdminFulfillmentDetailSheet({
     canSeeCost,
     isPending,
     locale,
+    now,
     onAction,
     onClose,
     orderUrlTemplate,
     row,
 }: AdminFulfillmentDetailSheetProps) {
     const copy = adminUi.fulfillment;
-    const now = Date.now();
     const alarm = mostUrgentAlarm(row.alarms);
     const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
         dateStyle: 'medium',
@@ -93,9 +98,13 @@ export default function AdminFulfillmentDetailSheet({
                     <SheetDescription className="text-xs leading-relaxed text-muted-foreground">
                         {[
                             adminUi.orders.services[row.service] ?? row.service,
-                            adminUi.orders.platforms[row.platform] ?? row.platform,
+                            adminUi.orders.platforms[row.platform] ??
+                                row.platform,
                             row.paidAt
-                                ? copy.paidAgo.replace(':age', formatShortAge(row.paidAt, now))
+                                ? copy.paidAgo.replace(
+                                      ':age',
+                                      formatShortAge(row.paidAt, now),
+                                  )
                                 : null,
                         ]
                             .filter(Boolean)
@@ -114,8 +123,12 @@ export default function AdminFulfillmentDetailSheet({
                                 <h3 className="text-xs font-bold text-foreground">
                                     {copy.alarm[alarm.kind] ?? alarm.kind}
                                 </h3>
-                                {alarm.kind === 'stalled' && alarm.circuitOpen ? (
-                                    <AdminBadge className="ms-auto" variant="info">
+                                {alarm.kind === 'stalled' &&
+                                alarm.circuitOpen ? (
+                                    <AdminBadge
+                                        className="ms-auto"
+                                        variant="info"
+                                    >
                                         {copy.circuitOpen}
                                     </AdminBadge>
                                 ) : null}
@@ -177,7 +190,10 @@ export default function AdminFulfillmentDetailSheet({
 
                     <section className="flex flex-col gap-3 rounded-md border border-primary/20 bg-background p-3 shadow-xs">
                         <header className="flex items-center gap-2 border-b border-border/60 pb-2">
-                            <ShoppingBag aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                            <ShoppingBag
+                                aria-hidden="true"
+                                className="size-4 shrink-0 text-primary"
+                            />
                             <h3 className="text-xs font-bold text-foreground">
                                 {copy.detail.itemHeading}
                             </h3>
@@ -187,13 +203,16 @@ export default function AdminFulfillmentDetailSheet({
                                 <bdi>{row.orderNumber}</bdi>
                             </Field>
                             <Field label={copy.detail.itemService}>
-                                {adminUi.orders.services[row.service] ?? row.service}
+                                {adminUi.orders.services[row.service] ??
+                                    row.service}
                             </Field>
                             <Field label={copy.detail.itemPlatform}>
-                                {adminUi.orders.platforms[row.platform] ?? row.platform}
+                                {adminUi.orders.platforms[row.platform] ??
+                                    row.platform}
                             </Field>
                             <Field label={copy.detail.itemStatus}>
-                                {adminUi.statuses[row.itemStatus] ?? row.itemStatus}
+                                {adminUi.statuses[row.itemStatus] ??
+                                    row.itemStatus}
                             </Field>
                             <Field label={copy.detail.itemPaidAt}>
                                 <bdi>{absolute(row.paidAt)}</bdi>
@@ -203,14 +222,19 @@ export default function AdminFulfillmentDetailSheet({
 
                     <section className="flex flex-col gap-3 rounded-md border border-primary/20 bg-background p-3 shadow-xs">
                         <header className="flex items-center gap-2 border-b border-border/60 pb-2">
-                            <Truck aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                            <Truck
+                                aria-hidden="true"
+                                className="size-4 shrink-0 text-primary"
+                            />
                             <h3 className="text-xs font-bold text-foreground">
                                 {copy.detail.supplierHeading}
                             </h3>
                         </header>
                         <Fields>
                             <Field label={copy.detail.supplierName}>
-                                {row.placement ? row.placement.supplier.toUpperCase() : '—'}
+                                {row.placement
+                                    ? row.placement.supplier.toUpperCase()
+                                    : '—'}
                             </Field>
                             <Field label={copy.detail.supplierReference}>
                                 {row.placement ? (
@@ -223,14 +247,19 @@ export default function AdminFulfillmentDetailSheet({
                             </Field>
                             <Field label={copy.detail.supplierPhase}>
                                 {row.placement
-                                    ? (copy.phase[row.placement.phase] ?? row.placement.phase)
+                                    ? (copy.phase[row.placement.phase] ??
+                                      row.placement.phase)
                                     : '—'}
                             </Field>
                             <Field label={copy.detail.supplierPlacedAt}>
-                                <bdi>{absolute(row.placement?.placedAt ?? null)}</bdi>
+                                <bdi>
+                                    {absolute(row.placement?.placedAt ?? null)}
+                                </bdi>
                             </Field>
                             <Field label={copy.detail.supplierObservedAt}>
-                                <bdi>{absolute(row.job?.observedAt ?? null)}</bdi>
+                                <bdi>
+                                    {absolute(row.job?.observedAt ?? null)}
+                                </bdi>
                             </Field>
                             <Field label={copy.detail.supplierObservedState}>
                                 {row.job?.observedState ? (
@@ -244,7 +273,9 @@ export default function AdminFulfillmentDetailSheet({
                             {canSeeCost ? (
                                 <Field label={copy.detail.supplierCost}>
                                     {row.cost ? (
-                                        <bdi>{formatAdminMoney(row.cost, locale)}</bdi>
+                                        <bdi>
+                                            {formatAdminMoney(row.cost, locale)}
+                                        </bdi>
                                     ) : row.job ? (
                                         copy.notReported
                                     ) : (
@@ -262,9 +293,21 @@ export default function AdminFulfillmentDetailSheet({
                 </div>
 
                 <SheetFooter className="flex flex-row items-center justify-end gap-2 border-t border-border pt-4">
-                    <Button asChild className="min-h-11 gap-2" variant="outline">
-                        <Link href={orderUrlTemplate.replace('__ID__', row.orderNumber)}>
-                            <ExternalLink aria-hidden="true" className="size-4" />
+                    <Button
+                        asChild
+                        className="min-h-11 gap-2"
+                        variant="outline"
+                    >
+                        <Link
+                            href={orderUrlTemplate.replace(
+                                '__ID__',
+                                row.orderNumber,
+                            )}
+                        >
+                            <ExternalLink
+                                aria-hidden="true"
+                                className="size-4"
+                            />
                             <span>{copy.openOrder}</span>
                         </Link>
                     </Button>
@@ -284,14 +327,20 @@ export default function AdminFulfillmentDetailSheet({
 }
 
 function Fields({ children }: { children: ReactNode }) {
-    return <dl className="m-0 flex flex-col divide-y divide-border/40 text-xs">{children}</dl>;
+    return (
+        <dl className="m-0 flex flex-col divide-y divide-border/40 text-xs">
+            {children}
+        </dl>
+    );
 }
 
 function Field({ children, label }: { children: ReactNode; label: string }) {
     return (
         <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
             <dt className="font-semibold text-muted-foreground">{label}</dt>
-            <dd className="m-0 text-end text-foreground tabular-nums">{children}</dd>
+            <dd className="m-0 text-end text-foreground tabular-nums">
+                {children}
+            </dd>
         </div>
     );
 }

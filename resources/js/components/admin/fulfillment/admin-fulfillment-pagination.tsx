@@ -55,7 +55,8 @@ export default function AdminFulfillmentPagination({
         <div className="flex flex-wrap items-center justify-between gap-4 px-2 py-3 text-sm text-muted-foreground">
             <div className="w-full text-xs whitespace-nowrap md:w-auto md:flex-1">
                 <bdi className="tabular-nums">
-                    {pagination.from ?? 0}–{pagination.to ?? 0} / {pagination.total}
+                    {pagination.from ?? 0}–{pagination.to ?? 0} /{' '}
+                    {pagination.total}
                 </bdi>
             </div>
 
@@ -63,7 +64,9 @@ export default function AdminFulfillmentPagination({
                 <div className="flex items-center gap-2">
                     <span className="text-xs">{common.perPage}</span>
                     <Select
-                        onValueChange={(value) => onPerPageChange(Number(value))}
+                        onValueChange={(value) =>
+                            onPerPageChange(Number(value))
+                        }
                         value={String(pagination.perPage)}
                     >
                         <SelectTrigger

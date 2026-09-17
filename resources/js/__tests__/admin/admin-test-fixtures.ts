@@ -514,6 +514,7 @@ export const englishAdminUi: AdminTranslations = {
             silentSince: 'Oldest since',
             silentItemsHint:
                 'These were paid for and no supplier was ever asked to deliver them, or the supplier stopped answering about them. Follow docs/operations/fulfillment-recovery.md.',
+            silentItemsLink: 'Open the fulfillment queue',
         },
         attentionRailTitle: 'Operational focus',
         attentionStripTitle: 'Needs attention',
@@ -901,8 +902,10 @@ export const englishAdminUi: AdminTranslations = {
         alarmHint: {
             unplaced: 'Paid, automated, and no placement was ever recorded.',
             silent: 'Reads are being attempted and failing.',
-            stalled: 'The poller should be reading this and no reading is arriving.',
-            stalledCircuit: 'The supplier is inside its cooldown, so we are not asking. Nothing to chase.',
+            stalled:
+                'The poller should be reading this and no reading is arriving.',
+            stalledCircuit:
+                'The supplier is inside its cooldown, so we are not asking. Nothing to chase.',
         },
         presentation: {
             processing: 'Processing',
@@ -941,10 +944,12 @@ export const englishAdminUi: AdminTranslations = {
             supplierObservedAt: 'Last reading',
             supplierObservedState: 'Last code',
             supplierCost: 'Actual cost',
-            noJobNote: 'There is no fulfillment job row for this item, so there is nothing to read, nothing to poll and nothing to resume. Every field above is absent rather than unknown.',
+            noJobNote:
+                'There is no fulfillment job row for this item, so there is nothing to read, nothing to poll and nothing to resume. Every field above is absent rather than unknown.',
             blockerHeading: 'Why it has not been sent',
             blockerCode: 'Reason',
-            blockerBlocks: 'Waiting will not clear this. See the recovery runbook.',
+            blockerBlocks:
+                'Waiting will not clear this. See the recovery runbook.',
             blockerClears: 'This one clears itself on a later attempt.',
             close: 'Close',
         },
@@ -960,15 +965,19 @@ export const englishAdminUi: AdminTranslations = {
         },
         dialog: {
             sendTitle: 'Send :order to a supplier',
-            sendBody: 'This item was paid for and never placed. Sending asks a supplier to deliver it, and we are charged for what it delivers.',
+            sendBody:
+                'This item was paid for and never placed. Sending asks a supplier to deliver it, and we are charged for what it delivers.',
             resumeTitle: 'Resume :order at the supplier',
-            resumeBody: 'The supplier already has this item. Resuming asks it to carry on with work it has, and places nothing new.',
+            resumeBody:
+                'The supplier already has this item. Resuming asks it to carry on with work it has, and places nothing new.',
             retryTitle: 'Retry the challenge on :order',
-            retryBody: 'Asks the supplier to try this solve again. It places nothing new.',
+            retryBody:
+                'Asks the supplier to try this solve again. It places nothing new.',
             reasonLabel: 'Reason',
             reasonPlaceholder: 'Choose a reason',
             reasonRequired: 'Choose a reason before sending.',
-            credentialNote: 'The request carries the customer’s EA account, decrypted for this send only and written to the secret access log.',
+            credentialNote:
+                'The request carries the customer’s EA account, decrypted for this send only and written to the secret access log.',
             cancel: 'Cancel',
         },
         reasonCodes: {
@@ -979,7 +988,8 @@ export const englishAdminUi: AdminTranslations = {
         },
         result: {
             queuedTitle: 'Queued. Nothing is placed yet.',
-            queuedBody: 'The alarm stays open until a supplier reference actually arrives.',
+            queuedBody:
+                'The alarm stays open until a supplier reference actually arrives.',
             resumeTitle: 'Resume sent.',
             resumeBody: 'The row keeps its state until the next reading lands.',
             retryTitle: 'Retry sent.',
@@ -987,9 +997,11 @@ export const englishAdminUi: AdminTranslations = {
             refusedTitle: 'Not sent. Nothing changed.',
             refusedBody: 'Try again in a few minutes.',
             busyTitle: 'Already running.',
-            busyBody: 'This item is being sent right now. Nothing was sent twice.',
+            busyBody:
+                'This item is being sent right now. Nothing was sent twice.',
             staleTitle: 'Not sent.',
-            staleBody: 'This item moved since the page loaded. Reload and look again.',
+            staleBody:
+                'This item moved since the page loaded. Reload and look again.',
         },
         badge: {
             queued: 'Queued :time',

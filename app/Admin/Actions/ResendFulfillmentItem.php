@@ -7,6 +7,8 @@ use App\Actions\Fulfillment\ResumeItemDelivery;
 use App\Actions\Fulfillment\RetryItemChallenge;
 use App\Admin\Audit\StaffAuditEvent;
 use App\Enums\AdminPermission;
+use App\Enums\FulfillmentResendAction;
+use App\Enums\FulfillmentResendOutcome;
 use App\Enums\OrderStatus;
 use App\Enums\ServiceType;
 use App\Enums\SupplierAction;
@@ -65,17 +67,12 @@ final class ResendFulfillmentItem
     ) {}
 
     /**
-     * @param  'send'|'resume'|'retry_challenge'  $action
-     * @return array{
-     *     outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight',
-     *     action: string,
-     *     previousEventStatus: ?string
-     * }
+     * @return array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}
      */
     public function execute(
         User $actor,
         string $itemPublicId,
-        string $action,
+        FulfillmentResendAction $action,
         string $reasonCode,
         ?int $challengePosition = null,
         ?string $ipAddress = null,
@@ -98,7 +95,7 @@ final class ResendFulfillmentItem
         $lock = Cache::lock("fulfillment-resend:item:{$item->id}", 75);
 
         if (! $lock->get()) {
-            return $this->result('busy', $action);
+            return $this->result(FulfillmentResendOutcome::Busy, $action->value);
         }
 
         try {
@@ -109,20 +106,19 @@ final class ResendFulfillmentItem
     }
 
     /**
-     * @param  'send'|'resume'|'retry_challenge'  $action
-     * @return array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     * @return array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}
      */
     private function act(
         User $actor,
         OrderItem $item,
-        string $action,
+        FulfillmentResendAction $action,
         string $reasonCode,
         ?int $challengePosition,
         ?string $ipAddress,
         string $locale,
     ): array {
         if (! $this->isActionable($item)) {
-            return $this->audited($actor, $item, $this->result('not_actionable', $action), $reasonCode, $ipAddress);
+            return $this->audited($actor, $item, $this->result(FulfillmentResendOutcome::NotActionable, $action->value), $reasonCode, $ipAddress);
         }
 
         $job = $item->fulfillmentJob;
@@ -135,7 +131,7 @@ final class ResendFulfillmentItem
             metadata: [
                 'order_number' => (string) $item->order->order_number,
                 'order_item_public_id' => (string) $item->public_id,
-                'action' => $action,
+                'action' => $action->value,
                 'reason_code' => $reasonCode,
                 'supplier' => $job?->supplier?->value,
             ],
@@ -143,10 +139,9 @@ final class ResendFulfillmentItem
         ));
 
         $result = match ($action) {
-            'send' => $this->send($item, $job),
-            'resume' => $this->supplierAction($item, $job, SupplierAction::Resume, $locale),
-            'retry_challenge' => $this->supplierAction($item, $job, SupplierAction::RetryChallenge, $locale, $challengePosition),
-            default => $this->result('not_actionable', $action),
+            FulfillmentResendAction::Send => $this->send($item, $job),
+            FulfillmentResendAction::Resume => $this->supplierAction($item, $job, SupplierAction::Resume, $locale),
+            FulfillmentResendAction::RetryChallenge => $this->supplierAction($item, $job, SupplierAction::RetryChallenge, $locale, $challengePosition),
         };
 
         return $this->audited($actor, $item, $result, $reasonCode, $ipAddress);
@@ -155,14 +150,14 @@ final class ResendFulfillmentItem
     /**
      * Re-opens the order's placement request, or writes one if none exists.
      *
-     * @return array{outcome: 'queued'|'refused'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     * @return array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}
      */
     private function send(OrderItem $item, ?FulfillmentJob $job): array
     {
         // An item at a supplier is never re-sent. The control does not offer
         // it, and this is the gate behind the control.
         if ($job instanceof FulfillmentJob) {
-            return $this->result('not_actionable', 'send');
+            return $this->result(FulfillmentResendOutcome::NotActionable, 'send');
         }
 
         /** @var IntegrationEvent|null $event */
@@ -178,21 +173,21 @@ final class ResendFulfillmentItem
             try {
                 $created = $this->enqueuePlacement->execute($item->order);
             } catch (UniqueConstraintViolationException) {
-                return $this->result('queued', 'send');
+                return $this->result(FulfillmentResendOutcome::Queued, 'send');
             }
 
             // `EnqueueOrderPlacement` writes nothing when the order owes no
             // placement. `isActionable()` has already established that this
             // item does, so a null here is a state that changed underneath us.
             return $created === null
-                ? $this->result('not_actionable', 'send')
-                : $this->result('queued', 'send');
+                ? $this->result(FulfillmentResendOutcome::NotActionable, 'send')
+                : $this->result(FulfillmentResendOutcome::Queued, 'send');
         }
 
         $previous = (string) $event->status;
 
         if ($previous === self::IN_FLIGHT) {
-            return $this->result('in_flight', 'send', $previous);
+            return $this->result(FulfillmentResendOutcome::InFlight, 'send', $previous);
         }
 
         // Guarded on the status this read saw, so two concurrent re-opens
@@ -215,8 +210,8 @@ final class ResendFulfillmentItem
             ]);
 
         return $reopened === 1
-            ? $this->result('queued', 'send', $previous)
-            : $this->result('refused', 'send', $previous);
+            ? $this->result(FulfillmentResendOutcome::Queued, 'send', $previous)
+            : $this->result(FulfillmentResendOutcome::Refused, 'send', $previous);
     }
 
     /**
@@ -231,7 +226,7 @@ final class ResendFulfillmentItem
      * `ItemTracking` payload, which is built for a different reader and has no
      * business in an admin response.
      *
-     * @return array{outcome: 'resume_accepted'|'retry_accepted'|'refused'|'not_actionable', action: string, previousEventStatus: ?string}
+     * @return array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}
      */
     private function supplierAction(
         OrderItem $item,
@@ -241,7 +236,7 @@ final class ResendFulfillmentItem
         ?int $challengePosition = null,
     ): array {
         if (! $job instanceof FulfillmentJob || ! in_array($action, $job->allowedActions(), true)) {
-            return $this->result('not_actionable', $action->value);
+            return $this->result(FulfillmentResendOutcome::NotActionable, $action->value);
         }
 
         try {
@@ -251,15 +246,17 @@ final class ResendFulfillmentItem
         } catch (AuthorizationException) {
             // The gate behind the button disagreed with the button, which
             // means the row moved between the page render and the press.
-            return $this->result('not_actionable', $action->value);
+            return $this->result(FulfillmentResendOutcome::NotActionable, $action->value);
         }
 
-        if (($answer['status'] ?? null) !== 'accepted') {
-            return $this->result('refused', $action->value);
+        if ($answer['status'] !== 'accepted') {
+            return $this->result(FulfillmentResendOutcome::Refused, $action->value);
         }
 
         return $this->result(
-            $action === SupplierAction::Resume ? 'resume_accepted' : 'retry_accepted',
+            $action === SupplierAction::Resume
+                ? FulfillmentResendOutcome::ResumeAccepted
+                : FulfillmentResendOutcome::RetryAccepted,
             $action->value,
         );
     }
@@ -296,12 +293,12 @@ final class ResendFulfillmentItem
     /**
      * Writes the truthful result row and hands the outcome back.
      *
-     * @param  array{outcome: string, action: string, previousEventStatus: ?string}  $result
-     * @return array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     * @param  array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}  $result
+     * @return array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}
      */
     private function audited(User $actor, OrderItem $item, array $result, string $reasonCode, ?string $ipAddress): array
     {
-        $dispatched = in_array($result['outcome'], ['queued', 'resume_accepted', 'retry_accepted'], true);
+        $dispatched = $result['outcome']->dispatched();
 
         $this->recordStaffAudit->execute($actor, $item, new StaffAuditEvent(
             action: $dispatched ? 'fulfillment.resend_dispatched' : 'fulfillment.resend_refused',
@@ -315,27 +312,23 @@ final class ResendFulfillmentItem
                 // widening this action performs - a `processed` row re-opened -
                 // is visible afterwards rather than erased by it.
                 'previous_event_status' => $result['previousEventStatus'],
-                'outcome' => $result['outcome'],
+                'outcome' => $result['outcome']->value,
             ],
             ipAddress: $ipAddress,
         ));
 
-        /** @var array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string} $result */
         return $result;
     }
 
     /**
-     * @return array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string}
+     * @return array{outcome: FulfillmentResendOutcome, action: string, previousEventStatus: ?string}
      */
-    private function result(string $outcome, string $action, ?string $previousEventStatus = null): array
+    private function result(FulfillmentResendOutcome $outcome, string $action, ?string $previousEventStatus = null): array
     {
-        /** @var array{outcome: 'queued'|'resume_accepted'|'retry_accepted'|'refused'|'busy'|'not_actionable'|'in_flight', action: string, previousEventStatus: ?string} $result */
-        $result = [
+        return [
             'outcome' => $outcome,
             'action' => $action,
             'previousEventStatus' => $previousEventStatus,
         ];
-
-        return $result;
     }
 }
