@@ -1,4 +1,4 @@
-// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.8.json the
+// Runs the Config and Prepare Coins Snapshot nodes of workflow-v2.9.json the
 // way n8n would - once with FFT answering, once with FFT down - and pins the
 // v2.5 rule: FFT down carries last time's rates forward and still publishes a
 // UTT cost table; with nothing to carry forward it stops as v2.4 did.
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.8.json', import.meta.url), 'utf8'));
+const workflow = JSON.parse(readFileSync(new URL('../workflow-v2.9.json', import.meta.url), 'utf8'));
 const source = (name) => workflow.nodes.find((node) => node.name === name).parameters.jsCode;
 const configSrc = source('Config');
 const prepareSrc = source('Prepare Coins Snapshot');

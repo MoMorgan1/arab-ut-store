@@ -22,7 +22,7 @@ uses(RefreshDatabase::class);
 function workflowExportAnchors(): array
 {
     $export = json_decode(
-        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.8.json')),
+        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.9.json')),
         true,
         flags: JSON_THROW_ON_ERROR,
     );
@@ -47,7 +47,7 @@ function workflowExportAnchors(): array
 
 it('publishes an anchor field the contract recognises', function () {
     $export = json_decode(
-        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.8.json')),
+        (string) file_get_contents(base_path('automation/n8n/coins-pricing-v2/workflow-v2.9.json')),
         true,
         flags: JSON_THROW_ON_ERROR,
     );
@@ -66,9 +66,14 @@ it('publishes an anchor field the contract recognises', function () {
 it('accepts the anchors exactly as the export publishes them', function () {
     $anchors = workflowExportAnchors();
 
-    expect($anchors)->toHaveCount(11)
-        ->and(array_key_first($anchors))->toBe(50_000)
-        ->and(array_key_last($anchors))->toBe(20_000_000);
+    // Fourteen since 2026-09-17: three points were added below 50,000 so the
+    // storefront can price the small orders an eight-hundred-riyal million
+    // makes normal. The first anchor has to stay the dearest rate, because
+    // quantities below it clamp to it rather than being priced on their own.
+    expect($anchors)->toHaveCount(14)
+        ->and(array_key_first($anchors))->toBe(5_000)
+        ->and(array_key_last($anchors))->toBe(20_000_000)
+        ->and($anchors[array_key_first($anchors)])->toBe(max($anchors));
 
     // The floor the owner lowered on 2026-08-26, which the export still declares
     // as 50,000. An anchor curve is meant to be accepted anyway.
@@ -87,7 +92,11 @@ it('accepts the anchors exactly as the export publishes them', function () {
 
     $rule = app(CoinsCatalogReader::class)->pricingRules(['pc'])['pc'];
 
-    expect($rule->multiplierBasisPoints(10_000))->toBe(11_000)
+    // 12,200 rather than the 11,000 it clamped to before: ten thousand coins
+    // now has an anchor of its own, which is the point of extending the curve
+    // downward - a small order carries its own stronger margin instead of
+    // borrowing the fifty-thousand rate.
+    expect($rule->multiplierBasisPoints(10_000))->toBe(12_200)
         ->and($rule->multiplierBasisPoints(200_000))->toBe(10_400)
         ->and($rule->multiplierBasisPoints(20_000_000))->toBe(10_500);
 });

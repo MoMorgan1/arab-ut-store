@@ -23,6 +23,9 @@ final class CoinsCatalogReader
     /** @var array<string, mixed>|null */
     private ?array $availability = null;
 
+    /** @var Collection<int, PriceRule>|null */
+    private ?Collection $activeRules = null;
+
     public function __construct(private readonly CoinsPriceCalculator $calculator) {}
 
     public function product(): Product
@@ -60,7 +63,10 @@ final class CoinsCatalogReader
      */
     public function pricingRules(array $requiredGroups): array
     {
-        $records = PriceRule::query()
+        // The homepage asks three times over - the schedules, the coverage
+        // assertion, the money-anchored quantities - and the active rules
+        // cannot change between two questions in one request.
+        $records = $this->activeRules ??= PriceRule::query()
             ->whereNull('product_variant_id')
             ->whereNull('platform')
             ->where('service_type', ServiceType::Coins->value)

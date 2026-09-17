@@ -9,6 +9,8 @@ use App\Models\PriceRun;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Services\Catalog\CoinsCatalogReader;
+use App\Services\Pricing\CoinsPriceCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -245,12 +247,19 @@ test('the foreign-currency homepage builds every schedule from one pricing and r
     // when the hero proof started counting completed orders and served
     // customers from the orders table (one aggregate, cached for 15 minutes),
     // and to 14 when the configurator started asking the last pricing run what
-    // a supplier could actually deliver. That last one is asserted below as
-    // exactly one read: every platform and delivery asks, and the answer is
-    // memoised, so the number must not grow with the catalogue.
+    // a supplier could actually deliver - asserted below as exactly one read of
+    // price_runs, because every platform and delivery asks and the answer is
+    // memoised, so it must not grow with the catalogue.
+    //
+    // 15 covers the second read of price_rules that money-anchored quantities
+    // need. The reader memoises it, but the schedule builder and the controller
+    // each hold their own reader, so the request pays for it twice. Two
+    // constant reads, not a per-item one - collapsing them means sharing the
+    // reader for the request, which is a change to make deliberately and not as
+    // a side effect of a pricing feature.
     expect($durationMilliseconds)->toBeLessThan(1_000)
-        ->and(count($queries))->toBeLessThanOrEqual(14)
-        ->and($queriesFor('price_rules'))->toBe(1)
+        ->and(count($queries))->toBeLessThanOrEqual(15)
+        ->and($queriesFor('price_rules'))->toBeLessThanOrEqual(2)
         ->and($queriesFor('price_runs'))->toBe(1)
         ->and($queriesFor('exchange_rates'))->toBe(1);
 });
@@ -487,4 +496,72 @@ test('a platform with no market at all comes off sale', function () {
             // Console keeps selling on what the run published for it.
             ->and($platforms->firstWhere('value', 'playstation')['available'])->toBe(45_000);
     });
+});
+
+test('the smallest order and the quick amounts are solved from money, not stored as coins', function () {
+    // "Start at fifty thousand coins" was a third of a riyal last season and
+    // forty riyals the morning after the season turned. The decision is about
+    // money, so the money is what is stored and the coins are solved for.
+    createHomeCatalog();
+
+    PriceRule::query()->where('service_type', ServiceType::Coins->value)->delete();
+
+    foreach (['console_normal', 'console_fast', 'pc'] as $group) {
+        $configuration = homeRuleConfiguration($group);
+        unset($configuration['multipliers_basis_points']);
+        $configuration['multiplier_anchors_basis_points'] = [
+            '5000' => 13_000,
+            '50000' => 11_000,
+            '1000000' => 10_000,
+            '20000000' => 10_500,
+        ];
+
+        PriceRule::query()->create([
+            'name' => "anchored {$group}",
+            'service_type' => ServiceType::Coins,
+            'platform' => null,
+            'configuration' => $configuration,
+            'is_active' => true,
+        ]);
+    }
+
+    $this->get('/en')->assertInertia(function (Assert $page): void {
+        $amount = $page->toArray()['props']['amount'];
+        $catalog = app(CoinsCatalogReader::class);
+        $rule = $catalog->pricingRules(['console_normal'])['console_normal'];
+        $calculator = app(CoinsPriceCalculator::class);
+        $unit = $amount['roundingUnit'];
+        $costOf = fn (int $quantity): int => $calculator->calculate($rule, $quantity)->halalah();
+
+        // The floor is the cheapest order still worth five riyals, and the
+        // grain below it is not.
+        expect($costOf($amount['minimum']))->toBeGreaterThanOrEqual(500);
+
+        if ($unit <= $amount['minimum'] - $unit) {
+            expect($costOf($amount['minimum'] - $unit))->toBeLessThan(500);
+        }
+
+        // Quick amounts climb, never repeat, and never sit below the floor.
+        expect($amount['presets'])->not->toBeEmpty()
+            ->and($amount['presets'])->toBe(array_values(array_unique($amount['presets'])))
+            ->and($amount['presets'])->toBe(collect($amount['presets'])->sort()->values()->all())
+            ->and(min($amount['presets']))->toBeGreaterThanOrEqual($amount['minimum']);
+
+        // And the top one is the thousand-riyal rung the owner asked for.
+        expect($costOf(max($amount['presets'])))->toBeGreaterThanOrEqual(100_000);
+    });
+});
+
+test('a rule that cannot price an arbitrary quantity keeps the configured sizes', function () {
+    // A threshold map refuses anything below its first entry, which is exactly
+    // what "the smallest order worth five riyals" asks it. It must fall back,
+    // not 500.
+    createHomeCatalog();
+
+    $this->get('/en')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where(
+            'amount.minimum',
+            app(CoinsCatalogReader::class)->quantityRules()->minimum(),
+        ));
 });
