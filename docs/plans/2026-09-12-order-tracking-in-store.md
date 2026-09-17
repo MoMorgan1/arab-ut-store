@@ -1031,8 +1031,14 @@ Three findings the plan did not anticipate, all recorded in the runbook:
 3. **A `?id=` link cannot be deep-linked.** It carries a Salla order number the store has no route
    for, so those customers land on the account orders list and pick the order themselves.
 
-Left for the owner: the pre-flight confirmations (including the supplier dashboards), the 301, the
-waiting period, the takedown, the key rotation, and archiving `MoMorgan1/ArabUT-Track`.
+The prompts name the account page rather than the sessionless `/orders/track/{token}` because the
+model has no tools, cannot look up an order, and would have to invent the 48-character token — and
+there is no guest order for it to point at anyway: `orders.user_id` is NOT NULL and checkout is
+behind `auth`, so a guest sent to `/my-account/orders` reaches the login page, not a dead end.
+
+Left for the owner: the pre-flight confirmations (including the supplier dashboards), the 301 —
+which must carry `QSD`, or it copies a live tracking token into store URLs and logs — the waiting
+period, the takedown, the key rotation, and archiving `MoMorgan1/ArabUT-Track`.
 
 ## Slice E — operations (later)
 

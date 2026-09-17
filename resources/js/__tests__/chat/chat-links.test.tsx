@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { isLinkableUrl, parseInlineTokens } from '@/lib/chat-format';
-import type { LinkToken } from '@/lib/chat-format';
+import type { InlineToken, LinkToken } from '@/lib/chat-format';
 
 function linksIn(text: string): LinkToken[] {
     return parseInlineTokens(text).filter(
         (token): token is LinkToken => token.type === 'link',
     );
+}
+
+/** Everything the reader actually sees, in order, whatever each token is. */
+function textIn(tokens: InlineToken[]): string {
+    return tokens
+        .map((token) =>
+            token.type === 'bold' ? textIn(token.children) : token.value,
+        )
+        .join('');
 }
 
 describe('assistant links', () => {
@@ -26,12 +35,17 @@ describe('assistant links', () => {
 
     /**
      * The legacy tracker is retired (G2), so its address is no longer one tap
-     * away. Old transcripts still hold it; they render it as readable text.
+     * away. Old transcripts still hold it, and the promise is that they stay
+     * readable: not linkified, but not swallowed either. Asserting only that no
+     * link token appears would also pass if the URL vanished from the message.
      */
-    it('leaves the retired tracker address as plain text', () => {
-        expect(
-            linksIn('Track it at https://track.arab-ut.com/?id=12345'),
-        ).toHaveLength(0);
+    it('keeps the retired tracker address readable as plain text', () => {
+        const message =
+            'Track it at https://track.arab-ut.com/?id=12345 please';
+        const tokens = parseInlineTokens(message);
+
+        expect(linksIn(message)).toHaveLength(0);
+        expect(textIn(tokens)).toBe(message);
         expect(isLinkableUrl('https://track.arab-ut.com')).toBe(false);
     });
 

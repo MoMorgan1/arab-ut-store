@@ -43,9 +43,41 @@ history.
 | `POST /orders/track/{token}/items/{item}/actions/resume` | `store.orders.track.actions.resume` | Replaces `mode=resume`. |
 | `POST /orders/track/{token}/items/{item}/actions/retry-challenge` | `store.orders.track.actions.retry-challenge` | Replaces `mode=sbc-retry`. |
 
-English is the same set under an `/en` prefix (`localized.*`). The whole `/my-account` tree is
-behind `MY_ACCOUNT_ENABLED` (`config/store.php:9`); if that is not `true` in production every
-target above answers 404.
+English is the same set under an `/en` prefix (`localized.*`).
+
+`MY_ACCOUNT_ENABLED` (`config/store.php:9`) gates the **first three rows only**. Those routes are
+the `routes/account.php` group, whose middleware stack starts with `EnsureMyAccountEnabled`; with
+the flag off they answer 404, and `/orders/{order}` 404s with them because it only redirects there.
+
+It is **not** a kill switch for public tracking. `/orders/track/{token}` and its three action
+routes are registered in `routes/web.php` outside that group, carry neither
+`EnsureMyAccountEnabled` nor `auth`, and keep serving whatever the flag says. If the public path
+ever has to be closed in a hurry, the lever is revoking the tokens
+(`IssueOrderTrackingLink::revoke()`, which stamps `order_tracking_links.revoked_at` and makes the
+link 404), not this flag.
+
+## Why the assistant names the account page and not the signed link
+
+The tracker was a public link; `/my-account/orders` is not. That difference was checked against the
+code rather than assumed, and the account page is still the right thing for the assistant to name.
+
+- **There is no order the assistant could point a guest at.** `orders.user_id` is NOT NULL with a
+  foreign-key constraint (`database/migrations/2026_08_08_000003_create_commerce_tables.php:85`)
+  and checkout itself sits behind `auth`
+  (`routes/web.php:56`). Every order in the store belongs to an account.
+- **An unauthenticated visit is not a dead end.** `redirectGuestsTo` (`bootstrap/app.php:61`) sends
+  a guest to the login page in their own locale, not to a 404. Salla-era customers were imported
+  with their email and phone, so WhatsApp OTP, Google, or a password reset all get them in.
+- **The signed link cannot go in a prompt.** The assistant has no tools (`docs/ai-assistant/TOOLS.md`),
+  cannot look up an order, and the token is a 48-character per-order secret. Describing the
+  `/orders/track/{token}` shape in the prompt would invite the model to invent a token — and since
+  `store.arab-ut.com` is on the chat linkifier's allowlist, an invented one would render as a
+  clickable store link. The signed link is delivered by whatever sends it, never authored by the
+  model.
+
+What genuinely does narrow is the case the tracker served best: a customer who can no longer reach
+the account, who used to be able to open a public link anyway. They now need someone to send them a
+signed link — which is item 3 below, and is why that item blocks the takedown.
 
 ## What the store does not replace
 
@@ -96,12 +128,41 @@ link.
 and `silentItems` — the count of open rows in `fulfillment_alarms`, which is the only place an
 item that was paid for, published, acknowledged and never placed shows up.
 
-All four must read zero. The equivalent query, if the panel is unavailable:
+All four must read zero. Prefer the panel: it is the only thing that also reports `monitored`,
+which is `false` — and every count therefore meaningless — unless `queue.default` is `database`
+(`ReadQueueHealth::read()`). Check that first with `php artisan tinker --execute="echo
+config('queue.default');"`.
+
+If the panel is unavailable, these four queries are the same four numbers. They reproduce
+`ReadQueueHealth`'s own predicates rather than approximating them; `jobs.available_at` and
+`jobs.reserved_at` are unix timestamps, and the two constants are `STALLED_AFTER_SECONDS = 300`
+and `queue.connections.database.retry_after` (default 90, `DB_QUEUE_RETRY_AFTER`).
 
 ```sql
-SELECT COUNT(*) FROM fulfillment_alarms WHERE resolved_at IS NULL;
+-- failedJobs: work that was tried and refused.
+SELECT COUNT(*) FROM failed_jobs;
+
+-- failedEvents: outbox rows that exhausted every delivery attempt. Drained by
+-- their own command, not the queue worker, so they never reach failed_jobs.
 SELECT COUNT(*) FROM integration_events WHERE status = 'failed';
+
+-- stalledJobs: rows the queue would hand a worker right now and has not -
+-- Laravel's isAvailable OR isReservedButExpired. available_at, not created_at,
+-- so a deliberately delayed job is not counted as stalled.
+SELECT COUNT(*) AS stalled, MIN(available_at) AS oldest
+FROM jobs
+WHERE available_at <= UNIX_TIMESTAMP() - 300
+  AND (reserved_at IS NULL OR reserved_at <= UNIX_TIMESTAMP() - 90);
+
+-- silentItems: paid, published, acknowledged and never placed. Nothing else
+-- knows about these.
+SELECT COUNT(*) FROM fulfillment_alarms WHERE resolved_at IS NULL;
 ```
+
+Substitute the real `retry_after` for `90` if `DB_QUEUE_RETRY_AFTER` is set on production. A
+non-zero `stalled` means the scheduler cron is dead or a worker died holding a reservation — the
+failure mode that leaves `failed_jobs` empty while every receipt silently stops, and exactly the
+state you must not take the tracker down on top of.
 
 ### 3. No outstanding direct-tracking link on the tracker host
 
@@ -122,19 +183,26 @@ Read it and, for every entry whose supplier order is not finished:
 
 Do not delete the JSON file before the takedown; it is the only inventory of these links.
 
-### 4. Nothing still messages customers with a tracker URL
+### 4. Nothing still messages customers with a tracker URL, or any other dead one
 
-Two n8n workflows build `https://track.arab-ut.com/?id=…` into a WhatsApp message:
+Two n8n workflows write a customer-facing address into a WhatsApp message. Read from the committed
+exports; check against the **live instance**, because those files are the Salla baselines and are
+never edited in place.
 
-| Workflow | Node |
-| --- | --- |
-| `Fulfillment v14` (`automation/n8n/fulfillment-v14/workflow-v14-salla.json`) | `WA: Build Confirmation` |
-| `Customer Notifier v2` (`automation/n8n/customer-notifier-v2/workflow-v2-salla.json`) | `Build Customer Message` |
+| Workflow | Node | Addresses it writes |
+| --- | --- | --- |
+| `Fulfillment v14` (`automation/n8n/fulfillment-v14/workflow-v14-salla.json`) | `WA: Build Confirmation` | `https://track.arab-ut.com/?id=…` |
+| `Customer Notifier v2` (`automation/n8n/customer-notifier-v2/workflow-v2-salla.json`) | `Build Customer Message` | `https://track.arab-ut.com/?id=…`, `https://arab-ut.com/orders`, `https://arab-ut.com/ea-backup-codes-guide/page-699997932` |
 
-Both committed files are the Salla baselines and are never edited in place, so this check is
-against the **live n8n instance**, not the repository. Neither must be active when the site comes
-down, or the store will hand out dead links itself. The replacements, `ship-coins-v1` and
-`solve-challenge-v1`, send no customer message at all.
+Neither workflow may be active when the tracker comes down, or the store will hand out dead links
+itself. The replacements, `ship-coins-v1` and `solve-challenge-v1`, send no customer message at all.
+
+The notifier's other two addresses are **already dead** and are not waiting on this cutover: both
+are WordPress pages on the retired `arab-ut.com` storefront, which the Laravel store replaced.
+`https://arab-ut.com/orders` has the same in-store answer as the tracker — `/my-account/orders`;
+the backup-codes guide is the knowledge topic `issue-backup-codes`, which points at
+`/ea-backup-codes`. Whoever rebuilds or disables that node fixes all three in the same edit; none
+of it is a change to the committed baseline.
 
 ### 5. Supplier confirmation
 
@@ -164,12 +232,20 @@ The order matters: each step is reversible until the one after it.
 
    ```apache
    RewriteEngine On
-   RewriteRule ^ https://store.arab-ut.com/my-account/orders [R=301,L]
+   RewriteRule ^ https://store.arab-ut.com/my-account/orders [R=301,L,QSD]
    ```
 
-   This deliberately drops `?id=` and `?t=`: neither means anything to the store, and carrying a
-   supplier order id into a store URL would only produce a 404 with the customer's order reference
-   in it. Everything lands on the account orders list.
+   **`QSD` is not optional.** When the substitution URL carries no query string of its own,
+   mod_rewrite appends the incoming one, so without `QSD` the rule turns
+   `track.arab-ut.com/?t=<token>` into `store.arab-ut.com/my-account/orders?t=<token>` — a live
+   capability token copied into a store URL, the store's access log, the `Referer` of everything
+   the page loads, and any analytics running on it. `QSD` is Apache 2.4+; on 2.2 the same effect
+   comes from appending a bare `?` to the substitution
+   (`… /my-account/orders? [R=301,L]`). Confirm the server version before choosing.
+
+   Dropping the query string is also right on its own terms: `?id=` is a Salla order number and
+   `?t=` is a tracker token, and neither means anything to the store. Everything lands on the
+   account orders list.
 
    If the redirect is done at DNS instead, point `track` at the store host and make the store's web
    server answer that name with the same 301 — do **not** leave the name resolving to a host that
@@ -192,15 +268,22 @@ The order matters: each step is reversible until the one after it.
 
 ## Verification after the redirect
 
-Run all of these; the first three are the ones that catch a wrong redirect.
+Run all of these; the first four are the ones that catch a wrong redirect. In 1, 2 and 4 the
+`Location` header must be **exactly** `https://store.arab-ut.com/my-account/orders`, with no query
+string on the end.
 
-1. `curl -sSI 'https://track.arab-ut.com/?id=12345'` → `301` with
-   `Location: https://store.arab-ut.com/my-account/orders`.
-2. `curl -sSI 'https://track.arab-ut.com/?t=trk_anything'` → the same 301. A `200` here means the
-   tracker is still serving and the redirect rule is below something that matched first.
+1. `curl -sSI 'https://track.arab-ut.com/?id=12345'` → `301`, `Location:
+   https://store.arab-ut.com/my-account/orders`. A `Location` ending `?id=12345` means `QSD` is
+   missing from the rule.
+2. `curl -sSI 'https://track.arab-ut.com/?t=trk_anything'` → the same 301 and the same bare
+   `Location`. **A `Location` ending `?t=trk_anything` is the failure that matters**: without `QSD`
+   the rule carries a real customer's capability token into the store's URLs and logs. Stop and fix
+   the rule before anything else. A `200` instead of a 301 means the tracker is still serving and
+   the rule sits below something that matched first.
 3. `curl -sSI 'https://track.arab-ut.com/admin-links.php'` → the same 301, **not** a 200.
-4. `curl -sSi 'https://track.arab-ut.com/?mode=json&id=12345'` → the same 301 and no JSON body. A
-   JSON body means the read and write endpoints are still reachable and the exposure is still open.
+4. `curl -sSi 'https://track.arab-ut.com/?mode=json&id=12345'` → the same 301, the same bare
+   `Location`, and no JSON body. A JSON body means the read and write endpoints are still reachable
+   and the exposure is still open.
 5. In a browser, signed in: `/my-account/orders` lists orders, and opening one shows the tracking
    block with a fresh observation age.
 6. A real signed link — `/orders/track/{token}` — opens in a private window with no session, shows
