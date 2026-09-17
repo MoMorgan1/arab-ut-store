@@ -9,6 +9,10 @@ back on a working page if a link breaks.
 change, the takedown, and the supplier-side confirmations are the owner's; nothing in this
 document happens automatically on deploy.
 
+**Read two sections before scheduling anything**: *The imported-customer cohort*, which is the one
+part of this change a customer can be hurt by and cannot fix themselves, and *What the store does
+not replace*, item 3, which is an open blocker on the takedown.
+
 **Why it is worth doing rather than leaving up.** `admin-links.php` mints the `?t=` tokens that
 the tracker's four write endpoints (`mode=update`, `mode=resume`, `mode=sbc-retry`, `mode=sbc-edit`)
 trust, and it serves HTTP 200 with no password whenever no credential file exists
@@ -45,9 +49,14 @@ history.
 
 English is the same set under an `/en` prefix (`localized.*`).
 
-`MY_ACCOUNT_ENABLED` (`config/store.php:9`) gates the **first three rows only**. Those routes are
-the `routes/account.php` group, whose middleware stack starts with `EnsureMyAccountEnabled`; with
-the flag off they answer 404, and `/orders/{order}` 404s with them because it only redirects there.
+`MY_ACCOUNT_ENABLED` (`config/store.php:9`) gates the **first two rows only**. Those are the
+`routes/account.php` group, whose middleware stack starts with `EnsureMyAccountEnabled`; with the
+flag off they answer 404.
+
+`GET /orders/{order}` is **not** gated. It lives in `routes/web.php` under `['auth', NoStore]` and
+does nothing but issue a redirect, so with the flag off it still answers `302` and only the
+*followed* location 404s. An operator curling it and seeing a 302 has learned nothing about the
+flag — check the flag itself (pre-flight check 6), not this route.
 
 It is **not** a kill switch for public tracking. `/orders/track/{token}` and its three action
 routes are registered in `routes/web.php` outside that group, carry neither
@@ -56,28 +65,65 @@ ever has to be closed in a hurry, the lever is revoking the tokens
 (`IssueOrderTrackingLink::revoke()`, which stamps `order_tracking_links.revoked_at` and makes the
 link 404), not this flag.
 
+## The imported-customer cohort, and the two doors that fail silently
+
+**Read this before the cutover. It is the one part of this change that reaches a customer who can
+do nothing about it.**
+
+The tracker was a public link: whoever held it could open it, with no account and no sign-in.
+`/my-account/orders` is the opposite, and the assistant now names it. For a customer who placed
+their order through the store that is fine — they registered at checkout, which sits behind `auth`
+(`routes/web.php:56`), and `orders.user_id` is NOT NULL with a foreign-key constraint
+(`database/migrations/2026_08_08_000003_create_commerce_tables.php:85`), so the account exists and
+they know how to reach it.
+
+**The Salla-era imported customers are different, and "has an account" is not "can reach it".**
+`App\Imports\Salla\ImportSallaCustomers` creates every imported user with `password => null`
+(line 274) and stamps `phone_verified_at` **only when the Salla row carried a phone** (line 284).
+It never sets `email_verified_at` at all. That leaves three doors in three different states:
+
+| Door | State for an imported customer |
+| --- | --- |
+| Password reset | **Bolted, and it lies.** `email_verified_at` is null for every imported row, so `EnsureVerifiedPasswordRecoveryEmail` returns the `RESET_LINK_SENT` response without ever calling `$next()` (lines 25-36). The customer sees the "check your email" success screen and **nothing is sent, ever**. There is also no password to reset: the import wrote `null`. |
+| WhatsApp OTP | **Open if the Salla row had a phone**, because that is what sets `phone_verified_at`. If it did not — or the account was later deactivated — `SendWhatsAppLoginCode` returns without sending (lines 20-23) while `WhatsAppLoginController::send` still answers `sent: true` (line 32), and `VerifyWhatsAppLoginCode` would reject the code anyway. **Silent again**: the customer waits for a code that was never sent. |
+| Google | **Open if the Salla email is a Google address.** `GoogleAuthenticationController` claims the existing account by email and stamps `email_verified_at` (lines 74-104). This is the only door that works for a phoneless imported customer, and only if they happen to use Google. |
+
+So an imported customer with no phone on their Salla row and a non-Google email **cannot sign in at
+all**, and the store tells them twice that it has helped. Under the tracker they simply opened their
+link.
+
+**What to do about it, and what not to.**
+
+- **Do not tell such a customer to reset their password or request a WhatsApp code.** Both paths
+  report success and do nothing. Repeating the advice wastes the one thing they still have, which
+  is patience.
+- **Route them to a human**, then use *Rollback*, step 2: mint a signed link for their order and
+  send it. That is the same capability the tracker's public link gave them, and it is the correct
+  answer rather than a workaround.
+- **This is why item 3 of *What the store does not replace* blocks the takedown.** The store has no
+  screen that mints that link; today it is a tinker command. Until that gap is closed, every one of
+  these customers costs a manual operation, and after the takedown there is no public link to fall
+  back on.
+- Keep the redirect up long enough that the manual route is exercised at least once before the site
+  goes down (*Order of operations*, step 5).
+
 ## Why the assistant names the account page and not the signed link
 
-The tracker was a public link; `/my-account/orders` is not. That difference was checked against the
-code rather than assumed, and the account page is still the right thing for the assistant to name.
+Given the above, the obvious question is whether the prompts should name the sessionless
+`/orders/track/{token}` instead, or as well. They should not:
 
-- **There is no order the assistant could point a guest at.** `orders.user_id` is NOT NULL with a
-  foreign-key constraint (`database/migrations/2026_08_08_000003_create_commerce_tables.php:85`)
-  and checkout itself sits behind `auth`
-  (`routes/web.php:56`). Every order in the store belongs to an account.
-- **An unauthenticated visit is not a dead end.** `redirectGuestsTo` (`bootstrap/app.php:61`) sends
-  a guest to the login page in their own locale, not to a 404. Salla-era customers were imported
-  with their email and phone, so WhatsApp OTP, Google, or a password reset all get them in.
-- **The signed link cannot go in a prompt.** The assistant has no tools (`docs/ai-assistant/TOOLS.md`),
-  cannot look up an order, and the token is a 48-character per-order secret. Describing the
-  `/orders/track/{token}` shape in the prompt would invite the model to invent a token — and since
-  `store.arab-ut.com` is on the chat linkifier's allowlist, an invented one would render as a
-  clickable store link. The signed link is delivered by whatever sends it, never authored by the
-  model.
+- **The assistant has no tools** (`docs/ai-assistant/TOOLS.md`), cannot look up an order, and the
+  token is a 48-character per-order secret. Describing that URL shape in a prompt would invite the
+  model to invent a token — and because `store.arab-ut.com` is on the chat linkifier's allowlist,
+  an invented one would render as a clickable store link.
+- **There is no order without an account to point at**, so the account page is the only address the
+  model can correctly name for every customer.
+- **A guest reaching it is not sent to a 404.** `redirectGuestsTo` (`bootstrap/app.php:61`) sends
+  them to the login page in their own locale. Whether they can get *through* that page is the
+  cohort problem above, not a routing problem.
 
-What genuinely does narrow is the case the tracker served best: a customer who can no longer reach
-the account, who used to be able to open a public link anyway. They now need someone to send them a
-signed link — which is item 3 below, and is why that item blocks the takedown.
+The signed link is delivered by whatever sends it — n8n today, a human using the rollback step
+meanwhile — and is never authored by the model.
 
 ## What the store does not replace
 
@@ -102,7 +148,12 @@ Three things the tracker could do have no in-store equivalent. Read these before
 
 ## Pre-flight
 
-Every check below must pass on the day of the cutover, not once in advance.
+Every check below must pass on the day of the cutover, not once in advance. They run **before** the
+deploy (*Order of operations*, step 1), because check 6 is what proves the replacement is reachable
+and the deploy is what stops the assistant naming the tracker.
+
+Checks 1, 2 and 6 run against the store over SSH; check 3 runs on the tracker's host; checks 4 and
+5 are read off n8n and the supplier dashboards and are Mohamed's.
 
 ### 1. No unresolved supplier job in the store
 
@@ -166,11 +217,24 @@ state you must not take the tracker down on top of.
 
 ### 3. No outstanding direct-tracking link on the tracker host
 
-The tracker's minted `?t=` links are a JSON file outside the web root. The path is
-`$config['directTrackingLinks']['storagePath']` when set, otherwise
-`dirname(__DIR__, 3) . '/private/direct-tracking-links.json'` resolved from `includes/`
-(`includes/functions.php:520-527`) — two directories above the document root. Each entry is keyed
-by its `trk_…` token and records `label`, `createdAt`, `supplier`, `supplierOrderId` and `sbcIDs`.
+The tracker's minted `?t=` links are a JSON file outside the web root, on the tracker's own host.
+SSH in with the same Hostinger identity the deploy uses (`docs/operations/hostinger-deployment.md`;
+the store lives at `/home/u372356793/domains/store.arab-ut.com`, so the tracker's account directory
+is its sibling). Do not guess the path — find it:
+
+```bash
+ssh <hostinger-user>@<host>
+ls -d ~/domains/track.arab-ut.com            # the account directory
+find ~/domains/track.arab-ut.com -name 'direct-tracking-links.json' -maxdepth 4 2>/dev/null
+cat <the path that printed>                  # or: python3 -m json.tool <path>
+```
+
+If `find` prints nothing, the file has never been written and **no `?t=` link was ever minted** —
+this check passes. Confirm that reading rather than assuming it: `grep -n "storagePath"
+~/domains/track.arab-ut.com/public_html/config.php` shows whether an override moved it elsewhere.
+The default resolves to `/private/direct-tracking-links.json` two directories above the document
+root (`includes/functions.php:520-527`). Each entry is keyed by its `trk_…` token and records
+`label`, `createdAt`, `supplier`, `supplierOrderId` and `sbcIDs`.
 
 Read it and, for every entry whose supplier order is not finished:
 
@@ -185,9 +249,23 @@ Do not delete the JSON file before the takedown; it is the only inventory of the
 
 ### 4. Nothing still messages customers with a tracker URL, or any other dead one
 
-Two n8n workflows write a customer-facing address into a WhatsApp message. Read from the committed
-exports; check against the **live instance**, because those files are the Salla baselines and are
-never edited in place.
+Two n8n workflows write a customer-facing address into a WhatsApp message. The committed exports
+below say *what* each writes; the question this check answers is whether either is still running,
+and that can only be read off Mohamed's n8n instance. **Its URL is deliberately not in this
+repository** — `automation/n8n/ship-coins-v1/README.md:60` explains why instance-specific
+identifiers are not committed — so ask him for the instance address, or have him run the check.
+
+**"Active" means either of two things, and both have to be false:**
+
+1. The workflow's **Active** toggle is on in the n8n workflow list (a scheduled or webhook trigger
+   can fire it without anyone pressing anything), **or**
+2. anything still calls its webhook. For `Fulfillment v14` that is the Salla-era order webhook; for
+   `Customer Notifier v2` it is whatever posts status updates to it. Deactivating the workflow
+   closes both, which is why deactivation — not deleting the node — is the check.
+
+Confirm by opening each workflow in the instance and reading the toggle, then opening its
+**Executions** tab and confirming the newest execution predates the cutover. A workflow toggled off
+but showing an execution from this morning means something re-enabled it.
 
 | Workflow | Node | Addresses it writes |
 | --- | --- | --- |
@@ -212,18 +290,46 @@ orders placed by hand.
 
 ### 6. The replacement is actually reachable
 
-On production: `MY_ACCOUNT_ENABLED=true`, and `/my-account/orders` returns 200 for a signed-in
-customer.
+Two things, in this order. Run them from the current release directory over SSH, the way
+`docs/operations/hostinger-deployment.md` runs its operator commands
+(`/home/u372356793/domains/store.arab-ut.com/current`).
+
+**The flag is on.** A `curl` cannot tell you this, because an unauthenticated request redirects to
+login either way:
+
+```bash
+php artisan tinker --execute="var_dump(config('store.features.my_account_enabled'));"
+```
+
+It must print `bool(true)`. If it prints `false`, `/my-account/orders` answers **404** for every
+signed-in customer and the cutover must not proceed.
+
+**The page actually renders.** This needs a session, so do not try to curl it — a `302` to `/login`
+is what a correct server returns to an anonymous request and proves nothing. Sign in as a real
+customer account in a browser and open `https://store.arab-ut.com/my-account/orders`. Use an
+account that has at least one order, so you are checking the list renders rather than the empty
+state. If no such account is at hand, Mohamed's own customer account is the one to use; do not
+create a throwaway account on production to satisfy a check.
+
+A scripted equivalent, if a browser is not available, is one Playwright run of the account specs
+against production — but the browser check is faster and is what this step is for.
 
 ---
 
 ## Order of operations
 
-The order matters: each step is reversible until the one after it.
+Steps 1 to 5 can be undone: the branch can be reverted and the redirect rule deleted. **Steps 6 and
+7 cannot.** Step 6 removes the document root and the three `private/` JSON files — including the
+only inventory of the minted tracking links — and step 7 rotates live credentials. Treat the
+boundary between 5 and 6 as the point of no return, and read *Rollback* before crossing it.
 
-1. **Deploy the store changes.** They are additive; the tracker keeps working. After this the
-   assistant no longer names the tracker.
-2. **Run the pre-flight.** Every check above, on the day.
+1. **Run the pre-flight.** Every check above, on the day. It comes before the deploy because
+   check 6 is what proves the replacement is reachable, and step 2 stops the assistant naming the
+   tracker; doing them the other way round means the assistant could be sending customers at a
+   404 for as long as it takes to notice.
+2. **Deploy the store changes.** They are additive; the tracker keeps working and every old link
+   still resolves. After this the assistant names `/my-account/orders`, and `track.arab-ut.com`
+   stops being a one-tap link in chat (see *The linkifier window* below).
 3. **Announce nothing.** There is no customer-facing announcement; a redirect is the announcement.
 4. **Redirect `track.arab-ut.com` at the store.** Prefer an HTTP 301 from the tracker's own host
    over a DNS change, because the host can answer every old URL shape while DNS can only move the
@@ -241,23 +347,52 @@ The order matters: each step is reversible until the one after it.
    capability token copied into a store URL, the store's access log, the `Referer` of everything
    the page loads, and any analytics running on it. `QSD` is Apache 2.4+; on 2.2 the same effect
    comes from appending a bare `?` to the substitution
-   (`… /my-account/orders? [R=301,L]`). Confirm the server version before choosing.
+   (`… /my-account/orders? [R=301,L]`). Read the version off the server before choosing — over SSH,
+   `httpd -v` or `apache2 -v`; if neither binary is on the path (shared hosting usually hides it),
+   `curl -sSI https://track.arab-ut.com/ | grep -i '^server:'`, and if the header is suppressed,
+   use the bare `?` form, which is valid on both versions.
 
    Dropping the query string is also right on its own terms: `?id=` is a Salla order number and
    `?t=` is a tracker token, and neither means anything to the store. Everything lands on the
    account orders list.
 
-   If the redirect is done at DNS instead, point `track` at the store host and make the store's web
-   server answer that name with the same 301 — do **not** leave the name resolving to a host that
-   serves nothing, which is indistinguishable from an outage.
+   **If the redirect is done at DNS instead**, point `track` at the store host, give that host a
+   vhost for the name, and have it answer with the same 301. Do **not** leave the name resolving to
+   a host that serves nothing — that is indistinguishable from an outage. In Apache:
+
+   ```apache
+   <VirtualHost *:443>
+       ServerName track.arab-ut.com
+       # TLS for this name must exist here too - see "The redirect window's
+       # certificate" below.
+       Redirect 301 / https://store.arab-ut.com/my-account/orders
+   </VirtualHost>
+   ```
+
+   `Redirect` discards the query string by itself, so there is no `QSD` equivalent to remember. If
+   the name has to be answered by Laravel rather than the web server, the equivalent is one route,
+   registered before the locale groups in `routes/web.php`:
+
+   ```php
+   Route::domain('track.arab-ut.com')->any('{any?}', fn () => redirect()
+       ->away('https://store.arab-ut.com/my-account/orders', 301))
+       ->where('any', '.*');
+   ```
+
+   `redirect()->away()` takes the URL as given and adds no query string. Prefer the web server:
+   a route means the redirect depends on the application booting.
 5. **Leave the redirect up for at least one warranty period (8 days) plus a margin.** Old WhatsApp
    messages keep arriving; the warranty window is how long a customer still has a reason to open
-   one. Four weeks is the recommended figure.
-6. **Take the site down.** Only after steps 2-5 and after the gap in *What the store does not
+   one. Four weeks is the recommended figure. Use the window to exercise the manual path in
+   *Rollback* step 2 at least once on a real order, so the first time it is needed is not the first
+   time it is tried.
+6. **Take the site down.** Only after steps 1-5 and after the gap in *What the store does not
    replace* item 3 is closed. Taking it down means: remove the document root's contents, then
    remove `direct-tracking-links.json`, `finished-stamps.json` and `admin-auth.json` from the
-   `private/` directory named in pre-flight check 3. This is what closes the `admin-links.php`
-   exposure and removes the plaintext supplier key in `config.php` from that host.
+   `private/` directory found in pre-flight check 3. Keep a copy of
+   `direct-tracking-links.json` somewhere private first — it is the only inventory of the minted
+   links, and nothing else can reconstruct it. This is what closes the `admin-links.php` exposure
+   and removes the plaintext supplier key in `config.php` from that host.
 7. **Rotate the FFT and UTT keys if that has not already happened** (task A2 in the tracking plan).
    The keys in the tracker's `config.php` and in its git history must be treated as disclosed
    whether or not the site is up. Distribute the new keys to **both** the store's `shared/.env` and
@@ -265,6 +400,47 @@ The order matters: each step is reversible until the one after it.
 8. **Archive the repository.** `MoMorgan1/ArabUT-Track` becomes read-only rather than deleted: it
    is the behavioural specification the store's tracking was ported from, and `CONTEXT.md` and
    `AGENTS.md` both cite it.
+
+## Two windows this procedure accepts
+
+Both are consequences of the ordering above, both are known, and neither is a defect to chase on
+the day. They are written down so that whoever hits one recognises it instead of debugging it.
+
+### The linkifier window
+
+The delinking ships at step 2 and the redirect lands at step 4. In between, `track.arab-ut.com` is
+still live and still correct, but a customer scrolling back through an old chat transcript sees the
+address as plain text rather than a tap target. They can select and paste it; it still works.
+
+**Accepted, not fixed.** Timing the delink to the redirect would mean either holding the whole
+branch until the day of the cutover — which delays the prompt fix, the part that actually stops new
+customers being sent at a site that is going away — or shipping the delink as a second deploy in
+the middle of the window, which puts a production release inside the one part of the day that has
+to be simple. Neither buys enough to be worth it: the transcripts affected are old, the address
+remains readable, and the window is however long the owner takes between steps 2 and 4.
+
+Keep it short by choice: there is no reason for step 4 not to follow step 2 the same day.
+
+### The redirect window's certificate
+
+Step 5 keeps the redirect up for about four weeks. **`track.arab-ut.com` needs a valid TLS
+certificate for the whole of that window**, and it is a name nobody is looking at any more — which
+is exactly how a certificate lapses unnoticed.
+
+If it expires mid-window, every check in *Verification* fails before it prints a status line, and
+every customer following an old link gets a browser interstitial. Both read as "the site is down",
+which is the outcome this entire procedure exists to avoid, and neither points at the cause.
+
+**Whoever owns the redirect owns the certificate until the site comes down.** Before step 4:
+
+```bash
+curl -sSvI https://track.arab-ut.com/ 2>&1 | grep -i 'expire date'
+```
+
+Confirm the expiry is beyond the planned takedown date. If it is not, renew it first, or shorten
+the window to fit — do not start a four-week redirect on a certificate with three weeks left. If
+the host auto-renews (Hostinger does for its own domains), confirm renewal is still enabled for
+this name specifically; removing a site from a panel has been known to remove it from renewal too.
 
 ## Verification after the redirect
 
@@ -286,18 +462,27 @@ string on the end.
    and the exposure is still open.
 5. In a browser, signed in: `/my-account/orders` lists orders, and opening one shows the tracking
    block with a fresh observation age.
-6. A real signed link — `/orders/track/{token}` — opens in a private window with no session, shows
-   the order, and its buttons work.
+6. A real signed link opens with no session. Mint one for a real order with the tinker snippet in
+   *Rollback* step 2 — that is the only way to obtain one today — then paste the URL it returns
+   into a private window. It must show the order and its buttons must work. This is the check that
+   proves the manual route in *Rollback* actually functions before you need it in anger.
 7. Ask the assistant in chat where to track an order. The reply must name
    `store.arab-ut.com/my-account/orders` and must not name the tracker.
+8. **TLS on both names.** `curl -sSI https://track.arab-ut.com/` must not fail before it prints a
+   status line. See *The redirect window's certificate* below — a TLS error here looks exactly like
+   the outage this whole procedure is trying to avoid.
 
 ## Rollback
 
 **If a customer link breaks**, the order of attempts is:
 
-1. **The customer has an account.** Send them to `https://store.arab-ut.com/my-account/orders` and
-   have them sign in. This is the answer for every `?id=` link and almost every `?t=` one, and it
-   needs nothing from us.
+1. **The customer can sign in.** Send them to `https://store.arab-ut.com/my-account/orders`. This
+   needs nothing from us, and it is the answer whenever it works.
+
+   "Can sign in" is the question, not "has an account" — every order has an account. If they say a
+   password reset or a WhatsApp code never arrived, **believe them and go to step 2**: for an
+   imported Salla customer both of those report success and send nothing (see *The
+   imported-customer cohort*). Do not ask them to try again.
 2. **The order exists in the store but the customer cannot sign in.** Mint a fresh signed link for
    that order and send it. There is no screen for this yet (see *What the store does not replace*,
    item 3), so today it is `php artisan tinker` on the production release:
@@ -315,13 +500,14 @@ string on the end.
    replacement for `admin-links.php` and it produces a real `AUT-` order rather than a floating
    link.
 
-**If the redirect itself is wrong** — wrong target, loop, or a 200 where a 301 was expected —
-remove the `.htaccess` rule. The tracker is unchanged underneath it and resumes serving. This is
-why the redirect comes before the takedown and by a wide margin: it is the only step in this
-procedure that can be undone in one edit.
+**If the redirect itself is wrong** — wrong target, a loop, a `Location` carrying a query string,
+or a 200 where a 301 was expected — remove the `.htaccess` rule. The tracker is unchanged
+underneath it and resumes serving immediately. This is why the redirect comes well before the
+takedown: it is the only step in this procedure that can be undone in one edit.
 
-**Once the site is down there is no rollback to it.** Everything after step 6 is one-way, which is
-why steps 2-5 exist.
+**Once the site is down there is no rollback to it.** Steps 6 and 7 are one-way — the document root
+and the link inventory are gone, and the old supplier keys no longer work — which is why steps 1
+to 5 exist and why the link inventory is copied somewhere private before step 6.
 
 ## Related
 

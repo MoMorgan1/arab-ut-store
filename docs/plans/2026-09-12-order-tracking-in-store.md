@@ -1032,9 +1032,27 @@ Three findings the plan did not anticipate, all recorded in the runbook:
    for, so those customers land on the account orders list and pick the order themselves.
 
 The prompts name the account page rather than the sessionless `/orders/track/{token}` because the
-model has no tools, cannot look up an order, and would have to invent the 48-character token — and
-there is no guest order for it to point at anyway: `orders.user_id` is NOT NULL and checkout is
-behind `auth`, so a guest sent to `/my-account/orders` reaches the login page, not a dead end.
+model has no tools, cannot look up an order, and would have to invent the 48-character token, which
+the linkifier would then render clickable. That stands. What does **not** stand is the first
+version of this note, which said no customer is stranded because they can always sign in.
+
+**A fourth finding, and the one that matters most.** The tracker was public; `/my-account/orders`
+is not, and for the Salla-imported cohort *having* an account is not *reaching* it.
+`App\Imports\Salla\ImportSallaCustomers` writes `password => null` (line 274) and sets
+`phone_verified_at` only when the row carried a phone (line 284); it never sets `email_verified_at`.
+So the password-reset door is bolted for every one of them **and lies about it** —
+`EnsureVerifiedPasswordRecoveryEmail:25-36` returns the `RESET_LINK_SENT` success screen without
+calling `$next()` — and the WhatsApp door fails the same silent way for a phoneless or deactivated
+account (`SendWhatsAppLoginCode:20-23` returns while `WhatsAppLoginController:32` still answers
+`sent: true`). Only Google works unconditionally, and only by claiming the account by email
+(`GoogleAuthenticationController:74-104`). A phoneless imported customer with a non-Google email
+cannot sign in at all, and is told twice that help is on the way.
+
+This does not change the prompts — there is no address that fixes it — but it makes finding 1 above
+a customer-facing blocker rather than an operational one: until the store can hand out a signed
+link, every such customer is a manual operation, and after the takedown there is no public link to
+fall back on. The runbook routes them to a human and to the tinker command, and says plainly not to
+repeat the advice that silently does nothing.
 
 Left for the owner: the pre-flight confirmations (including the supplier dashboards), the 301 —
 which must carry `QSD`, or it copies a live tracking token into store URLs and logs — the waiting

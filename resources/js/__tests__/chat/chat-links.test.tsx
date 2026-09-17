@@ -50,6 +50,25 @@ describe('assistant links', () => {
     });
 
     /**
+     * The shape a real transcript produces: a retired tracker address and a
+     * live store address in one message. `findNextLink` loops past non-linkable
+     * matches, so a regression there would silently stop linkifying everything
+     * that follows the first skipped URL — and the single-URL cases above would
+     * all still pass.
+     */
+    it('still linkifies a store address that follows a retired one', () => {
+        const message =
+            'Not https://track.arab-ut.com/?id=12345 any more — use https://store.arab-ut.com/my-account/orders';
+        const links = linksIn(message);
+
+        expect(links).toHaveLength(1);
+        expect(links[0].href).toBe(
+            'https://store.arab-ut.com/my-account/orders',
+        );
+        expect(textIn(parseInlineTokens(message))).toBe(message);
+    });
+
+    /**
      * The assistant writes this text, so every URL in it is model output. A
      * hallucinated or injected domain must stay inert — readable and copyable,
      * but not one tap away.
