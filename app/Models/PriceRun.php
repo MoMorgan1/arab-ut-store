@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * The two timestamps are cast, so they are Carbon instances however the column
+ * spells them; without saying so here they read as plain strings.
+ *
  * @property int|null $pricing_version
  * @property array<string, mixed>|null $payload
+ * @property CarbonImmutable|null $started_at
+ * @property CarbonImmutable|null $completed_at
  */
 class PriceRun extends DomainModel
 {
