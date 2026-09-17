@@ -21,7 +21,7 @@ final class CoinsCatalogReader
     private const PRICING_GROUPS = ['console_normal', 'console_fast', 'pc'];
 
     /** @var array<string, mixed>|null */
-    private ?array $legalRanges = null;
+    private ?array $availability = null;
 
     public function __construct(private readonly CoinsPriceCalculator $calculator) {}
 
@@ -158,11 +158,14 @@ final class CoinsCatalogReader
      * offering twenty million coins on a day the whole pool holds thirty
      * thousand. The narrower of the two wins, and null means the run predates
      * this field, so the configured ceiling stands unchanged.
+     *
+     * Read from the observation rather than from `legalRanges`: those are
+     * validated for equality against the storefront's own quantity settings,
+     * so by contract they can only ever restate the ceiling already in config.
      */
     public function availableMaximum(string $group): ?int
     {
-        $ranges = $this->appliedLegalRanges();
-        $maximum = $ranges[$group]['maximum'] ?? null;
+        $maximum = $this->appliedAvailability()[$group] ?? null;
 
         return is_int($maximum) && $maximum > 0 ? $maximum : null;
     }
@@ -173,10 +176,10 @@ final class CoinsCatalogReader
      *
      * @return array<string, mixed>
      */
-    private function appliedLegalRanges(): array
+    private function appliedAvailability(): array
     {
-        if ($this->legalRanges !== null) {
-            return $this->legalRanges;
+        if ($this->availability !== null) {
+            return $this->availability;
         }
 
         $payload = PriceRun::query()
@@ -184,9 +187,11 @@ final class CoinsCatalogReader
             ->latest('id')
             ->value('payload');
 
-        $ranges = is_array($payload) ? ($payload['legalRanges'] ?? null) : null;
+        $available = is_array($payload)
+            ? ($payload['observations']['availableCoins'] ?? null)
+            : null;
 
-        return $this->legalRanges = is_array($ranges) ? $ranges : [];
+        return $this->availability = is_array($available) ? $available : [];
     }
 
     /**

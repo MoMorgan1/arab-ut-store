@@ -417,12 +417,14 @@ test('the storefront offers only what the last pricing run could source', functi
         'mode' => 'apply',
         'pricing_version' => 1,
         'payload' => [
-            'legalRanges' => [
-                'console_normal' => ['minimum' => 50_000, 'maximum' => 300_000, 'increment' => 5_000],
-                'console_fast' => ['minimum' => 50_000, 'maximum' => 500_000, 'increment' => 5_000],
-                // Above the configured PC ceiling on purpose: a provider
-                // claiming fifty million does not widen what this store sells.
-                'pc' => ['minimum' => 50_000, 'maximum' => 50_000_000, 'increment' => 5_000],
+            'observations' => [
+                'availableCoins' => [
+                    'console_normal' => 300_000,
+                    'console_fast' => 500_000,
+                    // Above the configured PC ceiling on purpose: a provider
+                    // claiming fifty million does not widen what this store sells.
+                    'pc' => 50_000_000,
+                ],
             ],
         ],
         'started_at' => now(),
@@ -444,7 +446,7 @@ test('the storefront offers only what the last pricing run could source', functi
     });
 });
 
-test('a run that names no ranges leaves the configured ceilings alone', function () {
+test('a run that reports no availability leaves the configured ceilings alone', function () {
     createHomeCatalog();
 
     $this->get('/en')->assertInertia(function (Assert $page): void {
