@@ -36,6 +36,7 @@ Remaining planned areas are fulfillment-secret retrieval and supplier automation
 | [Hostinger deployment](operations/hostinger-deployment.md)               | Release, scheduler, maintenance, and post-deploy procedures                                              | Active                                              |
 | [Hostinger rollback](operations/hostinger-rollback.md)                   | Automatic and manual Laravel release rollback, and what a rollback leaves running outside it             | Active                                              |
 | [Fulfillment recovery](operations/fulfillment-recovery.md)               | A paid order no supplier is working on: which silence it is, and how to place and record it by hand      | Active                                              |
+| [Switching fulfillment on](operations/switch-on-fulfillment.md)          | The two keys that open the placement endpoint and the three that start customer messages, in order       | Ready for the owner; both gates' preconditions met  |
 | [Retiring the legacy tracker](operations/retire-legacy-tracker.md)       | Pre-flight, redirect, takedown and rollback for `track.arab-ut.com`                                      | Store half done; redirect and takedown are the owner's |
 | [AI Assistant](ai-assistant/README.md)                                   | Canonical assistant handbook; read the [live status](ai-assistant/STATUS.md) first                       | Phases 1–3 and human handoff implemented; see STATUS.md |
 

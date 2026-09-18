@@ -1,0 +1,324 @@
+{
+  "name": "customer-notify v1 - send one customer WhatsApp message",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "arabut-customer-notify-v1",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-customer-notify-v1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        400
+      ],
+      "webhookId": "b7e41c92-5a3d-4f18-9c62-8e0d4a7b3f15",
+      "notes": "The store posts customer.notify (schema 1) here. Authentication is the HMAC in Verify Request, not an n8n credential, so nothing is attached. Raw Body must stay on."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "config-n8n-customer-notify-key",
+              "name": "N8N_CUSTOMER_NOTIFY_KEY",
+              "value": "CONFIGURE_N8N_CUSTOMER_NOTIFY_KEY",
+              "type": "string"
+            },
+            {
+              "id": "config-n8n-customer-notify-secret",
+              "name": "N8N_CUSTOMER_NOTIFY_SECRET",
+              "value": "CONFIGURE_N8N_CUSTOMER_NOTIFY_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "config-whapi-token",
+              "name": "WHAPI_TOKEN",
+              "value": "CONFIGURE_WHAPI_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "config-whapi-base-url",
+              "name": "WHAPI_BASE_URL",
+              "value": "https://gate.whapi.cloud",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {
+          "includeBinary": true
+        }
+      },
+      "id": "config-customer-notify-v1",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        400
+      ],
+      "notes": "Paste the real values here after import - N8N_CUSTOMER_NOTIFY_KEY: the store's publisher identity, compared with X-ArabUT-Key; N8N_CUSTOMER_NOTIFY_SECRET: HMAC secret of the incoming request, 32+ characters, the same value as on the store; WHAPI_TOKEN: Whapi channel token, sent as Authorization: Bearer; WHAPI_BASE_URL: Whapi gateway origin - ships filled in, change only for a second channel. Keep \"Include Other Input Fields\" and \"Include Binary\" on."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// customer-notify v1 — the store's customer.notify (schema 1) request,\n// verified before anything reads it. A verification failure THROWS: the Error\n// Workflow sends the Telegram alert, the store sees no acknowledgement and\n// retries on its own backoff. A request that fails verification is never\n// answered as an acknowledgement (contract, step 1).\n//\n// The signature covers the exact bytes the store sent (timestamp, event id and\n// raw body joined by newlines, HMAC-SHA256 with N8N_CUSTOMER_NOTIFY_SECRET),\n// so the Webhook node must run with \"Raw Body\" on. Verification reads those\n// bytes and never a re-serialised copy: PHP escapes Arabic where JavaScript\n// does not, and every body here is Arabic.\n//\n// Keys and secrets live in the Config node (Edit Fields) that sits between the\n// Webhook and this node - the instance has neither environment variables nor\n// $vars (owner decision, 2026-09-14). A value still reading CONFIGURE_ is a\n// value nobody pasted.\n\nconst crypto = require('crypto');\n\nconst config = $('Config').first().json || {};\nconst requiredKeys = ['N8N_CUSTOMER_NOTIFY_KEY', 'N8N_CUSTOMER_NOTIFY_SECRET', 'WHAPI_TOKEN'];\nconst missingKeys = requiredKeys.filter((name) => !config[name] || /^CONFIGURE_/.test(String(config[name])));\nif (missingKeys.length) {\n    throw new Error(`[verify] not set in the Config node: ${missingKeys.join(', ')}`);\n}\nif (String(config.N8N_CUSTOMER_NOTIFY_SECRET).length < 32) {\n    throw new Error('[verify] N8N_CUSTOMER_NOTIFY_SECRET is shorter than 32 characters');\n}\n\nconst item = $('Webhook').first();\nconst json = item.json || {};\nconst headers = json.headers || {};\n\nfunction header(name) {\n    const value = headers[name] ?? headers[name.toLowerCase()];\n    return String(Array.isArray(value) ? value[0] : value ?? '');\n}\n\nfunction equal(left, right) {\n    const a = Buffer.from(String(left), 'utf8');\n    const b = Buffer.from(String(right), 'utf8');\n    return a.length === b.length && crypto.timingSafeEqual(a, b);\n}\n\n// The raw body. In n8n's default (memory) binary mode the Webhook node hands\n// it over base64-encoded under binary.data.data; the filesystem mode hands a\n// file id instead, which the helper below resolves when it exists (it reads\n// this node's input, so the Config node must keep \"Include Binary\" on).\nasync function rawBody() {\n    const helpers = typeof this === 'object' && this !== null ? this.helpers : null;\n    if (helpers && typeof helpers.getBinaryDataBuffer === 'function') {\n        try {\n            const buffer = await helpers.getBinaryDataBuffer(0, 'data');\n            if (buffer && buffer.length) return buffer.toString('utf8');\n        } catch (error) {\n            // fall through to the in-memory shape\n        }\n    }\n    const binary = item.binary && item.binary.data;\n    if (binary && binary.id) {\n        return null;\n    }\n    if (binary && typeof binary.data === 'string' && binary.data !== '') {\n        return Buffer.from(binary.data, 'base64').toString('utf8');\n    }\n    if (typeof json.rawBody === 'string') return json.rawBody;\n    return null;\n}\n\nconst raw = await rawBody.call(this);\nif (raw === null) {\n    throw new Error(\n        '[verify] the raw request body is unavailable - turn on \"Raw Body\" in the Webhook node options',\n    );\n}\n\nconst key = header('x-arabut-key');\nconst timestamp = header('x-arabut-timestamp');\nconst eventId = header('x-arabut-event');\nconst signature = header('x-arabut-signature');\n\nif (!equal(key, config.N8N_CUSTOMER_NOTIFY_KEY)) {\n    throw new Error('[verify] X-ArabUT-Key does not match N8N_CUSTOMER_NOTIFY_KEY');\n}\nif (!/^\\d{10}$/.test(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {\n    throw new Error('[verify] X-ArabUT-Timestamp is outside the five-minute window');\n}\nconst expected = crypto\n    .createHmac('sha256', config.N8N_CUSTOMER_NOTIFY_SECRET)\n    .update(`${timestamp}\\n${eventId}\\n${raw}`)\n    .digest('hex');\nif (!equal(signature, expected)) {\n    throw new Error('[verify] X-ArabUT-Signature does not match the request body');\n}\n\nlet event;\ntry {\n    event = JSON.parse(raw);\n} catch (error) {\n    throw new Error('[verify] the request body is not JSON');\n}\n\nif (!event || event.eventType !== 'customer.notify') {\n    throw new Error(`[verify] unexpected eventType ${event && event.eventType}`);\n}\nif (Number(event.schemaVersion) !== 1) {\n    throw new Error(`[verify] unexpected schemaVersion ${event && event.schemaVersion}; this workflow reads schema 1`);\n}\nif (event.eventId !== eventId) {\n    throw new Error('[verify] X-ArabUT-Event does not match the body eventId');\n}\n\nconst data = event.data || {};\n\n// Whapi takes international digits without the `+`; the store already\n// normalised it. Checking the shape here means a malformed number fails\n// loudly at our door rather than as an opaque Whapi 4xx ten attempts later.\nif (!/^\\d{9,15}$/.test(String(data.to ?? ''))) {\n    throw new Error('[verify] data.to is not international digits without the +');\n}\nif (typeof data.body !== 'string' || data.body.trim() === '') {\n    throw new Error('[verify] data.body is empty; there is no message to send');\n}\nif (typeof data.idempotency_key !== 'string' || data.idempotency_key === '') {\n    throw new Error('[verify] data.idempotency_key is missing; a send cannot be de-duplicated');\n}\n\n// The number and the body go no further than the Whapi call. Everything else\n// here is what an operator may read in an execution list or an alert - which\n// is why the order number travels and the recipient does not.\nreturn [\n    {\n        json: {\n            eventId,\n            idempotencyKey: data.idempotency_key,\n            notificationPublicId: data.notification_public_id ?? null,\n            orderNumber: data.order_number ?? null,\n            orderItemPublicId: data.order_item_public_id ?? null,\n            template: data.template ?? null,\n            locale: data.locale ?? 'ar',\n            to: String(data.to),\n            body: data.body,\n            receivedAt: new Date().toISOString(),\n        },\n    },\n];\n"
+      },
+      "id": "verify-request-customer-notify-v1",
+      "name": "Verify Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        400
+      ],
+      "notes": "Source: nodes/verify-request.js"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// The second line of defence against sending one message twice, and only the\n// second.\n//\n// The first is the store's: one delivery row per transition, a unique index on\n// its idempotency key, and a row that is marked `sent` before the event is\n// marked processed. `Customer Notifier v2` had this check and nothing else,\n// which is exactly why it was not enough - $getWorkflowStaticData does not\n// survive an n8n restart, so a restart meant a customer read the same message\n// twice. What survives here is the store's database.\n//\n// So this is a cheap guard against the one case the store cannot see: it sent,\n// Whapi accepted, and our answer never arrived - a timeout or a dropped\n// connection - so the store retries a message that already went out. That\n// retry carries the same key, and this catches it.\n//\n// The memory is bounded. Keys are kept newest-first and cut at MAX_KEYS, which\n// at a handful of messages a day is months of history in a few kilobytes.\nconst MAX_KEYS = 2000;\n\nconst item = $input.first().json;\nconst key = String(item.idempotencyKey);\n\nconst memory = $getWorkflowStaticData('global');\nif (!Array.isArray(memory.sentKeys)) {\n    memory.sentKeys = [];\n}\n\nconst alreadySent = memory.sentKeys.includes(key);\n\nreturn [\n    {\n        json: {\n            ...item,\n            alreadySent,\n            // Read by Record Result, which is the node allowed to write the\n            // key - a message is remembered when it is sent, never when it is\n            // merely considered.\n            memoryLimit: MAX_KEYS,\n        },\n    },\n];\n"
+      },
+      "id": "already-sent-customer-notify-v1",
+      "name": "Already Sent?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        400
+      ],
+      "notes": "Source: nodes/already-sent.js"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "send-or-skip-condition",
+              "leftValue": "={{ $json.alreadySent }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "send-or-skip-customer-notify-v1",
+      "name": "Send or Skip",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1060,
+        400
+      ],
+      "notes": "True = this key was already sent from this instance, so the store is retrying a message that arrived; answer acknowledged without a second Whapi call. False = send it."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.WHAPI_BASE_URL }}/messages/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $('Config').first().json.WHAPI_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $json.to, body: $json.body }) }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "send-whatsapp-customer-notify-v1",
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        500
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "Never errors and never throws: a dead number and a Whapi outage are both \"the store retries\", not incidents. Record Result reads the status code and decides. Only verification failures reach the Error Workflow."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// What Whapi answered, turned into the one field the store reads.\n//\n// The store's contract is narrow and deliberate: `acknowledged: true` means\n// Whapi accepted the message, and nothing else does. A dead number, a Whapi\n// outage, a timeout - all of them are `acknowledged: false`, which sends the\n// delivery row back to `queued` on the store's own backoff. After ten attempts\n// the store retires it and it surfaces on the admin queue-health panel. That\n// is the designed path for a number nobody answers: it is a fact about the\n// customer, not an incident, so it does not page anybody at 3am.\n//\n// The Send node therefore runs with onError: continueRegularOutput. A throw\n// here would reach the Error Workflow and alert on every wrong number, ten\n// times each. Verification still throws - a bad signature is an incident.\n\nconst sent = $('Already Sent?').first().json;\nconst response = $input.first().json ?? {};\n\n// n8n puts the HTTP status under $json.error when the request failed with\n// \"never error\" on, and under statusCode when \"Full Response\" is on. Read\n// both, and treat an unreadable answer as a failure rather than a success.\nconst error = response.error ?? null;\nconst statusCode = Number(\n    response.statusCode ?? error?.statusCode ?? error?.status ?? (error ? 0 : 200),\n);\nconst accepted = Number.isFinite(statusCode) && statusCode >= 200 && statusCode < 300 && !error;\n\nif (accepted) {\n    // Remembered only now, and only here. A key written before the send would\n    // make a failed attempt look like a delivered message on the retry.\n    const memory = $getWorkflowStaticData('global');\n    if (!Array.isArray(memory.sentKeys)) {\n        memory.sentKeys = [];\n    }\n    if (!memory.sentKeys.includes(sent.idempotencyKey)) {\n        memory.sentKeys.unshift(sent.idempotencyKey);\n    }\n    const limit = Number(sent.memoryLimit) || 2000;\n    if (memory.sentKeys.length > limit) {\n        memory.sentKeys.length = limit;\n    }\n}\n\nfunction reason() {\n    if (accepted) return null;\n    if (error && typeof error.message === 'string' && error.message !== '') return error.message;\n    if (statusCode >= 400 && statusCode < 500) return `whapi_rejected_${statusCode}`;\n    if (statusCode >= 500) return `whapi_unavailable_${statusCode}`;\n    return 'whapi_unreadable_answer';\n}\n\n// The number and the message body stop here: what leaves this node is what an\n// operator may read in an execution list, and the execution list is the one\n// place this workflow is forbidden to keep them (settings: save nothing).\nreturn [\n    {\n        json: {\n            acknowledged: accepted,\n            idempotency_key: sent.idempotencyKey,\n            notification_public_id: sent.notificationPublicId,\n            order_number: sent.orderNumber,\n            template: sent.template,\n            status_code: statusCode,\n            reason: reason(),\n        },\n    },\n];\n"
+      },
+      "id": "record-result-customer-notify-v1",
+      "name": "Record Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        500
+      ],
+      "notes": "Source: nodes/record-result.js"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { acknowledged: $json.acknowledged } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-customer-notify-v1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1720,
+        500
+      ],
+      "notes": "acknowledged:false sends the delivery row back to queued on the store's backoff. A throw before this node answers 500, which the store also treats as \"retry later\"."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { acknowledged: true } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-duplicate-customer-notify-v1",
+      "name": "Respond Already Sent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        280
+      ],
+      "notes": "The message already went out from this instance; acknowledging lets the store close the row instead of retrying a customer into reading it twice."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Verify Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Request": {
+      "main": [
+        [
+          {
+            "node": "Already Sent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Sent?": {
+      "main": [
+        [
+          {
+            "node": "Send or Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send or Skip": {
+      "main": [
+        [
+          {
+            "node": "Respond Already Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Record Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Result": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "executionTimeout": 50,
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "versionId": "CUSTOMER_NOTIFY_V1_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
