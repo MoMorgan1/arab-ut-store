@@ -7,6 +7,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Fortify;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -56,10 +57,21 @@ final class OfferEmailLoginCode
             return $next($request);
         }
 
+        // Three conditions, and all three are load-bearing. A null password
+        // alone is NOT the import cohort: when Google claims an account
+        // somebody else pre-registered with an address they do not own, the
+        // store nulls that password on purpose, to evict the attacker's
+        // credentials. Offering a code there would hand the evicted attacker a
+        // button that mails the real owner - so the unverified address and the
+        // absent social account are what separate "never had a password" from
+        // "had one taken away". A customer with Google linked already has a
+        // door, and it is a better one than this.
         $user = User::query()
             ->whereRaw('LOWER(email) = ?', [$email])
             ->where('is_active', true)
             ->whereNull('password')
+            ->whereNull('email_verified_at')
+            ->whereDoesntHave('socialAccounts')
             ->first();
 
         if (! $user instanceof User) {
@@ -68,13 +80,27 @@ final class OfferEmailLoginCode
 
         // Keyed on the address rather than the caller: the point is to stop
         // one mailbox being flooded, and the caller is not who would suffer.
-        // Six tries an hour leaves room for a customer who mistypes and
-        // retries without leaving the door open to a mail bomb.
+        // Six an hour leaves room for a customer who mistypes and retries
+        // without leaving the door open to a mail bomb.
         $throttleKey = 'email-login-code:'.sha1($email);
 
-        if (! RateLimiter::tooManyAttempts($throttleKey, 6)) {
+        if (RateLimiter::tooManyAttempts($throttleKey, 6)) {
+            // Say so. Showing the code screen here would be the same lie this
+            // whole change exists to remove: a customer told a code is coming
+            // when none is, waiting for mail that will never arrive. Whoever
+            // spent the allowance - them or somebody who knows their address -
+            // the honest answer is "not now".
+            throw ValidationException::withMessages([
+                Fortify::username() => [trans('auth_ui.login.email_code_throttled')],
+            ]);
+        }
+
+        // Charged only when a code actually goes out. `execute` declines a
+        // second code within the minute, and charging for that decline is how
+        // somebody who knows an address could spend the whole hour's worth in
+        // a few seconds and leave the owner locked out of their own door.
+        if ($this->send->execute($user, $request->route('locale') === 'en' ? 'en' : 'ar')) {
             RateLimiter::hit($throttleKey, 3600);
-            $this->send->execute($user, $request->route('locale') === 'en' ? 'en' : 'ar');
         }
 
         // The address is remembered in the session, never in the URL: it is

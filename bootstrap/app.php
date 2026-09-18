@@ -2,9 +2,9 @@
 
 use App\Http\Middleware\EnsureChatEnabled;
 use App\Http\Middleware\EnsureVerifiedPasswordRecoveryEmail;
-use App\Http\Middleware\OfferEmailLoginCode;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\OfferEmailLoginCode;
 use App\Http\Middleware\RequireCatalogCartJson;
 use App\Http\Middleware\RequireCoinsCartJson;
 use App\Http\Middleware\SetDisplayCurrency;
@@ -67,8 +67,13 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocale::class,
             SetDisplayCurrency::class,
             HandleAppearance::class,
-            EnsureVerifiedPasswordRecoveryEmail::class,
+            // Before the recovery guard, deliberately. That guard answers the
+            // reset request with a "check your inbox" it never sends when the
+            // address is unverified, and every imported account is unverified
+            // - so it would swallow the request before this one could offer
+            // the code that actually works.
             OfferEmailLoginCode::class,
+            EnsureVerifiedPasswordRecoveryEmail::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
@@ -108,6 +113,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // reached at all - this is the belt behind that brace.
         $exceptions->dontFlash([
             'backup_codes',
+            // A live login code, for the ten minutes it lasts. This route can
+            // fail validation through a redirect, and the flashed old input
+            // would put the code in the session store in plain text - beside
+            // the hash that exists so it is never written down.
+            'code',
             'current_password',
             'ea_password',
             'password',

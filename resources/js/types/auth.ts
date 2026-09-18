@@ -92,6 +92,7 @@ export type AuthUiTranslations = {
         email_code_resend: string;
         email_code_help: string;
         email_code_back: string;
+        email_code_throttled: string;
         google: string;
         google_error: string;
         or: string;

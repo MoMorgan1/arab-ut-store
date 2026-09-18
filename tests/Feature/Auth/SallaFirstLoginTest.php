@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\EmailLoginCode;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Notifications\EmailLoginCodeNotification;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,6 +32,26 @@ function importedSallaCustomer(array $overrides = []): User
     return $user;
 }
 
+/** Reads the code the way the customer does: out of the mail. */
+function sallaCodeFromMail(User $user, bool $last = false): string
+{
+    $codes = [];
+
+    Notification::assertSentTo($user, EmailLoginCodeNotification::class, function ($notification) use (&$codes) {
+        $body = collect($notification->toMail($notification)->introLines)->implode(' ');
+
+        if (preg_match('/\d{6}/', $body, $matches) === 1) {
+            $codes[] = $matches[0];
+        }
+
+        return true;
+    });
+
+    expect($codes)->not->toBeEmpty();
+
+    return $last ? (string) end($codes) : (string) $codes[0];
+}
+
 beforeEach(function (): void {
     Notification::fake();
     RateLimiter::clear('email-login-code:'.sha1('imported@example.test'));
@@ -48,8 +70,10 @@ test('an imported customer typing any password is sent a code instead of being t
     expect($pending->email)->toBe('imported@example.test')
         ->and($pending->user_id)->toBe($user->id)
         ->and($pending->verified_at)->toBeNull()
-        // The code itself is never stored.
-        ->and($pending->code_hash)->not->toContain('0');
+        // The code itself is never stored - only a hash of it, so a copy of
+        // this table is not a list of live logins.
+        ->and($pending->code_hash)->toStartWith('$2y$')
+        ->and($pending->code_hash)->not->toMatch('/^\d{6}$/');
 });
 
 test('the code screen names the inbox without reading out the address', function (): void {
@@ -71,17 +95,7 @@ test('a correct code signs them in and finishes the verification the import neve
 
     $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
 
-    // Read the code the way the customer does - out of the mail.
-    $code = null;
-    Notification::assertSentTo($user, EmailLoginCodeNotification::class, function ($notification) use (&$code) {
-        $body = collect($notification->toMail($notification)->introLines)->implode(' ');
-        preg_match('/\d{6}/', $body, $matches);
-        $code = $matches[0] ?? null;
-
-        return true;
-    });
-
-    expect($code)->not->toBeNull();
+    $code = sallaCodeFromMail($user);
 
     $this->post('/login/code', ['code' => $code])->assertRedirect();
 
@@ -166,8 +180,13 @@ test('the code screen is not reachable without a login attempt', function (): vo
 test('one mailbox cannot be flooded', function (): void {
     $user = importedSallaCustomer();
 
-    // Six codes an hour; the seventh attempt still lands the customer on the
-    // code screen, because the code already sent is still live.
+    // Without this the login route's own throttle answers 429 first and the
+    // mailbox limit never gets tested; it is the second limit that is under
+    // test here, not the first.
+    $this->withoutMiddleware(ThrottleRequests::class);
+
+    // Six codes an hour; later attempts still land the customer on the code
+    // screen, because the code already sent is still live.
     foreach (range(1, 8) as $attempt) {
         $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
             ->assertRedirect('/login/code');
@@ -181,4 +200,150 @@ test('one mailbox cannot be flooded', function (): void {
     });
 
     expect($sent)->toBeLessThanOrEqual(6);
+});
+
+test('a code dies when the customer changes the address it was sent to', function (): void {
+    $user = importedSallaCustomer();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+    $code = sallaCodeFromMail($user);
+
+    // Whoever reads the old mailbox holds a code for an address this account
+    // no longer has.
+    $user->forceFill(['email' => 'moved@example.test'])->save();
+
+    $this->post('/login/code', ['code' => $code])->assertSessionHasErrors('code');
+    $this->assertGuest();
+});
+
+test('a code dies once the account has a password of its own', function (): void {
+    $user = importedSallaCustomer();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+    $code = sallaCodeFromMail($user);
+
+    $user->forceFill(['password' => Hash::make('ChosenLater!42')])->save();
+
+    $this->post('/login/code', ['code' => $code])->assertSessionHasErrors('code');
+    $this->assertGuest();
+});
+
+test('a code dies once Google has claimed the account', function (): void {
+    $user = importedSallaCustomer();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+    $code = sallaCodeFromMail($user);
+
+    // The claim path verifies the address and nulls the password, so the
+    // password check alone would still pass. The social link is what says the
+    // owner arrived by another road.
+    $user->forceFill(['email_verified_at' => now()])->save();
+    SocialAccount::query()->create([
+        'user_id' => $user->id,
+        'provider' => 'google',
+        'provider_user_id' => 'claimer-google-id',
+    ]);
+
+    $this->post('/login/code', ['code' => $code])->assertSessionHasErrors('code');
+    $this->assertGuest();
+});
+
+test('an account Google evicted a password from is not offered a code', function (): void {
+    // Exactly the state GoogleAuthenticationController leaves behind when it
+    // claims an account somebody pre-registered with an address they do not
+    // own: password nulled to evict them, address now verified.
+    $user = User::factory()->create([
+        'email' => 'claimed@example.test',
+        'email_verified_at' => now(),
+        'is_active' => true,
+    ]);
+    $user->forceFill(['password' => null])->save();
+    SocialAccount::query()->create([
+        'user_id' => $user->id,
+        'provider' => 'google',
+        'provider_user_id' => 'owner-google-id',
+    ]);
+
+    // Otherwise the evicted attacker keeps a button that mails the real owner.
+    $this->post('/login', ['email' => 'claimed@example.test', 'password' => 'attacker-known'])
+        ->assertSessionHasErrors();
+
+    expect(EmailLoginCode::query()->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+test('a new code retires the one it replaces', function (): void {
+    $user = importedSallaCustomer();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+    $first = sallaCodeFromMail($user);
+
+    // Past the one-minute cooldown, ask again.
+    $this->travel(2)->minutes();
+    $this->post('/login/code/resend');
+    $second = sallaCodeFromMail($user, last: true);
+
+    expect($second)->not->toBe($first);
+
+    // The replaced row is retired outright, not merely outranked. Selecting
+    // "the newest unverified row" would fall back to it the moment the newest
+    // one was stamped, and a code the customer replaced would open the account
+    // again minutes later.
+    $rows = EmailLoginCode::query()->orderBy('id')->get();
+    expect($rows)->toHaveCount(2)
+        ->and($rows[0]->expires_at->isFuture())->toBeFalse()
+        ->and($rows[1]->expires_at->isFuture())->toBeTrue();
+
+    // And the replaced code is refused right now, while the new one is live.
+    $this->post('/login/code', ['code' => $first])->assertSessionHasErrors('code');
+    $this->assertGuest();
+
+    $this->post('/login/code', ['code' => $second])->assertRedirect();
+    $this->assertAuthenticatedAs($user->fresh());
+});
+
+test('a declined resend does not spend the hour, and an exhausted hour says so', function (): void {
+    $user = importedSallaCustomer();
+    $this->withoutMiddleware(ThrottleRequests::class);
+
+    // Six inside one minute: the first sends, the other five are declined by
+    // the cooldown. Charging for those declines is how somebody who knows an
+    // address empties the allowance in seconds.
+    foreach (range(1, 6) as $attempt) {
+        $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
+            ->assertRedirect('/login/code');
+    }
+
+    $sent = 0;
+    Notification::assertSentTo($user, EmailLoginCodeNotification::class, function () use (&$sent) {
+        $sent++;
+
+        return true;
+    });
+    expect($sent)->toBe(1);
+
+    // Five more real codes, a minute apart, spend the rest of the hour.
+    foreach (range(1, 5) as $attempt) {
+        $this->travel(2)->minutes();
+        $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
+            ->assertRedirect('/login/code');
+    }
+
+    // The seventh is refused out loud rather than answered with a code screen
+    // and a code that never comes.
+    $this->travel(2)->minutes();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
+        ->assertSessionHasErrors('email');
+});
+
+test('a failed code submission leaves no copy of the code in the session', function (): void {
+    $user = importedSallaCustomer();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+    $code = sallaCodeFromMail($user);
+
+    // The address moves under the open screen, so a valid code fails.
+    $user->forceFill(['email' => 'moved@example.test'])->save();
+    $this->post('/login/code', ['code' => $code])->assertSessionHasErrors('code');
+
+    // The flashed old input is where a live credential would otherwise sit in
+    // plain text, beside the hash written so it never would.
+    $old = session('_old_input') ?? [];
+    expect($old)->not->toHaveKey('code');
+    expect(json_encode($old, JSON_THROW_ON_ERROR))->not->toContain($code);
 });

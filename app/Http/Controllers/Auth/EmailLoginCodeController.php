@@ -84,17 +84,26 @@ final class EmailLoginCodeController extends Controller
             return redirect()->to($this->loginRoute($request));
         }
 
+        // The same three conditions as the middleware, and for the same
+        // reason: an account whose password was nulled to evict somebody is
+        // not an account waiting for a code. See OfferEmailLoginCode.
         $user = User::query()
             ->whereRaw('LOWER(email) = ?', [$email])
             ->where('is_active', true)
             ->whereNull('password')
+            ->whereNull('email_verified_at')
+            ->whereDoesntHave('socialAccounts')
             ->first();
 
         $throttleKey = 'email-login-code:'.sha1($email);
 
-        if ($user instanceof User && ! RateLimiter::tooManyAttempts($throttleKey, 6)) {
+        // Charged only on a code that actually went, for the same reason as at
+        // the login door: a declined resend that still spent the allowance is
+        // how somebody empties the hour and leaves the owner waiting.
+        if ($user instanceof User
+            && ! RateLimiter::tooManyAttempts($throttleKey, 6)
+            && $send->execute($user, $request->route('locale') === 'en' ? 'en' : 'ar')) {
             RateLimiter::hit($throttleKey, 3600);
-            $send->execute($user, $request->route('locale') === 'en' ? 'en' : 'ar');
         }
 
         // The same answer either way. A resend that is refused for the rate

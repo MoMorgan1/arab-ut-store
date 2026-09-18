@@ -50,6 +50,7 @@ return [
         'email_code_resend' => 'Resend code',
         'email_code_help' => "Didn't receive it? Check your spam folder, or",
         'email_code_back' => 'Back to sign in',
+        'email_code_throttled' => 'Too many codes have been sent to this address. Try in an hour, or contact support.',
         'google' => 'Continue with Google',
         'google_error' => 'Google sign-in could not be completed. Please try again.',
         'or' => 'or',

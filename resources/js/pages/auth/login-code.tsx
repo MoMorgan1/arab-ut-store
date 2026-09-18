@@ -33,7 +33,7 @@ export default function LoginCode({ authRoutes, authUi, maskedEmail }: Props) {
                     <h1 className="text-xl font-semibold">
                         {copy.email_code_title}
                     </h1>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                         {copy.email_code_intro.replace(':email', maskedEmail)}
                     </p>
                 </div>
@@ -88,7 +88,7 @@ export default function LoginCode({ authRoutes, authUi, maskedEmail }: Props) {
                     )}
                 </Form>
 
-                <div className="text-muted-foreground space-y-2 text-sm">
+                <div className="space-y-2 text-sm text-muted-foreground">
                     <p>
                         {copy.email_code_help}{' '}
                         <Button

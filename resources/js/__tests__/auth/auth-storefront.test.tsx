@@ -73,6 +73,8 @@ const routes = {
     googleLoginUrl: '/auth/google/redirect',
     whatsappSendUrl: '/auth/whatsapp/code',
     whatsappVerifyUrl: '/auth/whatsapp/verify',
+    loginCodeStoreUrl: '/login/code',
+    loginCodeResendUrl: '/login/code/resend',
 };
 
 const storeShell = {
@@ -182,6 +184,18 @@ const arabicAuthUi = {
         terms_prefix: 'بالمتابعة أنت توافق على',
         terms_link: 'الشروط والأحكام',
         terms_and: 'و',
+        email_code_title: 'حسابك بدون كلمة مرور',
+        email_code_intro:
+            'حسابك منقول من متجرنا السابق وما له كلمة مرور. أرسلنا كودًا من 6 أرقام على :email.',
+        email_code: 'الكود المكوّن من 6 أرقام',
+        email_code_verify: 'دخول',
+        email_code_sent: 'أرسلنا لك كودًا على بريدك.',
+        email_code_invalid: 'الكود غير صحيح أو انتهت صلاحيته.',
+        email_code_resend: 'إعادة إرسال الكود',
+        email_code_help: 'لم يصلك الكود؟ راجع بريد الرسائل غير المرغوبة، أو',
+        email_code_back: 'الرجوع لتسجيل الدخول',
+        email_code_throttled:
+            'أرسلنا أكوادًا كثيرة إلى هذا البريد. حاول بعد ساعة، أو تواصل مع الدعم.',
         privacy_link: 'سياسة الخصوصية',
     },
     register: {
@@ -294,6 +308,18 @@ const englishAuthUi = {
         terms_prefix: 'By continuing, you agree to our',
         terms_link: 'Terms and Conditions',
         terms_and: 'and',
+        email_code_title: 'Your account has no password',
+        email_code_intro:
+            'Your account came from our previous store and has no password. We sent a 6-digit code to :email.',
+        email_code: '6-digit code',
+        email_code_verify: 'Sign in',
+        email_code_sent: 'We sent a code to your email.',
+        email_code_invalid: 'The code is invalid or has expired.',
+        email_code_resend: 'Resend code',
+        email_code_help: "Didn't receive it? Check your spam folder, or",
+        email_code_back: 'Back to sign in',
+        email_code_throttled:
+            'Too many codes have been sent to this address. Try in an hour, or contact support.',
         privacy_link: 'Privacy Policy',
     },
     register: {
