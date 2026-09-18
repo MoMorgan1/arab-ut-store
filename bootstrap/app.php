@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureChatEnabled;
 use App\Http\Middleware\EnsureVerifiedPasswordRecoveryEmail;
+use App\Http\Middleware\OfferEmailLoginCode;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireCatalogCartJson;
@@ -67,6 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
             SetDisplayCurrency::class,
             HandleAppearance::class,
             EnsureVerifiedPasswordRecoveryEmail::class,
+            OfferEmailLoginCode::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

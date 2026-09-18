@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Account\ItemTrackingActionController;
 use App\Http\Controllers\Account\ItemTrackingRefreshController;
+use App\Http\Controllers\Auth\EmailLoginCodeController;
 use App\Http\Controllers\Auth\GoogleAuthenticationController;
 use App\Http\Controllers\Auth\WhatsAppLoginController;
 use App\Http\Controllers\Store\CartController;
@@ -153,6 +154,19 @@ Route::post('/auth/whatsapp/code', [WhatsAppLoginController::class, 'send'])
 Route::post('/auth/whatsapp/verify', [WhatsAppLoginController::class, 'verify'])
     ->middleware(['guest:'.config('fortify.guard'), 'throttle:whatsapp-login-verify'])
     ->name('auth.whatsapp.verify');
+
+// The way in for an account the Salla import left without a password. The
+// screen is reachable only by a login attempt that put the address in the
+// session, so there is nothing here to guess at.
+Route::get('/login/code', [EmailLoginCodeController::class, 'show'])
+    ->middleware(['guest:'.config('fortify.guard')])
+    ->name('login.code');
+Route::post('/login/code', [EmailLoginCodeController::class, 'store'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:email-login-verify'])
+    ->name('login.code.store');
+Route::post('/login/code/resend', [EmailLoginCodeController::class, 'resend'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:email-login-send'])
+    ->name('login.code.resend');
 
 $simpleStorePages = [
     'privacy' => '/privacy',
@@ -314,6 +328,16 @@ Route::prefix('{locale}')
         Route::post('/auth/whatsapp/verify', [WhatsAppLoginController::class, 'verify'])
             ->middleware(['guest:'.config('fortify.guard'), 'throttle:whatsapp-login-verify'])
             ->name('localized.auth.whatsapp.verify');
+
+        Route::get('/login/code', [EmailLoginCodeController::class, 'show'])
+            ->middleware(['guest:'.config('fortify.guard')])
+            ->name('localized.login.code');
+        Route::post('/login/code', [EmailLoginCodeController::class, 'store'])
+            ->middleware(['guest:'.config('fortify.guard'), 'throttle:email-login-verify'])
+            ->name('localized.login.code.store');
+        Route::post('/login/code/resend', [EmailLoginCodeController::class, 'resend'])
+            ->middleware(['guest:'.config('fortify.guard'), 'throttle:email-login-send'])
+            ->name('localized.login.code.resend');
 
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])
             ->middleware(['guest:'.config('fortify.guard')])
