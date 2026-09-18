@@ -775,6 +775,13 @@ export const englishAdminUi: AdminTranslations = {
                 'Network error. Please check your connection and try again.',
             forbiddenError: 'You do not have permission to view credentials.',
         },
+        trackingLink: {
+            title: 'Tracking link',
+            description: 'A link that opens this order without signing in.',
+            action: 'Show the link',
+            copy: 'Copy the link',
+            failed: 'The link could not be issued. Try again.',
+        },
         refundsTitle: 'Refunds',
         refund: {
             title: 'Issue Paylink refund',

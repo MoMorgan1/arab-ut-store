@@ -264,6 +264,13 @@ export type AdminTranslations = {
             networkError: string;
             forbiddenError: string;
         };
+        trackingLink: {
+            title: string;
+            description: string;
+            action: string;
+            copy: string;
+            failed: string;
+        };
         refundsTitle: string;
         refund: {
             title: string;
@@ -2289,6 +2296,7 @@ export type AdminOrderDetailPageProps = {
     allowedTransitions: string[];
     transitionUrl: string;
     revealUrlTemplate?: string;
+    trackingLinkUrl?: string;
     refund: {
         eligible: boolean;
         amountMinor: string;
