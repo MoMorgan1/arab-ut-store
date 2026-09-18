@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\NotificationStatus;
 use App\Models\IntegrationEvent;
+use App\Models\NotificationDelivery;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -11,14 +13,14 @@ final class RequeueFailedPaidEvent extends Command
     protected $signature = 'orders:requeue-paid-event
         {event_id : The event_id (ULID) from the retirement error log or the admin queue-health panel}';
 
-    protected $description = 'Requeue a failed outbox event (order.paid or challenge.ready) so its publisher delivers it again';
+    protected $description = 'Requeue a failed outbox event (order.paid, challenge.ready or customer.notify) so its publisher delivers it again';
 
     public function handle(): int
     {
         $eventId = (string) $this->argument('event_id');
 
         $event = IntegrationEvent::query()
-            ->whereIn('event_type', ['order.paid', 'challenge.ready'])
+            ->whereIn('event_type', ['order.paid', 'challenge.ready', 'customer.notify'])
             ->where('event_id', $eventId)
             ->first();
 
@@ -57,6 +59,23 @@ final class RequeueFailedPaidEvent extends Command
             $this->error(sprintf('Event "%s" is no longer failed; nothing was requeued.', $eventId));
 
             return self::FAILURE;
+        }
+
+        // A retired customer notification left its delivery row failed too,
+        // and the publisher finishes a non-queued row without sending. The
+        // requeue grants both rows a fresh budget together, or the event's
+        // would be spent on a row that refuses to send.
+        if ($event->event_type === 'customer.notify') {
+            NotificationDelivery::query()
+                ->where('integration_event_id', $event->id)
+                ->where('status', NotificationStatus::Failed)
+                ->update([
+                    'status' => NotificationStatus::Queued,
+                    'last_error' => null,
+                    'failed_at' => null,
+                    'available_at' => now(),
+                    'updated_at' => now(),
+                ]);
         }
 
         $payload = json_decode((string) $event->getRawOriginal('payload'), true);

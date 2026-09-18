@@ -10,6 +10,8 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\Supplier;
 use App\Enums\SupplierAction;
+use App\Fulfillment\Notifications\CustomerNotificationCatalog;
+use App\Fulfillment\Notifications\QueueCustomerNotification;
 use App\Fulfillment\SupplierCostInHalalah;
 use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Models\FulfillmentJob;
@@ -32,6 +34,7 @@ final class ApplySupplierObservation
         private readonly SupplierCostInHalalah $supplierCost,
         private readonly EnqueueChallengeSolve $enqueueChallengeSolve,
         private readonly RecordObservationGap $recordObservationGap,
+        private readonly QueueCustomerNotification $queueNotification,
     ) {}
 
     /**
@@ -178,7 +181,7 @@ final class ApplySupplierObservation
                     $targetItem->status = $targetItemStatus;
                     $targetItem->save();
 
-                    OrderStatusHistory::query()->create([
+                    $itemHistory = OrderStatusHistory::query()->create([
                         'order_id' => $order->id,
                         'order_item_id' => $targetItem->id,
                         'actor_user_id' => null,
@@ -191,6 +194,25 @@ final class ApplySupplierObservation
                             'new_status' => $targetItemStatus->value,
                         ],
                     ]);
+
+                    // The customer is told their order stopped, once, in the
+                    // same write as the stop itself. A move into
+                    // WaitingForCustomer with a messaged hold reason owes one
+                    // row; a silent reason owes none, and a recovery or a
+                    // repeat of the same hold writes nothing new - the
+                    // idempotency key turns a repeated attempt into a replay.
+                    if ($targetItemStatus === OrderItemStatus::WaitingForCustomer
+                        && $previousItemStatus !== OrderItemStatus::WaitingForCustomer
+                        && $state->holdReason !== null
+                        && ($template = CustomerNotificationCatalog::templateFor($state->holdReason)) !== null) {
+                        $this->queueNotification->forItem(
+                            $order,
+                            $targetItem,
+                            $template,
+                            (int) $itemHistory->id,
+                            (string) $order->locale,
+                        );
+                    }
                 }
             }
 

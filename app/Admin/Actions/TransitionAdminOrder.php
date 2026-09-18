@@ -13,6 +13,8 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusHistoryStatus;
 use App\Enums\PaymentStatus;
 use App\Exceptions\AdminOrderStatusConflict;
+use App\Fulfillment\Notifications\CustomerNotificationCatalog;
+use App\Fulfillment\Notifications\QueueCustomerNotification;
 use App\Loyalty\Actions\AccrueOrderCashback;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -37,6 +39,7 @@ final class TransitionAdminOrder
         private readonly ReleaseOrderWalletFunds $releaseOrderWalletFunds,
         private readonly PaymentManager $payments,
         private readonly InviteOrderReview $inviteOrderReview,
+        private readonly QueueCustomerNotification $queueNotification,
     ) {}
 
     public function execute(
@@ -142,7 +145,7 @@ final class TransitionAdminOrder
                 ? OrderClosingNote::refund(cardHalalah: 0, walletHalalah: $releasedHalalah)
                 : null;
 
-            OrderStatusHistory::query()->create([
+            $orderHistory = OrderStatusHistory::query()->create([
                 'order_id' => $order->id,
                 'order_item_id' => null,
                 'actor_user_id' => $actor->id,
@@ -159,6 +162,9 @@ final class TransitionAdminOrder
             $propagatedItemCount = 0;
             $targetItemStatus = OrderItemStatus::from($targetStatus->value);
 
+            /** @var list<array{0: OrderItem, 1: int}> items that stopped on the customer in this transition */
+            $heldItems = [];
+
             foreach ($items as $item) {
                 if (in_array($item->status, $itemSourceStatuses, true)) {
                     $previousItemStatus = $item->status;
@@ -166,7 +172,7 @@ final class TransitionAdminOrder
                     $item->save();
                     $propagatedItemCount++;
 
-                    OrderStatusHistory::query()->create([
+                    $itemHistory = OrderStatusHistory::query()->create([
                         'order_id' => $order->id,
                         'order_item_id' => $item->id,
                         'actor_user_id' => $actor->id,
@@ -179,7 +185,40 @@ final class TransitionAdminOrder
                             'new_status' => $targetItemStatus->value,
                         ],
                     ]);
+
+                    if ($targetItemStatus === OrderItemStatus::WaitingForCustomer
+                        && $previousItemStatus !== OrderItemStatus::WaitingForCustomer) {
+                        $heldItems[] = [$item, (int) $itemHistory->id];
+                    }
                 }
+            }
+
+            // The customer is told in the same write as the stop or the end.
+            // A pause without a reason has no template to send; a silent
+            // reason is silent here too, for the same noise argument. A
+            // cancellation is order-level: one message for the order, not
+            // one per item.
+            if ($targetStatus === OrderStatus::WaitingForCustomer
+                && $reason !== null
+                && ($template = CustomerNotificationCatalog::templateFor($reason)) !== null) {
+                foreach ($heldItems as [$heldItem, $heldHistoryId]) {
+                    $this->queueNotification->forItem(
+                        $order,
+                        $heldItem,
+                        $template,
+                        $heldHistoryId,
+                        (string) $order->locale,
+                    );
+                }
+            }
+
+            if ($targetStatus === OrderStatus::Cancelled) {
+                $this->queueNotification->forOrder(
+                    $order,
+                    CustomerNotificationCatalog::TEMPLATE_ORDER_CANCELLED,
+                    (int) $orderHistory->id,
+                    (string) $order->locale,
+                );
             }
 
             if ($targetStatus === OrderStatus::Completed) {

@@ -1,0 +1,34 @@
+<?php
+
+// Customer WhatsApp messages, sent through the n8n customer-notification
+// webhook (docs/api/n8n-customer-notification-v1.md). Ported from the
+// "Customer Notifier v2" workflow's catalogue and approved message by
+// message on 2026-09-13, with three corrections: the coin minimum is 1,500,
+// the market instruction is three matches a day, and the copy points at the
+// button the order page actually renders for that reason - never at
+// "message us".
+//
+// Every entry is the full message body with three placeholders: :name (the
+// customer's first name), :order_number and :link (the order's own signed
+// in-store tracking link). Nothing here is ever composed from a supplier's
+// raw string: this file is the only source of customer wording.
+//
+// Gulf readers. No Egyptian dialect (AGENTS.md, Customer copy).
+return [
+    'credentials' => "أهلاً :name 👋\n\n❌ ما قدرنا ندخل على حساب EA — طلب #:order_number\n\nبيانات الدخول (الإيميل أو كلمة المرور) غير صحيحة.\n\nالمطلوب:\n1️⃣ تأكد من الإيميل وكلمة المرور (جرّب تدخل بنفسك مرة للتأكد).\n2️⃣ افتح رابط طلبك وعدّل البيانات من «تعديل بيانات الطلب» ويكمل تلقائياً:\n:link",
+    'backup_codes' => "أهلاً :name 👋\n\n❌ الأكواد الاحتياطية غير صحيحة — طلب #:order_number\n\nالمطلوب:\n1️⃣ استخرج أكواد جديدة وتأكد أنها غير مستخدمة.\n2️⃣ افتح رابط طلبك وحدّث الأكواد من «تعديل بيانات الطلب» ويكمل تلقائياً:\n:link\n\n🎥 طريقة الاستخراج:\nhttps://arab-ut.com/ea-backup-codes-guide/page-699997932",
+    'platform' => "أهلاً :name 👋\n\n🛑 المنصة المختارة غير مطابقة — طلب #:order_number\n\nيبدو أنك اخترت منصة مختلفة عن منصة حسابك الفعلية، وكل منصة لها سعر مختلف.\n\nالمطلوب:\n1️⃣ تأكد من منصة حسابك.\n2️⃣ افتح رابط طلبك وعدّل البيانات من «تعديل بيانات الطلب»:\n:link",
+    'market_locked' => "أهلاً :name 👋\n\n⛔ سوق الانتقالات غير متاح في حسابك — طلب #:order_number\n\nحسابك ما زال بدون صلاحية السوق في تطبيق الويب أو التطبيق (تفتحها EA عادة بعد لعب كافٍ داخل اللعبة).\n\nالمطلوب:\n1️⃣ العب 3 مباريات يومياً حتى يفتح السوق.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب» ويكمل تلقائياً:\n:link",
+    'insufficient_coins' => "أهلاً :name 👋\n\n⚠️ رصيد الكوينز في حسابك غير كافٍ — طلب #:order_number\n\nلبدء النقل الآمن لازم يتوفر في حسابك 1,500 كوينز على الأقل.\n\nالمطلوب:\n1️⃣ وفّر المبلغ (العب مباراة أو بِع لاعباً من النادي).\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب» ويكمل تلقائياً:\n:link",
+    'active_session' => "أهلاً :name 👋\n\n⚠️ الحساب مسجّل دخول — طلب #:order_number\n\nما نقدر نبدأ الشغل وأنت متصل بالحساب.\n\nالحل السريع:\n1️⃣ ادخل اللعبة من جهازك.\n2️⃣ ادخل الألتميت تيم (Ultimate Team).\n3️⃣ اطلع للقائمة الرئيسية بشكل نظامي.\n4️⃣ تأكد أنك مقفّل تطبيق الجوال (Companion App) تماماً.\n\nوبعدها افتح رابط طلبك واضغط «تشغيل الطلب» وفالك التوفيق:\n:link",
+    'no_club' => "أهلاً :name 👋\n\n⚠️ لا يوجد نادي Ultimate Team على الحساب — طلب #:order_number\n\nالمطلوب:\n1️⃣ افتح اللعبة وأنشئ ناديك.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب»:\n:link",
+    'transfer_list_full' => "أهلاً :name 👋\n\n📋 قائمة النقل في حسابك ممتلئة — طلب #:order_number\n\nما فيها مساحة تكفي للشحن.\n\nالمطلوب:\n1️⃣ أفرغ مساحة في القائمة.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب»:\n:link",
+    'captcha' => "أهلاً :name 👋\n\n🧩 ‏EA تطلب حل كود تحقق على الحساب — طلب #:order_number\n\nالمطلوب:\n1️⃣ ادخل على Web App وحلّ الكود.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب»:\n:link",
+    'unassigned' => "أهلاً :name 👋\n\n📦 توجد عناصر غير معينة في الحساب تمنع الشحن — طلب #:order_number\n\nالمطلوب:\n1️⃣ افتحها أو انقلها إلى النادي.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب»:\n:link",
+    'account_banned' => "أهلاً :name 👋\n\n⚠️ واجهتنا مشكلة في تسجيل الدخول — طلب #:order_number\n\nوقد يكون الحساب محظوراً من EA.\n\nالمطلوب:\n1️⃣ اضغط «تشغيل الطلب» من رابط طلبك للمحاولة مرة ثانية:\n:link\n2️⃣ ولو تشوف أن بياناتك غلط، حدّثها من «تعديل بيانات الطلب».",
+    'two_factor_off' => "أهلاً :name 👋\n\n🔐 التحقق الثنائي غير مفعّل على الحساب — طلب #:order_number\n\nنحتاجه حتى نكمل التنفيذ.\n\nالمطلوب:\n1️⃣ فعّله من إعدادات أمان حساب EA.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب»:\n:link",
+    'email_confirm' => "أهلاً :name 👋\n\n📧 حساب EA يطلب تأكيد البريد الإلكتروني — طلب #:order_number\n\nالمطلوب: أكّد البريد من رسالة EA، ثم تابع طلبك من هنا:\n:link",
+    'web_app_locked' => "أهلاً :name 👋\n\n🌐 تطبيق الويب غير مفعّل على الحساب — طلب #:order_number\n\nنحتاجه حتى نتم التنفيذ.\n\nالمطلوب:\n1️⃣ ادخل عليه مرة واحدة من المتصفح.\n2️⃣ بعدها افتح رابط طلبك واضغط «تشغيل الطلب»:\n:link",
+    'order_cancelled' => "أهلاً :name 👋\n\n🛑 تحديث بخصوص طلبك #:order_number\n\nتم إلغاء الطلب. تقدر تشوف التفاصيل من صفحة طلبك:\n:link",
+    'order_refunded' => "أهلاً :name 👋\n\n💸 تحديث بخصوص طلبك #:order_number\n\nتم استرجاع مبلغ الطلب. تقدر تشوف التفاصيل من صفحة طلبك:\n:link",
+];

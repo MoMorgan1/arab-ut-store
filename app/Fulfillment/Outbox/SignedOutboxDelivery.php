@@ -120,6 +120,30 @@ final class SignedOutboxDelivery
     }
 
     /**
+     * Whether the publisher triple for this prefix is usable, without
+     * touching anything. The customer-notification publisher asks first so
+     * it stays inert - no claim, no attempt, no log line - until the owner
+     * configures the webhook.
+     */
+    public function isConfigured(string $prefix): bool
+    {
+        $url = config("services.n8n.{$prefix}_url");
+        $key = config("services.n8n.{$prefix}_key");
+        $secret = config("services.n8n.{$prefix}_secret");
+        $parts = is_string($url) ? parse_url($url) : false;
+
+        return is_array($parts)
+            && ($parts['scheme'] ?? null) === 'https'
+            && is_string($parts['host'] ?? null)
+            && ! isset($parts['user'])
+            && ! isset($parts['pass'])
+            && is_string($key)
+            && preg_match('/\A[A-Za-z0-9._:-]{1,128}\z/D', $key) === 1
+            && is_string($secret)
+            && strlen($secret) >= 32;
+    }
+
+    /**
      * Fails closed: an http URL, a URL with credentials in it, a key with
      * characters a header must not carry, or a short secret is no
      * configuration at all.
@@ -131,17 +155,8 @@ final class SignedOutboxDelivery
         $url = config("services.n8n.{$prefix}_url");
         $key = config("services.n8n.{$prefix}_key");
         $secret = config("services.n8n.{$prefix}_secret");
-        $parts = is_string($url) ? parse_url($url) : false;
 
-        if (! is_array($parts)
-            || ($parts['scheme'] ?? null) !== 'https'
-            || ! is_string($parts['host'] ?? null)
-            || isset($parts['user'])
-            || isset($parts['pass'])
-            || ! is_string($key)
-            || preg_match('/\A[A-Za-z0-9._:-]{1,128}\z/D', $key) !== 1
-            || ! is_string($secret)
-            || strlen($secret) < 32) {
+        if (! $this->isConfigured($prefix) || ! is_string($url) || ! is_string($key) || ! is_string($secret)) {
             throw new UnexpectedValueException('Publisher configuration is unavailable.');
         }
 
