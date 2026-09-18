@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -16,8 +17,14 @@ use Illuminate\Notifications\Notification;
  *
  * No link and no button. This mail is read on a phone while the code screen is
  * open on the same phone, and a link would only invite a second tab.
+ *
+ * Encrypted, because queued means written down. The code travels inside the
+ * serialized job, and the database queue keeps that payload in `jobs` until a
+ * worker takes it and in `failed_jobs` for good if the mail host refuses it -
+ * in plain text, beside the hash that exists so the code is never stored. The
+ * store hashes it on one side and would have printed it on the other.
  */
-final class EmailLoginCodeNotification extends Notification implements ShouldQueue
+final class EmailLoginCodeNotification extends Notification implements ShouldBeEncrypted, ShouldQueue
 {
     use Queueable;
 

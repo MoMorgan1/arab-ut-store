@@ -51,7 +51,7 @@ final class VerifyEmailLoginCode
 
             // The account must still be the one this code was issued for, and
             // must still be the kind of account a code opens. A code is bound
-            // to a user id, and three things can make that binding a lie
+            // to a user id, and four things can make that binding a lie
             // between issuing and using it:
             //
             // - The customer changed their email. Whoever reads the old
@@ -63,17 +63,27 @@ final class VerifyEmailLoginCode
             //   purpose to evict pre-registered credentials, so the password
             //   check alone would still pass - the social link is what says
             //   the owner arrived by another road.
+            // - The address got verified some other way. The customer reached
+            //   the account by a door this code knows nothing about and proved
+            //   the address from inside; the cohort is exactly the unverified
+            //   accounts, and an outstanding code must not outlive leaving it.
+            //
+            // The same four the middleware asks before issuing one, asked
+            // again here because minutes pass in between.
             if (mb_strtolower(trim((string) $user->email)) !== $email
                 || $user->password !== null
+                || $user->email_verified_at !== null
                 || $user->socialAccounts()->exists()) {
                 return null;
             }
 
             $pending->forceFill(['verified_at' => now()])->save();
 
-            if ($user->email_verified_at === null) {
-                $user->forceFill(['email_verified_at' => now()])->save();
-            }
+            // Unconditional: the check above already refused a verified
+            // address, so reaching here means it is not one. Stamping it is
+            // what ends the cohort - the middleware stops offering codes, and
+            // password recovery opens.
+            $user->forceFill(['email_verified_at' => now()])->save();
 
             return $user;
         }, attempts: 3);

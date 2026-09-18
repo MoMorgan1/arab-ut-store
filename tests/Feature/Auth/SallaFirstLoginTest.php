@@ -4,6 +4,7 @@ use App\Models\EmailLoginCode;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Notifications\EmailLoginCodeNotification;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -164,6 +165,81 @@ test('a deactivated account is not offered a way in', function (): void {
     Notification::assertNothingSent();
 });
 
+// "an account Google evicted a password from is not offered a code" sets a
+// verified address AND a social link, because that is the state the Google
+// claim really leaves. It therefore cannot prove either exclusion on its own:
+// drop one predicate and it still passes. These two isolate them.
+
+test('a verified address alone keeps an account out of the cohort', function (): void {
+    $user = importedSallaCustomer();
+    $user->forceFill(['email_verified_at' => now()])->save();
+
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
+        ->assertSessionHasErrors();
+
+    expect(EmailLoginCode::query()->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+test('a linked social account alone keeps an account out of the cohort', function (): void {
+    $user = importedSallaCustomer();
+    SocialAccount::query()->create([
+        'user_id' => $user->id,
+        'provider' => 'google',
+        'provider_user_id' => 'linked-google-id',
+    ]);
+
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
+        ->assertSessionHasErrors();
+
+    expect(EmailLoginCode::query()->count())->toBe(0);
+    Notification::assertNothingSent();
+});
+
+test('a live code dies the moment the address is verified another way', function (): void {
+    $user = importedSallaCustomer();
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+    $code = sallaCodeFromMail($user);
+
+    // The customer reached the account by a door this code knows nothing
+    // about - the phone sign-in - and proved the address from inside. They
+    // have left the cohort, and whoever holds the mailed code must not be able
+    // to walk in behind them.
+    $user->forceFill(['email_verified_at' => now()])->save();
+
+    $this->post('/login/code', ['code' => $code])->assertSessionHasErrors('code');
+    $this->assertGuest();
+});
+
+test('a resend with the hour spent says so instead of promising a code', function (): void {
+    $user = importedSallaCustomer();
+    $this->withoutMiddleware(ThrottleRequests::class);
+    $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything']);
+
+    // Spend the rest of the hour, a minute apart so every one of them sends.
+    foreach (range(1, 5) as $attempt) {
+        $this->travel(2)->minutes();
+        $this->post('/login/code/resend');
+    }
+
+    // Past the last code's ten minutes, so there is nothing live left to read.
+    $this->travel(15)->minutes();
+
+    // "A code is on its way" here would be the same lie the whole change
+    // exists to remove: an inbox watched for an hour that stays empty.
+    $this->travel(2)->minutes();
+    $this->post('/login/code/resend')->assertSessionHasErrors('code');
+});
+
+test('the queued code never travels in plain text', function (): void {
+    // The code is hashed in `email_login_codes` so it is never written down.
+    // A queued notification writes it down anyway - serialized into `jobs`,
+    // and into `failed_jobs` for good if the mail host refuses it - unless the
+    // notification says it must be encrypted first.
+    expect(new EmailLoginCodeNotification('123456', 'ar'))
+        ->toBeInstanceOf(ShouldBeEncrypted::class);
+});
+
 test('an unknown address learns nothing', function (): void {
     $this->post('/login', ['email' => 'stranger@example.test', 'password' => 'anything'])
         ->assertSessionHasErrors();
@@ -185,8 +261,14 @@ test('one mailbox cannot be flooded', function (): void {
     // test here, not the first.
     $this->withoutMiddleware(ThrottleRequests::class);
 
-    // Six codes an hour; later attempts still land the customer on the code
-    // screen, because the code already sent is still live.
+    // Eight attempts inside the same minute. The cooldown collapses them into
+    // one mail, and every one of them still lands on the code screen, because
+    // the code already sent is live and saying anything else would send the
+    // customer looking for a second one.
+    //
+    // Exactly one, not "at most six": a ceiling nothing approaches is a test
+    // that passes whatever the cooldown does. The hourly cap is a different
+    // limit and is pinned separately, a minute apart, further down.
     foreach (range(1, 8) as $attempt) {
         $this->post('/login', ['email' => 'imported@example.test', 'password' => 'anything'])
             ->assertRedirect('/login/code');
@@ -199,7 +281,7 @@ test('one mailbox cannot be flooded', function (): void {
         return true;
     });
 
-    expect($sent)->toBeLessThanOrEqual(6);
+    expect($sent)->toBe(1);
 });
 
 test('a code dies when the customer changes the address it was sent to', function (): void {
@@ -279,20 +361,21 @@ test('a new code retires the one it replaces', function (): void {
     $this->post('/login/code/resend');
     $second = sallaCodeFromMail($user, last: true);
 
-    expect($second)->not->toBe($first);
-
     // The replaced row is retired outright, not merely outranked. Selecting
     // "the newest unverified row" would fall back to it the moment the newest
     // one was stamped, and a code the customer replaced would open the account
     // again minutes later.
+    //
+    // Asserted on the rows rather than by submitting the old code, because two
+    // six-digit draws collide once in nine hundred thousand runs and a test
+    // that fails that often is a test nobody believes. `Hash::check` says
+    // which row holds which code, so the retirement is pinned either way.
     $rows = EmailLoginCode::query()->orderBy('id')->get();
     expect($rows)->toHaveCount(2)
+        ->and(Hash::check($first, $rows[0]->code_hash))->toBeTrue()
         ->and($rows[0]->expires_at->isFuture())->toBeFalse()
+        ->and(Hash::check($second, $rows[1]->code_hash))->toBeTrue()
         ->and($rows[1]->expires_at->isFuture())->toBeTrue();
-
-    // And the replaced code is refused right now, while the new one is live.
-    $this->post('/login/code', ['code' => $first])->assertSessionHasErrors('code');
-    $this->assertGuest();
 
     $this->post('/login/code', ['code' => $second])->assertRedirect();
     $this->assertAuthenticatedAs($user->fresh());

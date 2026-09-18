@@ -84,7 +84,7 @@ final class EmailLoginCodeController extends Controller
             return redirect()->to($this->loginRoute($request));
         }
 
-        // The same three conditions as the middleware, and for the same
+        // The same four conditions as the middleware, and for the same
         // reason: an account whose password was nulled to evict somebody is
         // not an account waiting for a code. See OfferEmailLoginCode.
         $user = User::query()
@@ -97,19 +97,32 @@ final class EmailLoginCodeController extends Controller
 
         $throttleKey = 'email-login-code:'.sha1($email);
 
+        if ($user instanceof User && RateLimiter::tooManyAttempts($throttleKey, 6)) {
+            // Out of codes for the hour, and saying "sent" here would be the
+            // exact lie this change exists to remove. The cooldown below is a
+            // different case and keeps the reassuring answer, because there a
+            // live code really is sitting in their inbox; once the allowance
+            // is gone there may be no code at all, and telling somebody to
+            // watch an inbox that will stay empty is how they wait out an hour
+            // for nothing.
+            return back()->withErrors([
+                'code' => trans('auth_ui.login.email_code_throttled'),
+            ]);
+        }
+
         // Charged only on a code that actually went, for the same reason as at
         // the login door: a declined resend that still spent the allowance is
         // how somebody empties the hour and leaves the owner waiting.
         if ($user instanceof User
-            && ! RateLimiter::tooManyAttempts($throttleKey, 6)
             && $send->execute($user, $request->route('locale') === 'en' ? 'en' : 'ar')) {
             RateLimiter::hit($throttleKey, 3600);
         }
 
-        // The same answer either way. A resend that is refused for the rate
-        // limit and one that is sent look identical here on purpose: the
-        // screen already told them a code is on its way, and the live code is
-        // still valid.
+        // A resend the cooldown declined and one that was sent look identical
+        // on purpose: either way a live code is in their inbox, and the
+        // difference is ours, not theirs. An address with no eligible account
+        // behind it lands here too, so a stranger's resend says no more than
+        // the login screen already did.
         return back()->with('status', trans('auth_ui.login.email_code_sent'));
     }
 

@@ -53,7 +53,14 @@ final readonly class SendEmailLoginCode
 
             $code = (string) random_int(100000, 999999);
 
-            DB::transaction(function () use ($code, $email, $user): void {
+            // Retiring the old code, writing the new one and handing the new
+            // one to the mailer are one write. Split them and a mailer that
+            // throws leaves the customer worse off than before they asked: the
+            // code sitting in their inbox has just been retired, its
+            // replacement was never queued, and the minute's cooldown now
+            // refuses to issue a third. Inside the transaction, a failed
+            // enqueue rolls the retirement back and their old code still works.
+            DB::transaction(function () use ($code, $email, $locale, $user): void {
                 // A new code retires every older one. Otherwise the newest is
                 // merely the one the reader picks first: once it is used and
                 // stamped, the query falls back to the previous row and a code
@@ -72,16 +79,16 @@ final readonly class SendEmailLoginCode
                     'expires_at' => now()->addMinutes(10),
                     'verified_at' => null,
                 ]);
+
+                // Queued, like the other account mail: an SMTP round trip
+                // inside the login request is how a slow mail host becomes a
+                // broken sign-in page. The queue is this same database, so
+                // enqueueing joins the transaction rather than racing it.
+                $user->notify(new EmailLoginCodeNotification($code, $locale));
             });
         } finally {
             $lock->release();
         }
-
-        // Queued, like the other account mail: an SMTP round trip inside the
-        // login request is how a slow mail host becomes a broken sign-in page.
-        // The row is written first, so a queue that runs late still delivers a
-        // code the customer can use.
-        $user->notify(new EmailLoginCodeNotification($code, $locale));
 
         return true;
     }

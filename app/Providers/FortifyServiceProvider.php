@@ -191,8 +191,10 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('whatsapp-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
             ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
 
-        // Keyed on the address, not the caller: the harm a flood does is to
-        // one mailbox, and the sender is not who would suffer it.
+        // Keyed on the caller, like every other limiter here. The cap that
+        // protects the mailbox is a separate one, keyed on the address and
+        // counted in SendEmailLoginCode - because the harm a flood does is to
+        // one inbox, and the sender is not who would suffer it.
         RateLimiter::for('email-login-send', fn (Request $request): Limit => Limit::perMinute(2)
             ->by(hash('sha256', $request->session()->getId())));
         RateLimiter::for('email-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
