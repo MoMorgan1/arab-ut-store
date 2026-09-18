@@ -270,13 +270,16 @@ export async function runToSnapshot({
     staticData = {},
     environment = env(),
     poisonConfig = () => {},
+    // The signed one-million quotes the store answered with. A test that cares
+    // about the retail coin price passes its own.
+    pricing = pricingRead(),
 } = {}) {
     const flow = pipeline({ env: environment, staticData });
 
     await flow.run('Config', 'config', [{}]);
     poisonConfig(flow.json('Config'));
 
-    flow.set('Read Coins Bases', httpOk(pricingRead()));
+    flow.set('Read Coins Bases', httpOk(pricing));
     await flow.run(
         'Evaluate Pricing Read',
         'evaluate-pricing-read',

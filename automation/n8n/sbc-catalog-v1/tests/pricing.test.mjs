@@ -5,6 +5,7 @@ import {
     LARAVEL_STANDARD_TIERS,
     laravelWouldReject,
     metaRecords,
+    pricingRead,
     runToSnapshot,
 } from './helpers.mjs';
 
@@ -193,4 +194,31 @@ test('a cosmetic metadata field the merge does not screen is skipped, not fatal'
     assert.ok(
         built.rejectedRecords.some(({ reason }) => reason === 'bad_category'),
     );
+});
+
+function quotedAt(halalah) {
+    const read = pricingRead();
+
+    read.quotes.playstation_fast.totalHalalah = halalah;
+    read.quotes.pc.totalHalalah = halalah;
+
+    return read;
+}
+
+test('a million priced at 1,072.30 SAR is inside the band', async () => {
+    // The real quote on 2026-09-18, and the one the old 1,000 SAR ceiling
+    // stopped the catalogue for. A bound that close to the market is a bound
+    // that fires on the market.
+    const built = await snapshot({ pricing: quotedAt(107_230) });
+
+    assert.ok(built.catalogSnapshot.products.length > 0);
+});
+
+test('a million above 1,500 SAR halts the catalogue instead of pricing from it', async () => {
+    // 5,347.40 SAR/M is what the thin-pool fallback proposed on the same day.
+    // Every SBC price is a multiple of this number, so pricing from it would
+    // multiply the whole catalogue; the last approved one keeps selling.
+    const message = await priceError({ pricing: quotedAt(534_740) });
+
+    assert.match(message, /quote is missing or out of band/);
 });

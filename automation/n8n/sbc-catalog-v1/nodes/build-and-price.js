@@ -234,6 +234,20 @@ function repeatMarginPerRun(completions) {
     return policy.repeatMargin.get(selected);
 }
 
+// The most a million coins may cost at retail before this catalogue refuses to
+// price from the number: 1,500 SAR, owner decision 2026-09-18.
+//
+// It is a sanity bound on the signed quote, not a business rule about what the
+// store may charge - the coins screens sell at whatever the pricing run set.
+// What it stops is a broken or misread quote silently multiplying every SBC
+// price, which is why crossing it halts the catalogue instead of clamping: the
+// last approved catalogue keeps selling while a person looks.
+//
+// The first ceiling was 1,000 SAR and it stopped the catalogue on 2026-09-18
+// for a quote of 1,072.30 - a real price, not a fault. A bound this close to
+// the market is a bound that fires on the market.
+const MAX_MILLION_QUOTE_HALALAH = 150_000;
+
 // Read only the field the pricing contract defines. v3's generic probe would
 // fall back to an `amount`/`value`/`price` key, which on a quote object could
 // silently read a display price and undercharge by two orders of magnitude.
@@ -241,7 +255,11 @@ function quoteMinor(platform) {
     const quotes = pricingState.pricing?.quotes;
     const quote = platform === 'pc' ? quotes?.pc : quotes?.playstation_fast;
     const total = quote?.totalHalalah;
-    if (!Number.isInteger(total) || total <= 0 || total > 100000) {
+    if (
+        !Number.isInteger(total) ||
+        total <= 0 ||
+        total > MAX_MILLION_QUOTE_HALALAH
+    ) {
         fail(`signed one-million ${platform} quote is missing or out of band`);
     }
     if (Number(quote.quantity) !== 1000000) {
