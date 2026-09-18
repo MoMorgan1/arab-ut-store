@@ -636,6 +636,13 @@ return [
             'networkError' => 'Network error. Please check your connection and try again.',
             'forbiddenError' => 'You do not have permission to view credentials.',
         ],
+        'trackingLink' => [
+            'title' => 'Tracking link',
+            'description' => "A link that opens this order's tracking page without signing in. The same link every time, and who asked for it is recorded.",
+            'action' => 'Show the link',
+            'copy' => 'Copy the link',
+            'failed' => 'The link could not be issued. Try again.',
+        ],
         'refundsTitle' => 'Refunds',
         'refund' => [
             'title' => 'Issue Paylink refund',

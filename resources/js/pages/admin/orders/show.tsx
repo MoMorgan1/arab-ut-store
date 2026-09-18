@@ -18,6 +18,7 @@ import {
 import AdminOrderHistory from '@/components/admin/orders/admin-order-history';
 import AdminOrderItemSecret from '@/components/admin/orders/admin-order-item-secret';
 import AdminOrderRefundControl from '@/components/admin/orders/admin-order-refund-control';
+import AdminOrderTrackingLink from '@/components/admin/orders/admin-order-tracking-link';
 import AdminOrderTransitionControls from '@/components/admin/orders/admin-order-transition-controls';
 import { DATE_LOCALE } from '@/lib/date-locale';
 import type {
@@ -215,6 +216,24 @@ export default function AdminOrderDetailPage() {
                         permissions={props.permissions}
                         transitionUrl={props.transitionUrl}
                     />
+
+                    {props.trackingLinkUrl ? (
+                        <section
+                            aria-labelledby="order-tracking-link-heading"
+                            className="mt-6 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs"
+                        >
+                            <h2
+                                id="order-tracking-link-heading"
+                                className="sr-only"
+                            >
+                                {copy.trackingLink.title}
+                            </h2>
+                            <AdminOrderTrackingLink
+                                adminUi={props.adminUi}
+                                trackingLinkUrl={props.trackingLinkUrl}
+                            />
+                        </section>
+                    ) : null}
                 </div>
 
                 <div className="flex flex-col gap-6 lg:col-span-2 lg:col-start-1 lg:row-span-2 lg:row-start-1">

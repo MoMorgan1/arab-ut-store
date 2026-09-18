@@ -65,6 +65,7 @@ final readonly class AdminOrderDetailPage
             'allowedTransitions' => $allowedTargets,
             'transitionUrl' => route($prefix.'orders.transitions.store', ['order' => (string) $order->order_number], absolute: false),
             'revealUrlTemplate' => route($prefix.'orders.items.reveal', ['order' => (string) $order->order_number, 'itemPublicId' => '__ITEM_ID__'], absolute: false),
+            'trackingLinkUrl' => route($prefix.'orders.tracking-link', ['order' => (string) $order->order_number], absolute: false),
             'refund' => [
                 'eligible' => $eligible,
                 'amountMinor' => $amountMinor,

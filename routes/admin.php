@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\MoveFaqEntryController;
 use App\Http\Controllers\Admin\OrderDetailController;
 use App\Http\Controllers\Admin\OrderItemSecretRevealController;
 use App\Http\Controllers\Admin\OrdersController;
+use App\Http\Controllers\Admin\OrderTrackingLinkController;
 use App\Http\Controllers\Admin\OrderTransitionController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\PaylinkRefundController;
@@ -211,6 +212,19 @@ $registerAdminRoutes = function (string $prefix, string $name, ?string $locale =
 
                 if ($locale !== null) {
                     $reveal->defaults('locale', $locale);
+                }
+
+                // A capability URL, so it is a write even though it usually
+                // returns a link that already existed: it is audited, and it
+                // is rate-limited with the other staff writes rather than the
+                // reads.
+                $trackingLink = Route::post('/api/orders/{order}/tracking-link', OrderTrackingLinkController::class)
+                    ->where('order', OrderHandle::routePattern())
+                    ->middleware(['can:orders.view', 'throttle:staff-writes'])
+                    ->name('orders.tracking-link');
+
+                if ($locale !== null) {
+                    $trackingLink->defaults('locale', $locale);
                 }
 
                 $refund = Route::post('/api/orders/{order}/refund', PaylinkRefundController::class)
