@@ -1,0 +1,89 @@
+{
+  "name": "customer-notify - Failure Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger-customer-notify-v1",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        280
+      ],
+      "notes": "Set Workflow Settings -> Error Workflow of customer-notify to point here."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* eslint-disable */\n// Runs inside the Error Workflow, not in customer-notify. Only a real incident\n// reaches it: a rejected signature, a malformed request, a Config node nobody\n// filled in. A wrong number or a Whapi outage does NOT - those answer the store\n// `acknowledged: false` and it retries on its own, so they never page anybody.\n//\n// Execution data is not saved on customer-notify (the request carries the\n// customer's name, number and message), so this is the only record of the\n// failure. It carries the order number and never the recipient.\nconst event = $input.first().json;\nconst execution = event.execution ?? {};\nconst workflow = event.workflow ?? {};\nconst error = execution.error ?? {};\nconst message = error.message || 'خطأ غير معروف';\n\nconst lines = [\n    'customer-notify وقف - رسالة العميل ما اتبعتتش.',\n    'المتجر هيعيد المحاولة تلقائياً، وبعد عشر محاولات هتظهر في لوحة صحة الطابور.',\n    '',\n    `السبب: ${message}`,\n];\n\nif (/CONFIGURE_|not set in the Config node/.test(message)) {\n    lines.push('في قيمة في نود Config لسه ما اتلصقتش.');\n}\nif (/Signature|Key does not match/.test(message)) {\n    lines.push('المفتاح أو السر في n8n مختلف عن اللي في المتجر.');\n}\nif (execution.lastNodeExecuted) {\n    lines.push(`عند النود: ${execution.lastNodeExecuted}`);\n}\nif (workflow.name) {\n    lines.push(`الوركفلو: ${workflow.name}`);\n}\n\n// Deliberately no throw: this runs inside the error execution, so a throw\n// would only bury the original failure.\nreturn [\n    {\n        json: {\n            body: lines.join('\\n'),\n            failureReason: error.message || null,\n        },\n    },\n];\n"
+      },
+      "id": "build-failure-alert-customer-notify-v1",
+      "name": "Build Failure Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        280
+      ],
+      "notes": "Source: nodes/failure-alert.js"
+    },
+    {
+      "parameters": {
+        "chatId": "CONFIGURE_OPS_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.body }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-failure-alert-customer-notify-v1",
+      "name": "Telegram Failure Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        280
+      ],
+      "webhookId": "d3a91f76-2c85-4e0b-b719-5f8c6a2d4e90",
+      "credentials": {
+        "telegramApi": {
+          "id": "CONFIGURE_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      },
+      "notes": "Replace the Chat ID placeholder with the ops Telegram chat. No onError override: an undelivered alert stays red."
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Alert": {
+      "main": [
+        [
+          {
+            "node": "Telegram Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "CUSTOMER_NOTIFY_FAILURE_ALERT_VERSION",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
