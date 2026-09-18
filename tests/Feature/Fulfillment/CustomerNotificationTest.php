@@ -37,10 +37,14 @@ function notifyTestContext(
     OrderStatus $orderStatus = OrderStatus::InProgress,
     OrderItemStatus $itemStatus = OrderItemStatus::InProgress,
 ): array {
+    // A number per order: several of these tests build more than one, and
+    // the column is unique.
+    static $sequence = 0;
+
     $customer = User::factory()->create([
         'first_name' => 'Fahad',
         'last_name' => 'Al-Otaibi',
-        'phone' => '+966512345678',
+        'phone' => '+9665123'.(45678 + $sequence++),
     ]);
 
     $order = Order::factory()->for($customer)->create([
@@ -72,14 +76,21 @@ function notifyTestContext(
     return [$order, $item, $job];
 }
 
-function applyTestHold(FulfillmentJob $job, OrderHoldReason $reason): void
+/**
+ * A hold as the coins path produces it: the card offers exactly the buttons
+ * this reason's wording names, unless a test is asking what happens when it
+ * does not.
+ *
+ * @param  list<SupplierAction>|null  $allowedActions
+ */
+function applyTestHold(FulfillmentJob $job, OrderHoldReason $reason, ?array $allowedActions = null): void
 {
     app(ApplySupplierObservation::class)->execute(
         job: $job->fresh(),
         state: new TranslatedState(
             status: OrderStatus::WaitingForCustomer,
             holdReason: $reason,
-            allowedActions: [SupplierAction::Resume],
+            allowedActions: $allowedActions ?? CustomerNotificationCatalog::buttonsFor($reason) ?? [],
             supported: true,
             observedState: 'test-hold',
         ),
@@ -177,18 +188,65 @@ test('every hold reason is either mapped to a template or explicitly silent', fu
     $templates[] = CustomerNotificationCatalog::TEMPLATE_ORDER_REFUNDED;
 
     foreach ($templates as $template) {
-        expect($ar)->toHaveKey($template, "missing ar wording for {$template}")
-            ->and($en)->toHaveKey($template, "missing en wording for {$template}");
+        expect(array_key_exists($template, $ar))->toBeTrue("missing ar wording for {$template}")
+            ->and(array_key_exists($template, $en))->toBeTrue("missing en wording for {$template}");
 
         foreach (['ar' => $ar, 'en' => $en] as $locale => $catalogue) {
-            expect($catalogue[$template])->toContain(':order_number', "{$template} ({$locale}) names no order")
-                ->and($catalogue[$template])->toContain(':link', "{$template} ({$locale}) carries no link")
-                ->and($catalogue[$template])->not->toContain('track.arab-ut.com', "{$template} ({$locale}) points at the retired tracker");
+            $body = $catalogue[$template];
+
+            expect(str_contains($body, ':order_number'))->toBeTrue("{$template} ({$locale}) names no order")
+                ->and(str_contains($body, ':link'))->toBeTrue("{$template} ({$locale}) carries no link")
+                ->and(str_contains($body, 'track.arab-ut.com'))->toBeFalse("{$template} ({$locale}) points at the retired tracker");
         }
     }
 });
 
-test('each template names only a button its reason actually renders', function (): void {
+test('the catalogue names the buttons the wording actually names', function (): void {
+    $ar = include lang_path('ar/notifications.php');
+    $en = include lang_path('en/notifications.php');
+
+    // The card's own labels, so a rename there fails here rather than
+    // shipping a message that points at a button by its old name.
+    $labels = [
+        'ar' => [
+            'edit' => trans('account.orders.tracking.edit_credentials', locale: 'ar'),
+            'resume' => trans('account.orders.tracking.resume', locale: 'ar'),
+        ],
+        'en' => [
+            'edit' => trans('account.orders.tracking.edit_credentials', locale: 'en'),
+            'resume' => trans('account.orders.tracking.resume', locale: 'en'),
+        ],
+    ];
+
+    foreach (CustomerNotificationCatalog::MAPPED as $reason => $entry) {
+        foreach (['ar' => $ar, 'en' => $en] as $locale => $catalogue) {
+            $body = $catalogue[$entry['template']];
+
+            foreach (['edit', 'resume'] as $button) {
+                $named = str_contains($body, $labels[$locale][$button]);
+                $declared = in_array($button, $entry['buttons'], true);
+
+                expect($named)->toBe(
+                    $declared,
+                    $declared
+                        ? "{$reason} ({$locale}) declares the {$button} button its wording never names"
+                        : "{$reason} ({$locale}) names the {$button} button the catalogue does not declare",
+                );
+            }
+        }
+    }
+
+    // A message about the whole order has no button to press.
+    foreach ([CustomerNotificationCatalog::TEMPLATE_ORDER_CANCELLED, CustomerNotificationCatalog::TEMPLATE_ORDER_REFUNDED] as $template) {
+        foreach (['ar' => $ar, 'en' => $en] as $locale => $catalogue) {
+            foreach ($labels[$locale] as $label) {
+                expect($catalogue[$template])->not->toContain($label, "{$template} ({$locale}) names a button");
+            }
+        }
+    }
+});
+
+test('a coins hold offers every button its message names', function (): void {
     $translator = new SupplierStateTranslator;
     $maps = new ReflectionClass(SupplierStateTranslator::class);
     /** @var array<string, OrderHoldReason> $accountChecks */
@@ -196,12 +254,20 @@ test('each template names only a button its reason actually renders', function (
     /** @var array<string, OrderHoldReason> $economyStates */
     $economyStates = $maps->getConstant('ECONOMY_STATE_HOLDS');
 
-    /** @var array<string, list<string>> $codesByReason */
-    $codesByReason = [];
+    $checked = 0;
 
+    // Every code, not every reason: one reason reaches the customer through
+    // several supplier codes and they do not all offer the same buttons.
+    // `wrongConsole` and `wrongPersona` are both `platform`, and only the
+    // second offers resume - so a message that named it would be wrong for
+    // half the customers who received it.
     foreach (['accountCheck' => $accountChecks, 'economyState' => $economyStates] as $field => $map) {
         foreach ($map as $code => $reason) {
-            $other = $field === 'accountCheck'
+            if (CustomerNotificationCatalog::templateFor($reason) === null) {
+                continue;
+            }
+
+            $payload = $field === 'accountCheck'
                 ? ['status' => 'entered', 'accountCheck' => $code, 'economyState' => '']
                 : ['status' => 'entered', 'accountCheck' => '', 'economyState' => $code];
 
@@ -209,43 +275,74 @@ test('each template names only a button its reason actually renders', function (
                 new RawSupplierObservation(
                     supplier: Supplier::Fft,
                     supplierOrderId: 'fft-catalogue-proof',
-                    payload: $other,
+                    payload: $payload,
                     fetchedAt: CarbonImmutable::now(),
                 ),
                 OrderStatus::InProgress,
                 DeliveryPhase::Coins,
             );
 
-            $codesByReason[$reason->value][] = $state->allowedActions;
+            if ($state->holdReason !== $reason) {
+                continue;
+            }
+
+            $checked++;
+
+            expect(CustomerNotificationCatalog::fits($reason, $state->allowedActions))->toBeTrue(
+                "{$code} holds on {$reason->value}, whose message names a button the card does not offer",
+            );
         }
     }
 
-    foreach (OrderHoldReason::cases() as $reason) {
-        $action = CustomerNotificationCatalog::actionFor($reason);
-        $renders = $codesByReason[$reason->value] ?? [];
+    expect($checked)->toBeGreaterThan(15);
+});
 
-        if ($action === null) {
-            // Silent: nothing to prove about buttons.
+test('a challenge hold sends nothing, because no wording fits its buttons', function (): void {
+    $maps = new ReflectionClass(SupplierStateTranslator::class);
+    /** @var array<string, OrderHoldReason|null> $sbcHolds */
+    $sbcHolds = $maps->getConstant('SBC_STATUS_HOLDS');
+
+    $messaged = 0;
+
+    // The challenge card offers «إعادة المحاولة», never «تشغيل الطلب», so
+    // every wording that names resume is untrue there. Rather than send a
+    // sentence pointing at a button that is not on the screen, these holds
+    // stay silent until they have wording of their own.
+    foreach ($sbcHolds as $status => $reason) {
+        if (! $reason instanceof OrderHoldReason || CustomerNotificationCatalog::templateFor($reason) === null) {
             continue;
         }
 
-        $rendersEdit = false;
-        $rendersResume = false;
+        $messaged++;
 
-        foreach ($renders as $actions) {
-            $rendersEdit = $rendersEdit || in_array(SupplierAction::EditCredentials, $actions, true);
-            $rendersResume = $rendersResume || in_array(SupplierAction::Resume, $actions, true);
+        $rendered = SupplierStateTranslator::sbcChallengeActions(Supplier::Fft, (string) $status);
+
+        if (CustomerNotificationCatalog::fits($reason, $rendered)) {
+            // Only where the wording happens to name exactly what the
+            // challenge card offers - the edit form, or no button at all.
+            foreach (CustomerNotificationCatalog::buttonsFor($reason) ?? [] as $button) {
+                expect($button)->toBe(
+                    SupplierAction::EditCredentials,
+                    "{$status} would send a message naming a button the challenge card lacks",
+                );
+            }
         }
-
-        match ($action) {
-            'edit' => expect($rendersEdit)->toBeTrue("{$reason->value} names the edit form it never renders")
-                ->and($rendersResume)->toBeFalse("{$reason->value} never renders resume"),
-            'resume' => expect($rendersResume)->toBeTrue("{$reason->value} names resume it never renders"),
-            'none' => expect($rendersEdit)->toBeFalse("{$reason->value} renders edit")
-                ->and($rendersResume)->toBeFalse("{$reason->value} renders resume"),
-            default => expect(false)->toBeTrue("unknown catalogue action {$action}"),
-        };
     }
+
+    expect($messaged)->toBeGreaterThan(5);
+});
+
+test('a hold whose card lacks the button it names queues nothing', function (): void {
+    [$order, $item, $job] = notifyTestContext();
+
+    // The market-locked message says «اضغط تشغيل الطلب». This card does not
+    // offer it, so the message is not owed - the customer is not sent looking
+    // for a button that is not there.
+    applyTestHold($job, OrderHoldReason::MarketLocked, [SupplierAction::RetryChallenge]);
+
+    expect($item->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer)
+        ->and(NotificationDelivery::query()->count())->toBe(0)
+        ->and(IntegrationEvent::query()->where('event_type', 'customer.notify')->count())->toBe(0);
 });
 
 test('an admin pause queues one row per item that stopped, and nothing for a note without a reason', function (): void {
@@ -258,6 +355,18 @@ test('an admin pause queues one row per item that stopped, and nothing for a not
         'total_halalah' => 20_000,
     ]);
 
+    // The admin picks one reason for the order, but each item's card draws
+    // its buttons from its own job. Both of these offer the edit form the
+    // backup-codes message names; the third item below offers nothing.
+    $job->forceFill(['allowed_actions' => [SupplierAction::EditCredentials->value]])->save();
+    FulfillmentJob::factory()->create([
+        'order_item_id' => $second->id,
+        'status' => FulfillmentStatus::InProgress,
+        'supplier' => Supplier::Fft,
+        'delivery_phase' => DeliveryPhase::Coins,
+        'allowed_actions' => [SupplierAction::EditCredentials->value],
+    ]);
+
     app(TransitionAdminOrder::class)->execute(
         $admin,
         (string) $order->public_id,
@@ -268,6 +377,21 @@ test('an admin pause queues one row per item that stopped, and nothing for a not
 
     $templates = NotificationDelivery::query()->pluck('template_key')->all();
     expect($templates)->toEqualCanonicalizing(['backup_codes', 'backup_codes']);
+
+    // An item whose card offers no edit form is stopped just the same, and
+    // told nothing - the message would name a button it does not have.
+    [$buttonlessOrder, $buttonlessItem] = notifyTestContext();
+
+    app(TransitionAdminOrder::class)->execute(
+        $admin,
+        (string) $buttonlessOrder->public_id,
+        OrderStatus::WaitingForCustomer,
+        OrderStatus::InProgress,
+        OrderHoldReason::BackupCodes,
+    );
+
+    expect($buttonlessItem->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer)
+        ->and(NotificationDelivery::query()->where('order_id', $buttonlessOrder->id)->count())->toBe(0);
 
     // A pause the admin writes as a bare note has no template to send.
     [$plainOrder, $plainItem, $plainJob] = notifyTestContext();

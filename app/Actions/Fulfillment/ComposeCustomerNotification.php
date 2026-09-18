@@ -29,8 +29,8 @@ final class ComposeCustomerNotification
     ) {}
 
     /**
-     * @return array{to: string, body: string}  `to` is international digits
-     *                                          without the `+`, as Whapi takes it.
+     * @return array{to: string, body: string} `to` is international digits
+     *                                         without the `+`, as Whapi takes it.
      */
     public function execute(NotificationDelivery $notification): array
     {
@@ -64,12 +64,15 @@ final class ComposeCustomerNotification
             throw new CustomerNotificationIncomplete('template_unknown', 'The queued template has no wording.');
         }
 
-        $name = trim((string) ($order->user?->first_name ?? ''));
+        $name = trim((string) ($order->user->first_name ?? ''));
 
         if ($name === '') {
             $name = $locale === 'en' ? 'there' : 'بك';
         } else {
-            $name = (string) preg_split('/\s+/u', $name)[0];
+            // The greeting takes the first word of the first name. A checkout
+            // form that collected a full name should not produce a WhatsApp
+            // message that reads like a letter from a bank.
+            $name = (string) preg_replace('/\s.*\z/us', '', $name);
         }
 
         $body = trans($key, [

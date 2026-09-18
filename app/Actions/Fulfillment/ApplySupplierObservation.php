@@ -201,9 +201,17 @@ final class ApplySupplierObservation
                     // row; a silent reason owes none, and a recovery or a
                     // repeat of the same hold writes nothing new - the
                     // idempotency key turns a repeated attempt into a replay.
+                    //
+                    // `fits` is the last condition and the strictest: the
+                    // wording names a button, and this same observation is
+                    // what decides which buttons the card shows. Where they
+                    // disagree - the challenge phase, which offers
+                    // «إعادة المحاولة» and never «تشغيل الطلب» - the message
+                    // is not sent rather than sent wrong.
                     if ($targetItemStatus === OrderItemStatus::WaitingForCustomer
                         && $previousItemStatus !== OrderItemStatus::WaitingForCustomer
                         && $state->holdReason !== null
+                        && CustomerNotificationCatalog::fits($state->holdReason, $state->allowedActions)
                         && ($template = CustomerNotificationCatalog::templateFor($state->holdReason)) !== null) {
                         $this->queueNotification->forItem(
                             $order,

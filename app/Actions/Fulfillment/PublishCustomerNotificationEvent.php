@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Exceptions\CustomerNotificationIncomplete;
 use App\Fulfillment\Notifications\CustomerNotificationCatalog;
 use App\Fulfillment\Outbox\SignedOutboxDelivery;
+use App\Models\FulfillmentJob;
 use App\Models\IntegrationEvent;
 use App\Models\NotificationDelivery;
 use App\Models\Order;
@@ -189,7 +190,24 @@ final class PublishCustomerNotificationEvent
 
         $item = OrderItem::query()->whereKey($notification->order_item_id)->first();
 
-        return $item instanceof OrderItem && $item->status === OrderItemStatus::WaitingForCustomer;
+        if (! $item instanceof OrderItem || $item->status !== OrderItemStatus::WaitingForCustomer) {
+            return false;
+        }
+
+        // Still held, but held for what? A hold that changes reason without
+        // leaving WaitingForCustomer queues nothing new - the writers only
+        // fire on the move into it - so without this the queued message
+        // would go out describing a problem the customer no longer has.
+        //
+        // Only a supplier hold can be checked this way: `hold_reason` is
+        // written by the observation path, and an admin's pause carries its
+        // reason in the transition rather than on the job. So a job with no
+        // reason of its own leaves the item's status as the only evidence,
+        // and that evidence already said yes.
+        $reason = FulfillmentJob::query()->where('order_item_id', $item->id)->first()?->hold_reason;
+
+        return $reason === null
+            || CustomerNotificationCatalog::templateFor($reason) === $notification->template_key;
     }
 
     private function subjectKey(NotificationDelivery $notification): string

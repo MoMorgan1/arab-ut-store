@@ -16,6 +16,7 @@ use App\Exceptions\AdminOrderStatusConflict;
 use App\Fulfillment\Notifications\CustomerNotificationCatalog;
 use App\Fulfillment\Notifications\QueueCustomerNotification;
 use App\Loyalty\Actions\AccrueOrderCashback;
+use App\Models\FulfillmentJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
@@ -198,10 +199,22 @@ final class TransitionAdminOrder
             // reason is silent here too, for the same noise argument. A
             // cancellation is order-level: one message for the order, not
             // one per item.
+            //
+            // Per item, not per order, for the buttons as well: an admin
+            // chooses one reason for the whole order, but the card each
+            // customer opens draws its buttons from that item's own job. A
+            // message whose wording names a button this item does not offer
+            // is not sent for this item.
             if ($targetStatus === OrderStatus::WaitingForCustomer
                 && $reason !== null
                 && ($template = CustomerNotificationCatalog::templateFor($reason)) !== null) {
                 foreach ($heldItems as [$heldItem, $heldHistoryId]) {
+                    $job = FulfillmentJob::query()->where('order_item_id', $heldItem->id)->first();
+
+                    if (! CustomerNotificationCatalog::fits($reason, $job?->allowedActions() ?? [])) {
+                        continue;
+                    }
+
                     $this->queueNotification->forItem(
                         $order,
                         $heldItem,

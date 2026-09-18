@@ -1106,9 +1106,23 @@ changed in the reading:
   the comparison image from the coins configurator's own help modal, composed into one picture
   (`public/images/store/coins/market-compare.webp`) so it travels as a single image with a caption.
 - **The copy points at the button, not at support** - and not uniformly, because the button is not
-  uniform. Derived from `EDIT_STATES` / `RESUME_STATES`: `credentials` and `backup_codes` offer only
-  the edit form, nine reasons offer «تشغيل الطلب», and three offer nothing at all. Naming a button a
-  reason never renders would be worse than the sentence it replaced.
+  uniform. Naming a button a reason never renders would be worse than the sentence it replaced.
+
+  *Corrected 2026-09-18, while building D3c.* The counts written here ("nine offer «تشغيل الطلب»,
+  three offer nothing") were read off `EDIT_STATES` / `RESUME_STATES` at a moment those lists were
+  still being edited; derived from the code as it stands, it is eleven and one. The counts were also
+  the wrong shape. A reason does not have a button - a *state* does, and the same reason arrives
+  through several supplier codes that disagree: `wrongConsole` and `wrongPersona` are both
+  `platform`, and only the second offers resume. Worse, the challenge phase offers «إعادة المحاولة»
+  and never «تشغيل الطلب» at all (`sbcChallengeActions()` emits only `EditCredentials` and
+  `RetryChallenge`), so eleven of the fourteen messages would have named a button that is not on the
+  screen.
+
+  So the rule is enforced on the state rather than counted per reason: the catalogue declares which
+  buttons each wording names, a test reads the copy and fails if the two disagree, and every queue
+  site sends only when the card that customer will open offers all of them. A challenge-phase hold
+  therefore sends nothing until it has wording of its own - open, and owner-visible, rather than
+  papered over.
 
 **The platform hold is not the dead end it looked like.** The field stays locked because platforms
 are priced differently; the customer sends an account on the platform that was ordered, or tells us

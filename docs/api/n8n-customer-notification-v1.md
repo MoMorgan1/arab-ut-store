@@ -124,6 +124,18 @@ their own (`ea_servers`, `store_stock`, `connection`, `no_player`,
 `maintenance`, `paused`, `below_minimum`). A message about something that
 fixes itself is noise.
 
+A mapped reason can also produce nothing, and this is the store's decision
+rather than n8n's business: each message points at a button by name, and the
+store sends it only when the card that customer will open offers that button.
+Two things make that conditional rather than settled per reason. One reason
+reaches the customer through several supplier codes and they do not all offer
+the same buttons - `wrongConsole` and `wrongPersona` are both `platform`, and
+only the second offers resume. And the challenge phase offers
+«إعادة المحاولة», never «تشغيل الطلب», so the eleven messages that name resume
+are untrue there and stay unsent until they have wording of their own. A
+message naming a button that is not on the screen is worse than the sentence
+it replaced, which is why the store would rather say nothing.
+
 ## What the store does on each answer
 
 | n8n answer | Store action |
