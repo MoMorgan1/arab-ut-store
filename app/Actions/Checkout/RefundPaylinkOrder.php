@@ -12,6 +12,8 @@ use App\Enums\UserRole;
 use App\Enums\WalletEntryType;
 use App\Exceptions\Checkout\CheckoutUnavailable;
 use App\Exceptions\Payments\PaymentConfigurationException;
+use App\Fulfillment\Notifications\CustomerNotificationCatalog;
+use App\Fulfillment\Notifications\QueueCustomerNotification;
 use App\Loyalty\Actions\ReverseOrderCashback;
 use App\Loyalty\Support\WalletLedgerWriter;
 use App\Models\Order;
@@ -33,6 +35,7 @@ final readonly class RefundPaylinkOrder
         private RecordStaffAudit $recordStaffAudit,
         private ReverseOrderCashback $reverseOrderCashback,
         private WalletLedgerWriter $walletLedgerWriter,
+        private QueueCustomerNotification $queueNotification,
     ) {}
 
     public function execute(Order $order, string $reason, User $actor, ?string $ipAddress = null): Refund
@@ -258,12 +261,21 @@ final readonly class RefundPaylinkOrder
         ])->save();
         $order->forceFill(['status' => OrderStatus::Refunded])->save();
         $order->items()->update(['status' => OrderItemStatus::Refunded->value]);
-        $order->statusHistory()->create([
+        $refundHistory = $order->statusHistory()->create([
             'actor_user_id' => $actor->id,
             'status' => OrderStatusHistoryStatus::Refunded,
             ...OrderClosingNote::refund($result->amountHalalah, (int) $order->wallet_halalah),
             'metadata' => ['source' => 'paylink', 'refund_id' => $locked->public_id],
         ]);
+
+        // Cancelled and refunded are two different messages because the store
+        // knows which. This one commits with the refund or not at all.
+        $this->queueNotification->forOrder(
+            $order,
+            CustomerNotificationCatalog::TEMPLATE_ORDER_REFUNDED,
+            (int) $refundHistory->id,
+            (string) $order->locale,
+        );
         $locked->forceFill([
             'status' => 'completed',
             'provider_refund_id' => $result->providerRefundId,

@@ -8,7 +8,7 @@ test('all expected schedule events are registered with correct frequencies and o
     $schedule = app(Schedule::class);
     $events = collect($schedule->events());
 
-    expect($events)->toHaveCount(14);
+    expect($events)->toHaveCount(15);
 
     $findEvent = function (string $commandSubstring) use ($events): ?Event {
         return $events->first(fn (Event $event): bool => str_contains((string) $event->command, $commandSubstring));
@@ -36,6 +36,12 @@ test('all expected schedule events are registered with correct frequencies and o
     expect($publishChallenges)->not->toBeNull()
         ->and($publishChallenges->expression)->toBe('* * * * *')
         ->and($publishChallenges->withoutOverlapping)->toBeTrue();
+
+    // 3c. PublishCustomerNotificationEvents - everyMinute, without overlapping
+    $publishNotifications = $findEvent('orders:publish-customer-notifications');
+    expect($publishNotifications)->not->toBeNull()
+        ->and($publishNotifications->expression)->toBe('* * * * *')
+        ->and($publishNotifications->withoutOverlapping)->toBeTrue();
 
     // 4. MaintainChatConversations - hourly, without overlapping
     $maintainChat = $findEvent('chat:maintain-conversations');

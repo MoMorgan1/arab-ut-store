@@ -53,12 +53,21 @@ return [
         'solve_challenge_url' => env('N8N_SOLVE_CHALLENGE_URL'),
         'solve_challenge_key' => env('N8N_SOLVE_CHALLENGE_KEY'),
         'solve_challenge_secret' => env('N8N_SOLVE_CHALLENGE_SECRET'),
+        // The webhook n8n exposes for customer WhatsApp notifications
+        // (docs/api/n8n-customer-notification-v1.md). Unset until the owner
+        // switches sending on: the publisher checks first and touches
+        // nothing while any of the three is missing, so merging the queue
+        // writers sends nobody anything.
+        'customer_notify_url' => env('N8N_CUSTOMER_NOTIFY_URL'),
+        'customer_notify_key' => env('N8N_CUSTOMER_NOTIFY_KEY'),
+        'customer_notify_secret' => env('N8N_CUSTOMER_NOTIFY_SECRET'),
         // After this many failed delivery attempts an order-paid event is
         // retired as failed for manual requeue instead of being retried
         // forever. A literal rather than an env entry, so .env.example keeps
         // its one-to-one parity with this file.
         'order_paid_max_attempts' => 10,
         'challenge_ready_max_attempts' => 10,
+        'customer_notify_max_attempts' => 10,
         'catalog_media_hosts' => array_values(array_filter(array_map(
             static fn (string $host): string => strtolower(trim($host)),
             explode(',', (string) env('N8N_CATALOG_MEDIA_HOSTS', '')),
