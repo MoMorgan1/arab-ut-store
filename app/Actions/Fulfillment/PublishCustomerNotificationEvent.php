@@ -3,6 +3,7 @@
 namespace App\Actions\Fulfillment;
 
 use App\Enums\NotificationStatus;
+use App\Enums\OrderHoldReason;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
 use App\Exceptions\CustomerNotificationIncomplete;
@@ -13,6 +14,7 @@ use App\Models\IntegrationEvent;
 use App\Models\NotificationDelivery;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -194,20 +196,46 @@ final class PublishCustomerNotificationEvent
             return false;
         }
 
-        // Still held, but held for what? A hold that changes reason without
-        // leaving WaitingForCustomer queues nothing new - the writers only
-        // fire on the move into it - so without this the queued message
-        // would go out describing a problem the customer no longer has.
-        //
-        // Only a supplier hold can be checked this way: `hold_reason` is
-        // written by the observation path, and an admin's pause carries its
-        // reason in the transition rather than on the job. So a job with no
-        // reason of its own leaves the item's status as the only evidence,
-        // and that evidence already said yes.
-        $reason = FulfillmentJob::query()->where('order_item_id', $item->id)->first()?->hold_reason;
+        $payload = $notification->payload ?? [];
+        $historyId = is_int($payload['history_id'] ?? null) ? $payload['history_id'] : 0;
+        $reason = OrderHoldReason::tryFrom((string) ($payload['reason'] ?? ''));
 
-        return $reason === null
-            || CustomerNotificationCatalog::templateFor($reason) === $notification->template_key;
+        if ($historyId <= 0 || ! $reason instanceof OrderHoldReason) {
+            // A row that cannot say which transition it speaks for cannot be
+            // shown to be still true, and a message that might be false is
+            // not sent.
+            return false;
+        }
+
+        // Still waiting, but waiting on the same thing? Both writers move an
+        // item's status only when it changes, so any later history row for
+        // this item means it left this hold - and whatever put it back queued
+        // its own message. The older one is superseded.
+        $superseded = OrderStatusHistory::query()
+            ->where('order_item_id', $item->id)
+            ->where('id', '>', $historyId)
+            ->exists();
+
+        if ($superseded) {
+            return false;
+        }
+
+        $job = FulfillmentJob::query()->where('order_item_id', $item->id)->first();
+
+        // The button invariant is re-asked here, not only at queue time: the
+        // card is drawn from the job, and an observation that keeps the item
+        // waiting writes no history row while still changing what it offers.
+        if (! CustomerNotificationCatalog::fits($reason, $job?->allowedActions() ?? [])) {
+            return false;
+        }
+
+        // The same silent change can move the reason. On the supplier path
+        // the job is authoritative about it, so a disagreement means the
+        // message describes a problem the customer no longer has. An admin's
+        // pause carries its reason in the transition rather than on the job,
+        // and the supersession check above is its whole test.
+        return ($payload['source'] ?? null) !== 'supplier'
+            || $job?->hold_reason === $reason;
     }
 
     private function subjectKey(NotificationDelivery $notification): string

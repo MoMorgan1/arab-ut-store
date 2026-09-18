@@ -1,14 +1,23 @@
 <?php
 
 use App\Actions\Fulfillment\PublishCustomerNotificationEvent;
+use App\Enums\DeliveryPhase;
+use App\Enums\FulfillmentStatus;
 use App\Enums\NotificationStatus;
+use App\Enums\OrderHoldReason;
 use App\Enums\OrderItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusHistoryStatus;
+use App\Enums\Supplier;
+use App\Enums\SupplierAction;
+use App\Fulfillment\Notifications\CustomerNotificationCatalog;
 use App\Fulfillment\Notifications\QueueCustomerNotification;
+use App\Models\FulfillmentJob;
 use App\Models\IntegrationEvent;
 use App\Models\NotificationDelivery;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -47,7 +56,35 @@ function notifyReadyDelivery(string $template = 'credentials'): array
         'total_halalah' => 20_000,
     ]);
 
-    $notification = app(QueueCustomerNotification::class)->forItem($order, $item, $template, 4242, 'ar');
+    $reason = OrderHoldReason::from($template);
+
+    // The card the message points at: the job carries the hold and offers
+    // exactly the buttons this wording names, which is what the publisher
+    // re-checks before it sends.
+    FulfillmentJob::factory()->create([
+        'order_item_id' => $item->id,
+        'status' => FulfillmentStatus::InProgress,
+        'supplier' => Supplier::Fft,
+        'delivery_phase' => DeliveryPhase::Coins,
+        'hold_reason' => $reason,
+        'allowed_actions' => array_map(
+            fn (SupplierAction $action): string => $action->value,
+            CustomerNotificationCatalog::buttonsFor($reason) ?? [],
+        ),
+    ]);
+
+    $history = OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'actor_user_id' => null,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'note_ar' => null,
+        'note_en' => null,
+        'metadata' => ['source' => 'supplier'],
+    ]);
+
+    $notification = app(QueueCustomerNotification::class)
+        ->forItem($order, $item, $template, (int) $history->id, 'ar', $reason, 'supplier');
     $event = IntegrationEvent::query()->whereKey($notification->integration_event_id)->firstOrFail();
 
     return [$order, $item, $notification, $event];
@@ -212,4 +249,117 @@ test('no stored row ever holds the full number', function (): void {
         $stored = json_encode([$row->payload, $row->last_error], JSON_THROW_ON_ERROR);
         expect($stored)->not->toContain('966512345678');
     }
+});
+
+test('a later hold supersedes the message the earlier one queued', function (): void {
+    [$order, $item, $notification, $event] = notifyReadyDelivery();
+    Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);
+
+    // The customer fixed the credentials, the order ran, and it stopped again
+    // on something else. Two history rows later, the first message describes a
+    // problem that is over - and the second one, queued for the new hold, is
+    // the one that should go.
+    OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'actor_user_id' => null,
+        'status' => OrderStatusHistoryStatus::InProgress,
+        'metadata' => ['source' => 'supplier'],
+    ]);
+
+    $second = OrderStatusHistory::query()->create([
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'actor_user_id' => null,
+        'status' => OrderStatusHistoryStatus::WaitingForCustomer,
+        'metadata' => ['source' => 'admin'],
+    ]);
+
+    FulfillmentJob::query()->where('order_item_id', $item->id)->update([
+        'hold_reason' => OrderHoldReason::Credentials->value,
+        'allowed_actions' => json_encode([SupplierAction::EditCredentials->value]),
+    ]);
+
+    $newer = app(QueueCustomerNotification::class)->forItem(
+        $order->fresh(),
+        $item->fresh(),
+        'backup_codes',
+        (int) $second->id,
+        'ar',
+        OrderHoldReason::BackupCodes,
+        'admin',
+    );
+
+    expect(app(PublishCustomerNotificationEvent::class)->execute($event))->toBeTrue();
+    Http::assertNothingSent();
+    expect($notification->fresh()->status)->toBe(NotificationStatus::Expired)
+        ->and($notification->fresh()->last_error)->toBe('hold_no_longer_current');
+
+    // And the admin's message, whose reason lives in its transition rather
+    // than on the job, is not judged against the job's stale supplier reason.
+    $newerEvent = IntegrationEvent::query()->whereKey($newer->integration_event_id)->firstOrFail();
+
+    expect(app(PublishCustomerNotificationEvent::class)->execute($newerEvent))->toBeTrue()
+        ->and($newer->fresh()->status)->toBe(NotificationStatus::Sent);
+
+    Http::assertSentCount(1);
+});
+
+test('a hold that changed reason without changing status expires', function (): void {
+    [$order, $item, $notification, $event] = notifyReadyDelivery();
+    Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);
+
+    // A supplier read can move the reason while the item stays waiting, and
+    // then it writes no history row at all. The queued message would still be
+    // about credentials.
+    FulfillmentJob::query()->where('order_item_id', $item->id)->update([
+        'hold_reason' => OrderHoldReason::Captcha->value,
+        'allowed_actions' => json_encode([SupplierAction::Resume->value]),
+    ]);
+
+    expect(app(PublishCustomerNotificationEvent::class)->execute($event))->toBeTrue();
+
+    Http::assertNothingSent();
+    expect($notification->fresh()->status)->toBe(NotificationStatus::Expired);
+});
+
+test('a card that lost the button the message names expires it', function (): void {
+    [$order, $item, $notification, $event] = notifyReadyDelivery();
+    Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);
+
+    // Same hold, same status, but the edit form is no longer offered. The
+    // message says «تعديل بيانات الطلب»; sending it now would point at
+    // nothing.
+    FulfillmentJob::query()->where('order_item_id', $item->id)->update([
+        'allowed_actions' => json_encode([SupplierAction::RetryChallenge->value]),
+    ]);
+
+    expect(app(PublishCustomerNotificationEvent::class)->execute($event))->toBeTrue();
+
+    Http::assertNothingSent();
+    expect($notification->fresh()->status)->toBe(NotificationStatus::Expired);
+});
+
+test('retiring an exhausted event fails its delivery row with it', function (): void {
+    [$order, $item, $notification, $event] = notifyReadyDelivery();
+    Http::fake(['https://n8n.example.test/*' => Http::response(['data' => ['acknowledged' => true]])]);
+
+    $event->forceFill(['attempts' => 10, 'last_error' => 'delivery_failed', 'available_at' => now()->subMinute()])->save();
+
+    Artisan::call('orders:publish-customer-notifications');
+
+    expect($event->fresh()->status)->toBe('failed');
+
+    // A notification still reading `queued` beside a failed event says it is
+    // owed when nothing will send it - and the requeue command, which looks
+    // for a failed row, would not find it.
+    $notification->refresh();
+    expect($notification->status)->toBe(NotificationStatus::Failed)
+        ->and($notification->failed_at)->not->toBeNull();
+
+    Artisan::call('orders:requeue-paid-event', ['event_id' => $event->event_id]);
+
+    expect($event->fresh()->status)->toBe('pending')
+        ->and($notification->fresh()->status)->toBe(NotificationStatus::Queued)
+        ->and($notification->fresh()->failed_at)->toBeNull();
 });

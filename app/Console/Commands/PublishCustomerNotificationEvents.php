@@ -3,10 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Actions\Fulfillment\PublishCustomerNotificationEvent;
+use App\Enums\NotificationStatus;
 use App\Fulfillment\Notifications\CustomerNotificationCatalog;
 use App\Fulfillment\Outbox\OutboxQueue;
 use App\Fulfillment\Outbox\SignedOutboxDelivery;
+use App\Models\IntegrationEvent;
+use App\Models\NotificationDelivery;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 final class PublishCustomerNotificationEvents extends Command
 {
@@ -31,6 +35,27 @@ final class PublishCustomerNotificationEvents extends Command
         $ceiling = max(1, (int) config('services.n8n.customer_notify_max_attempts', 10));
 
         $retired = $queue->retireExhausted(CustomerNotificationCatalog::EVENT_TYPE, $ceiling, 'Customer-notification');
+
+        if ($retired > 0) {
+            // Retirement is the outbox's word, and the delivery row has to
+            // hear it. `retireExhausted` only knows about integration_events;
+            // a notification left reading `queued` beside a failed event is
+            // saying it is still owed when nothing will ever send it, and the
+            // requeue command - which looks for a failed row - would not find
+            // it either.
+            NotificationDelivery::query()
+                ->whereIn('integration_event_id', IntegrationEvent::query()
+                    ->select('id')
+                    ->where('event_type', CustomerNotificationCatalog::EVENT_TYPE)
+                    ->where('status', 'failed'))
+                ->where('status', NotificationStatus::Queued)
+                ->update([
+                    'status' => NotificationStatus::Failed,
+                    'failed_at' => now(),
+                    'last_error' => DB::raw("COALESCE(last_error, 'max_attempts_exceeded')"),
+                    'updated_at' => now(),
+                ]);
+        }
 
         $events = $queue->due(CustomerNotificationCatalog::EVENT_TYPE, $ceiling);
         $failed = 0;

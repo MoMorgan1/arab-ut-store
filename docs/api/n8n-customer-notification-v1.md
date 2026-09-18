@@ -136,6 +136,26 @@ are untrue there and stay unsent until they have wording of their own. A
 message naming a button that is not on the screen is worse than the sentence
 it replaced, which is why the store would rather say nothing.
 
+## What is checked at send time, and the window that stays open
+
+A queued message says what its transition saw, and the publisher asks again
+before sending: the item is still waiting, no later status row has superseded
+the transition it was written for, the card still offers every button its
+wording names, and - on the supplier path, where the job is authoritative
+about it - the hold is still the same one. A message that fails any of these
+is marked `expired` and its event `processed`: it is not owed, so it is not
+retried.
+
+Those reads are not locked against the writers, and they cannot be: the send
+is an outbound HTTP call, and holding an order's row for its duration would
+block the checkout and the sweep behind a third party. So a transition that
+commits between the last check and the POST still produces one message that
+was true when it was judged and stale when it arrived - a window of a read
+and one request, entered only by an order that changes state in exactly that
+moment. That is the accepted cost of not locking an order across a network
+call, and it is written down rather than hidden: the alternative trades a rare
+stale message for a common stalled order.
+
 ## What the store does on each answer
 
 | n8n answer | Store action |

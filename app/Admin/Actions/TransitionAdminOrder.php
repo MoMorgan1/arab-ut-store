@@ -221,6 +221,8 @@ final class TransitionAdminOrder
                         $template,
                         $heldHistoryId,
                         (string) $order->locale,
+                        $reason,
+                        'admin',
                     );
                 }
             }

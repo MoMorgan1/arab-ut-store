@@ -219,6 +219,8 @@ final class ApplySupplierObservation
                             $template,
                             (int) $itemHistory->id,
                             (string) $order->locale,
+                            $state->holdReason,
+                            'supplier',
                         );
                     }
                 }

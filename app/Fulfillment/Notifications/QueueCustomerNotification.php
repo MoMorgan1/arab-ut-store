@@ -3,6 +3,7 @@
 namespace App\Fulfillment\Notifications;
 
 use App\Enums\NotificationStatus;
+use App\Enums\OrderHoldReason;
 use App\Models\IntegrationEvent;
 use App\Models\NotificationDelivery;
 use App\Models\Order;
@@ -37,19 +38,33 @@ final class QueueCustomerNotification
      *                          key, while a genuine recurrence after recovery
      *                          writes a new history row and earns a new key.
      */
-    public function forItem(Order $order, OrderItem $item, string $template, int $historyId, string $locale): NotificationDelivery
-    {
-        return $this->queue($order, $item, $template, $historyId, $locale);
+    public function forItem(
+        Order $order,
+        OrderItem $item,
+        string $template,
+        int $historyId,
+        string $locale,
+        OrderHoldReason $reason,
+        string $source,
+    ): NotificationDelivery {
+        return $this->queue($order, $item, $template, $historyId, $locale, $reason, $source);
     }
 
     /** One row for the whole order: cancellation and refund. */
     public function forOrder(Order $order, string $template, int $historyId, string $locale): NotificationDelivery
     {
-        return $this->queue($order, null, $template, $historyId, $locale);
+        return $this->queue($order, null, $template, $historyId, $locale, null, 'order');
     }
 
-    private function queue(Order $order, ?OrderItem $item, string $template, int $historyId, string $locale): NotificationDelivery
-    {
+    private function queue(
+        Order $order,
+        ?OrderItem $item,
+        string $template,
+        int $historyId,
+        string $locale,
+        ?OrderHoldReason $reason,
+        string $source,
+    ): NotificationDelivery {
         $subject = $item === null ? "order:{$order->id}" : "item:{$item->id}";
         $key = "customer-notify:{$subject}:{$template}:{$historyId}";
 
@@ -101,7 +116,15 @@ final class QueueCustomerNotification
                     'order_number' => $order->order_number,
                     'order_item_public_id' => $item === null ? null : (string) $item->public_id,
                     'template' => $template,
+                    // What the publisher needs to ask, at send time, whether
+                    // this message is still true: which transition it was
+                    // written for, what it says the hold is, and who decided.
+                    // A supplier hold's reason lives on the job and can be
+                    // re-read; an admin's lives in the transition and cannot,
+                    // so the two are checked differently.
                     'history_id' => $historyId,
+                    'reason' => $reason?->value,
+                    'source' => $source,
                 ],
                 'available_at' => now(),
             ]);
