@@ -187,6 +187,12 @@ test('every hold reason is either mapped to a template or explicitly silent', fu
     $templates[] = CustomerNotificationCatalog::TEMPLATE_ORDER_CANCELLED;
     $templates[] = CustomerNotificationCatalog::TEMPLATE_ORDER_REFUNDED;
 
+    // The challenge siblings carry the same placeholders and live in the
+    // same two files, so they answer the same checks.
+    foreach (CustomerNotificationCatalog::CHALLENGE_MAPPED as $entry) {
+        $templates[] = $entry['template'];
+    }
+
     foreach ($templates as $template) {
         expect(array_key_exists($template, $ar))->toBeTrue("missing ar wording for {$template}")
             ->and(array_key_exists($template, $en))->toBeTrue("missing en wording for {$template}");
@@ -211,27 +217,38 @@ test('the catalogue names the buttons the wording actually names', function (): 
         'ar' => [
             'edit' => trans('account.orders.tracking.edit_credentials', locale: 'ar'),
             'resume' => trans('account.orders.tracking.resume', locale: 'ar'),
+            'retry' => trans('account.orders.tracking.retry_challenge', locale: 'ar'),
         ],
         'en' => [
             'edit' => trans('account.orders.tracking.edit_credentials', locale: 'en'),
             'resume' => trans('account.orders.tracking.resume', locale: 'en'),
+            'retry' => trans('account.orders.tracking.retry_challenge', locale: 'en'),
         ],
     ];
 
-    foreach (CustomerNotificationCatalog::MAPPED as $reason => $entry) {
-        foreach (['ar' => $ar, 'en' => $en] as $locale => $catalogue) {
-            $body = $catalogue[$entry['template']];
+    // Both wordings answer the same contract: the declared buttons and the
+    // sentence cannot drift apart, on either sibling.
+    $maps = [
+        'default' => CustomerNotificationCatalog::MAPPED,
+        'challenge' => CustomerNotificationCatalog::CHALLENGE_MAPPED,
+    ];
 
-            foreach (['edit', 'resume'] as $button) {
-                $named = str_contains($body, $labels[$locale][$button]);
-                $declared = in_array($button, $entry['buttons'], true);
+    foreach ($maps as $sibling => $map) {
+        foreach ($map as $reason => $entry) {
+            foreach (['ar' => $ar, 'en' => $en] as $locale => $catalogue) {
+                $body = $catalogue[$entry['template']];
 
-                expect($named)->toBe(
-                    $declared,
-                    $declared
-                        ? "{$reason} ({$locale}) declares the {$button} button its wording never names"
-                        : "{$reason} ({$locale}) names the {$button} button the catalogue does not declare",
-                );
+                foreach (['edit', 'resume', 'retry'] as $button) {
+                    $named = str_contains($body, $labels[$locale][$button]);
+                    $declared = in_array($button, $entry['buttons'], true);
+
+                    expect($named)->toBe(
+                        $declared,
+                        $declared
+                            ? "{$sibling} {$reason} ({$locale}) declares the {$button} button its wording never names"
+                            : "{$sibling} {$reason} ({$locale}) names the {$button} button the catalogue does not declare",
+                    );
+                }
             }
         }
     }
@@ -297,17 +314,18 @@ test('a coins hold offers every button its message names', function (): void {
     expect($checked)->toBeGreaterThan(15);
 });
 
-test('a challenge hold sends nothing, because no wording fits its buttons', function (): void {
+test('a challenge hold sends the wording its own buttons fit', function (): void {
     $maps = new ReflectionClass(SupplierStateTranslator::class);
     /** @var array<string, OrderHoldReason|null> $sbcHolds */
     $sbcHolds = $maps->getConstant('SBC_STATUS_HOLDS');
 
     $messaged = 0;
+    $challenged = 0;
 
-    // The challenge card offers «إعادة المحاولة», never «تشغيل الطلب», so
-    // every wording that names resume is untrue there. Rather than send a
-    // sentence pointing at a button that is not on the screen, these holds
-    // stay silent until they have wording of their own.
+    // The challenge card offers «إعادة المحاولة», never «تشغيل الطلب». A
+    // hold whose default wording names resume is owed the challenge sibling
+    // instead; a hold whose default already fits keeps it; a hold neither
+    // wording fits stays silent rather than pointing at a missing button.
     foreach ($sbcHolds as $status => $reason) {
         if (! $reason instanceof OrderHoldReason || CustomerNotificationCatalog::templateFor($reason) === null) {
             continue;
@@ -316,33 +334,68 @@ test('a challenge hold sends nothing, because no wording fits its buttons', func
         $messaged++;
 
         $rendered = SupplierStateTranslator::sbcChallengeActions(Supplier::Fft, (string) $status);
+        $selected = CustomerNotificationCatalog::templateForRendered($reason, $rendered);
 
-        if (CustomerNotificationCatalog::fits($reason, $rendered)) {
+        expect(CustomerNotificationCatalog::fits($reason, $rendered))->toBe($selected !== null,
+            "{$status} fits and its selected template disagree");
+
+        if ($selected === null) {
+            continue;
+        }
+
+        if ($selected === CustomerNotificationCatalog::templateFor($reason)) {
             // Only where the wording happens to name exactly what the
             // challenge card offers - the edit form, or no button at all.
             foreach (CustomerNotificationCatalog::buttonsFor($reason) ?? [] as $button) {
-                expect($button)->toBe(
-                    SupplierAction::EditCredentials,
+                expect(in_array($button, $rendered, true))->toBeTrue(
                     "{$status} would send a message naming a button the challenge card lacks",
+                );
+            }
+        } else {
+            $challenged++;
+
+            expect($selected)->toBe(CustomerNotificationCatalog::challengeTemplateFor($reason),
+                "{$status} selected a template that is neither wording of {$reason->value}");
+
+            foreach (CustomerNotificationCatalog::challengeButtonsFor($reason) ?? [] as $button) {
+                expect(in_array($button, $rendered, true))->toBeTrue(
+                    "{$status} would send a challenge message naming a button the card lacks",
                 );
             }
         }
     }
 
-    expect($messaged)->toBeGreaterThan(5);
+    expect($messaged)->toBeGreaterThan(5)
+        ->and($challenged)->toBeGreaterThan(0);
 });
 
-test('a hold whose card lacks the button it names queues nothing', function (): void {
+test('a hold whose card lacks every button its wordings name queues nothing', function (): void {
     [$order, $item, $job] = notifyTestContext();
 
-    // The market-locked message says «اضغط تشغيل الطلب». This card does not
-    // offer it, so the message is not owed - the customer is not sent looking
-    // for a button that is not there.
-    applyTestHold($job, OrderHoldReason::MarketLocked, [SupplierAction::RetryChallenge]);
+    // Neither the market-locked wording («تشغيل الطلب») nor its challenge
+    // sibling («إعادة المحاولة») is true of an edit-only card, so no
+    // message is owed - the customer is not sent looking for a button that
+    // is not there.
+    applyTestHold($job, OrderHoldReason::MarketLocked, [SupplierAction::EditCredentials]);
 
     expect($item->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer)
         ->and(NotificationDelivery::query()->count())->toBe(0)
         ->and(IntegrationEvent::query()->where('event_type', 'customer.notify')->count())->toBe(0);
+});
+
+test('a challenge hold queues its retry wording', function (): void {
+    [$order, $item, $job] = notifyTestContext();
+
+    // The challenge card offers «إعادة المحاولة» instead of «تشغيل
+    // الطلب», so the market-locked hold is owed the challenge sibling.
+    applyTestHold($job, OrderHoldReason::MarketLocked, [SupplierAction::RetryChallenge]);
+
+    $notifications = NotificationDelivery::query()->get();
+    expect($notifications)->toHaveCount(1);
+
+    expect($notifications->sole()->template_key)->toBe('market_locked_challenge')
+        ->and($item->fresh()->status)->toBe(OrderItemStatus::WaitingForCustomer)
+        ->and(IntegrationEvent::query()->where('event_type', 'customer.notify')->count())->toBe(1);
 });
 
 test('an admin pause queues one row per item that stopped, and nothing for a note without a reason', function (): void {

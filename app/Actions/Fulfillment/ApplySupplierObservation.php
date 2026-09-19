@@ -202,17 +202,18 @@ final class ApplySupplierObservation
                     // repeat of the same hold writes nothing new - the
                     // idempotency key turns a repeated attempt into a replay.
                     //
-                    // `fits` is the last condition and the strictest: the
-                    // wording names a button, and this same observation is
-                    // what decides which buttons the card shows. Where they
-                    // disagree - the challenge phase, which offers
-                    // «إعادة المحاولة» and never «تشغيل الطلب» - the message
-                    // is not sent rather than sent wrong.
+                    // `templateForRendered` is the last condition and the
+                    // strictest: the wording names a button, and this same
+                    // observation is what decides which buttons the card
+                    // shows. On the coins phase that is the default wording
+                    // («تشغيل الطلب»); on the challenge phase, which offers
+                    // «إعادة المحاولة» and never «تشغيل الطلب», it is the
+                    // challenge sibling. Where neither wording is true of
+                    // the card, no message is sent rather than a wrong one.
                     if ($targetItemStatus === OrderItemStatus::WaitingForCustomer
                         && $previousItemStatus !== OrderItemStatus::WaitingForCustomer
                         && $state->holdReason !== null
-                        && CustomerNotificationCatalog::fits($state->holdReason, $state->allowedActions)
-                        && ($template = CustomerNotificationCatalog::templateFor($state->holdReason)) !== null) {
+                        && ($template = CustomerNotificationCatalog::templateForRendered($state->holdReason, $state->allowedActions)) !== null) {
                         $this->queueNotification->forItem(
                             $order,
                             $targetItem,
