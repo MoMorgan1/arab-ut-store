@@ -37,7 +37,7 @@ export function ChatChoiceChips({
                         disabled={disabled}
                         onClick={() => onChoose(item.message)}
                         data-testid="chat-choice"
-                        className="chat-choice-chip cursor-pointer rounded-full border border-[var(--chat-accent)]/45 bg-[var(--chat-card)] px-3 py-1.5 text-xs font-medium text-[var(--chat-ink)] transition-[transform,background-color,border-color] duration-150 hover:border-[var(--chat-accent)] hover:bg-[var(--chat-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+                        className="chat-choice-chip cursor-pointer rounded-full border border-[var(--chat-accent)]/45 bg-[var(--chat-card)] px-3 py-1.5 text-xs font-medium text-[var(--chat-ink)] transition-[transform,background-color,border-color] duration-quick hover:border-[var(--chat-accent)] hover:bg-[var(--chat-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--chat-accent)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
                     >
                         {item.label}
                     </button>
