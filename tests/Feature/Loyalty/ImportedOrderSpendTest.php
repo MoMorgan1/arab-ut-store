@@ -53,3 +53,38 @@ test('imported orders are still never treated as settled, so they cannot accrue 
     // fulfilled elsewhere would mint real money.
     expect(app(EligibleOrderSpend::class)->fullySettled($order))->toBeFalse();
 });
+
+// Owner, 2026-09-19: a manual order earns no cashback and no tier. It is
+// staff writing an order the store did not sell - a bank transfer taken
+// outside the gateway, or a gift - and counting it would let anybody holding
+// `orders.create` raise a customer's rate on every future order.
+
+test('a manual order adds nothing to lifetime spend, however it was paid', function (): void {
+    $user = User::factory()->create();
+    $order = importedOrderFor($user, 200_000, 'manual');
+
+    // Fully covered in wallet terms, so it is not the coverage check turning
+    // it away - the channel is.
+    $order->forceFill(['wallet_halalah' => 200_000])->save();
+
+    expect(app(EligibleOrderSpend::class)->lifetime($user->id))->toBe(0);
+});
+
+test('a manual order is never settled, so it cannot accrue cashback', function (): void {
+    $user = User::factory()->create();
+    $order = importedOrderFor($user, 200_000, 'manual');
+    $order->forceFill(['wallet_halalah' => 200_000])->save();
+
+    expect(app(EligibleOrderSpend::class)->fullySettled($order))->toBeFalse();
+});
+
+test('a manual order does not drag down a customer who also bought normally', function (): void {
+    $user = User::factory()->create();
+    $store = importedOrderFor($user, 200_000, 'store');
+    $store->forceFill(['wallet_halalah' => 200_000])->save();
+    $manual = importedOrderFor($user, 500_000, 'manual');
+    $manual->forceFill(['wallet_halalah' => 500_000])->save();
+
+    // The exclusion is per order, not a switch on the whole customer.
+    expect(app(EligibleOrderSpend::class)->lifetime($user->id))->toBe(200_000);
+});

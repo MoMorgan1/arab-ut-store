@@ -81,6 +81,7 @@ final class CountCustomersPerTier
                 ->selectRaw('
                     SUM(
                         CASE
+                            WHEN orders.channel = \'manual\' THEN 0
                             WHEN orders.channel = \'salla_import\'
                                 OR (orders.wallet_halalah + COALESCE(payments_sum.captured_halalah, 0)) >= orders.total_halalah
                             THEN CASE

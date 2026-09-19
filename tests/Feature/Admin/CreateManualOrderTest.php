@@ -102,7 +102,7 @@ test('a gift is nothing more than a manual order with a zero total', function ()
         ->and($order->channel)->toBe('manual');
 });
 
-test('a gift earns no cashback, and needs no rule to say so', function (): void {
+test('a gift earns no cashback', function (): void {
     $actor = createStaffTestActor(UserRole::Admin);
     $customer = manualCustomer();
 
@@ -117,13 +117,14 @@ test('a gift earns no cashback, and needs no rule to say so', function (): void 
 
     app(AccrueOrderCashback::class)->execute($order->fresh());
 
-    // The owner's rule is "cashback on a transfer, none on a gift". This asserts
-    // the arithmetic that satisfies it rather than a gift-specific branch: the
-    // basis is the total minus the wallet amount, which is zero.
+    // Two reasons now, and either alone is enough: the basis is the total
+    // minus the wallet amount, which is zero, AND the channel is excluded
+    // outright (owner, 2026-09-19). The earlier rule here was "cashback on a
+    // transfer, none on a gift"; the owner replaced it with none on either.
     expect(WalletEntry::query()->where('reference', 'cashback:'.$order->id)->count())->toBe(0);
 });
 
-test('a transfer keeps its place in loyalty spend', function (): void {
+test('a transfer earns nothing either, however real the money was', function (): void {
     $actor = createStaffTestActor(UserRole::Admin);
     $customer = manualCustomer();
 
@@ -138,10 +139,14 @@ test('a transfer keeps its place in loyalty spend', function (): void {
         ),
     );
 
-    // fullySettled is what gates cashback, and it sums captured payments against
-    // the total. A manual order that failed this would look paid and reward
-    // nothing, silently.
-    expect(app(EligibleOrderSpend::class)->fullySettled($order->fresh()))->toBeTrue();
+    // This asserted `true` until 2026-09-19, under the owner's earlier rule of
+    // "cashback on a transfer, none on a gift". The owner replaced it: no
+    // manual order earns cashback or tier, because the hand that wrote it is
+    // the problem and not the money. The transfer is real and captured - the
+    // channel is what turns it away, which is why this is worth a test rather
+    // than falling out of the arithmetic the way a gift's zero total does.
+    expect(app(EligibleOrderSpend::class)->fullySettled($order->fresh()))->toBeFalse()
+        ->and(app(EligibleOrderSpend::class)->lifetime($customer->id))->toBe(0);
 });
 
 test('an item placed by hand gets a job that is ready to be read', function (): void {

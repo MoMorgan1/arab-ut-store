@@ -69,6 +69,16 @@ final class EligibleOrderSpend
             // were completed or paid, so they are settled by construction.
             $isImported = $order->getAttribute('channel') === 'salla_import';
 
+            // A manual order is staff writing an order the store did not
+            // sell - a bank transfer taken outside the gateway, or a gift.
+            // Owner, 2026-09-19: it earns no cashback and no tier. Counting
+            // it would let anybody holding `orders.create` raise a
+            // customer's rate on every future order, and a gift is not
+            // spending at all.
+            if ($order->getAttribute('channel') === 'manual') {
+                return 0;
+            }
+
             if (! $isImported && $wallet + $settledPayment < $total) {
                 return 0;
             }
@@ -92,7 +102,10 @@ final class EligibleOrderSpend
      */
     public function fullySettled(Order $order): bool
     {
-        if ($order->channel === 'salla_import') {
+        // `manual` for the reason above, and `salla_import` because
+        // settlement is what triggers accrual: paying cashback on history
+        // the store already fulfilled elsewhere would mint real money.
+        if ($order->channel === 'salla_import' || $order->channel === 'manual') {
             return false;
         }
 

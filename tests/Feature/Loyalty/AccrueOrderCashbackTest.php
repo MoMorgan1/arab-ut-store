@@ -130,6 +130,22 @@ test('a second call returns the existing entry and leaves the balance untouched'
         ->and(WalletAccount::query()->sole()->balance_halalah)->toBe(200);
 });
 
+test('manual orders accrue no cashback', function (): void {
+    $user = User::factory()->create();
+    $order = loyaltyPaidOrder($user, [
+        'channel' => 'manual',
+        'total_halalah' => 50_000,
+        'payment_halalah' => 50_000,
+    ]);
+
+    // A bank transfer staff recorded by hand is money the store received, so
+    // the paid basis is real - and the channel is still what turns it away.
+    // Owner, 2026-09-19.
+    expect(app(AccrueOrderCashback::class)->execute($order))->toBeNull()
+        ->and(WalletEntry::query()->count())->toBe(0)
+        ->and(WalletAccount::query()->count())->toBe(0);
+});
+
 test('imported orders with channel salla_import accrue no cashback', function (): void {
     $user = User::factory()->create();
     $order = loyaltyPaidOrder($user, [
