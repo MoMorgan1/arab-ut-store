@@ -40,7 +40,11 @@ final readonly class AccrueOrderCashback
             return null;
         }
 
-        if ($order->channel === 'salla_import' || $order->currency !== 'SAR' || $order->completed_at === null) {
+        // Neither channel earns cashback: `salla_import` was paid on the old
+        // platform, and `manual` is an order staff wrote rather than one a
+        // customer bought (owner, 2026-09-19).
+        if ($order->channel === 'salla_import' || $order->channel === 'manual'
+            || $order->currency !== 'SAR' || $order->completed_at === null) {
             return null;
         }
 
