@@ -97,6 +97,44 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
 });
 
+/** Repoints the queued row's card at a different set of buttons. */
+function repointCard(OrderItem $item, SupplierAction ...$actions): void
+{
+    FulfillmentJob::query()
+        ->where('order_item_id', $item->id)
+        ->update(['allowed_actions' => array_map(
+            static fn (SupplierAction $action): string => $action->value,
+            $actions,
+        )]);
+}
+
+test('a queued challenge wording still sends on the card that earned it', function (): void {
+    [, $item, $notification] = notifyReadyDelivery('market_locked');
+    $notification->forceFill(['template_key' => 'market_locked_challenge'])->save();
+    repointCard($item, SupplierAction::RetryChallenge);
+
+    Http::fake(['*' => Http::response(['data' => ['acknowledged' => true]], 200)]);
+    Artisan::call('orders:publish-customer-notifications');
+
+    expect($notification->fresh()->status)->toBe(NotificationStatus::Sent);
+});
+
+test('a queued default wording is not sent on a card that only offers retry', function (): void {
+    [, $item, $notification] = notifyReadyDelivery('market_locked');
+
+    // The item is still held for the same reason and the card still offers a
+    // button - just not the one THIS row's sentence names. Asking the reason
+    // rather than the stored template would answer "some wording fits" and
+    // send «تشغيل الطلب» to a customer looking at «إعادة المحاولة».
+    repointCard($item, SupplierAction::RetryChallenge);
+
+    Http::fake(['*' => Http::response(['data' => ['acknowledged' => true]], 200)]);
+    Artisan::call('orders:publish-customer-notifications');
+
+    expect($notification->fresh()->status)->not->toBe(NotificationStatus::Sent);
+    Http::assertNothingSent();
+});
+
 test('the publisher is inert until the webhook is configured', function (): void {
     config()->set('services.n8n.customer_notify_url', null);
     [$order, $item, $notification, $event] = notifyReadyDelivery();

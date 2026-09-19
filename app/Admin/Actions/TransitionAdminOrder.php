@@ -207,11 +207,20 @@ final class TransitionAdminOrder
             // is not sent for this item.
             if ($targetStatus === OrderStatus::WaitingForCustomer
                 && $reason !== null
-                && ($template = CustomerNotificationCatalog::templateFor($reason)) !== null) {
+                && CustomerNotificationCatalog::templateFor($reason) !== null) {
                 foreach ($heldItems as [$heldItem, $heldHistoryId]) {
                     $job = FulfillmentJob::query()->where('order_item_id', $heldItem->id)->first();
 
-                    if (! CustomerNotificationCatalog::fits($reason, $job?->allowedActions() ?? [])) {
+                    // The wording is picked per item from what its own card
+                    // offers: the default where it fits, the challenge
+                    // sibling where only that does, nothing where neither
+                    // does.
+                    $template = CustomerNotificationCatalog::templateForRendered(
+                        $reason,
+                        $job?->allowedActions() ?? [],
+                    );
+
+                    if ($template === null) {
                         continue;
                     }
 

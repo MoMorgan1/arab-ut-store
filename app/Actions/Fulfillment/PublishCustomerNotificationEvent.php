@@ -225,7 +225,10 @@ final class PublishCustomerNotificationEvent
         // The button invariant is re-asked here, not only at queue time: the
         // card is drawn from the job, and an observation that keeps the item
         // waiting writes no history row while still changing what it offers.
-        if (! CustomerNotificationCatalog::fits($reason, $job?->allowedActions() ?? [])) {
+        // Asked against the stored template's own wording, so a challenge
+        // sibling stays current on its retry card and a default wording
+        // still expires the moment its button is gone.
+        if (! CustomerNotificationCatalog::templateFits($notification->template_key, $job?->allowedActions() ?? [])) {
             return false;
         }
 
