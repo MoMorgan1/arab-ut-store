@@ -191,6 +191,15 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('whatsapp-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
             ->by(hash('sha256', (string) $request->input('phone').'|'.$request->ip())));
 
+        // Keyed on the caller, like every other limiter here. The cap that
+        // protects the mailbox is a separate one, keyed on the address and
+        // counted in SendEmailLoginCode - because the harm a flood does is to
+        // one inbox, and the sender is not who would suffer it.
+        RateLimiter::for('email-login-send', fn (Request $request): Limit => Limit::perMinute(2)
+            ->by(hash('sha256', $request->session()->getId())));
+        RateLimiter::for('email-login-verify', fn (Request $request): Limit => Limit::perMinute(10)
+            ->by(hash('sha256', $request->session()->getId().'|'.$request->ip())));
+
         RateLimiter::for('verification-send', fn (Request $request): array => [
             Limit::perMinute(3)->by('verification-send-user:'.($request->user()?->getAuthIdentifier() ?? $request->session()->getId())),
             Limit::perMinute(10)->by('verification-send-ip:'.$request->ip()),
@@ -212,7 +221,7 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     /** @return array<string, mixed> */
-    private function authViewProps(string $authPage): array
+    public function authViewProps(string $authPage): array
     {
         return [
             'authPage' => $authPage,
@@ -222,7 +231,7 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     /** @return array<string, string> */
-    private function authRoutes(): array
+    public function authRoutes(): array
     {
         $localized = app()->getLocale() === 'en';
         $routeParameters = $localized ? ['locale' => 'en'] : [];
@@ -246,6 +255,8 @@ class FortifyServiceProvider extends ServiceProvider
                     ? route('localized.auth.google.redirect', ['locale' => 'en'], absolute: false)
                     : route('auth.google.redirect', absolute: false))
                 : null,
+            'loginCodeStoreUrl' => $authUrl('login.code.store'),
+            'loginCodeResendUrl' => $authUrl('login.code.resend'),
             'whatsappSendUrl' => $localized
                 ? route('localized.auth.whatsapp.send', ['locale' => 'en'], absolute: false)
                 : route('auth.whatsapp.send', absolute: false),
