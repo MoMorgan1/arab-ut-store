@@ -72,7 +72,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 >
                     <ChevronLeft
                         aria-hidden="true"
-                        className="h-5 w-5 transition-transform duration-150 group-hover:-translate-x-0.5 rtl:-scale-x-100"
+                        className="h-5 w-5 transition-transform duration-quick group-hover:-translate-x-0.5 rtl:-scale-x-100"
                     />
                 </button>
 

@@ -72,7 +72,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         >
             <div
                 dir="ltr"
-                className="relative flex items-end gap-2 rounded-2xl border border-[var(--chat-line-strong)] bg-[var(--chat-surface)] p-1.5 transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--chat-accent)] focus-within:shadow-[0_0_0_2px_var(--chat-accent)] motion-reduce:transition-none"
+                className="relative flex items-end gap-2 rounded-2xl border border-[var(--chat-line-strong)] bg-[var(--chat-surface)] p-1.5 transition-[border-color,box-shadow] duration-quick focus-within:border-[var(--chat-accent)] focus-within:shadow-[0_0_0_2px_var(--chat-accent)] motion-reduce:transition-none"
             >
                 <textarea
                     ref={textareaRef}

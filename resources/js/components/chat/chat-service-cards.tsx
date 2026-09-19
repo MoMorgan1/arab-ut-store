@@ -108,7 +108,7 @@ export function ChatServiceCards({
                             {card.cta}
                             <Arrow
                                 aria-hidden="true"
-                                className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5"
+                                className="h-3.5 w-3.5 transition-transform duration-fast group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5"
                             />
                         </span>
                     </Link>

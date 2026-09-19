@@ -627,8 +627,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                     onClick={closeChat}
                     className={`chat-widget-backdrop fixed inset-0 z-[69] bg-black/45 transition-opacity motion-reduce:transition-none ${
                         isVisible
-                            ? 'pointer-events-auto opacity-100 duration-[280ms]'
-                            : 'pointer-events-none opacity-0 duration-[180ms]'
+                            ? 'pointer-events-auto opacity-100 duration-fast'
+                            : 'pointer-events-none opacity-0 duration-quick'
                     }`}
                 />
             )}
@@ -648,8 +648,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({
                     onKeyDown={handleDialogKeyDown}
                     className={`chat-widget-dialog ${isMobileDialog ? 'chat-widget-dialog--sheet' : ''} fixed inset-0 z-[70] flex origin-bottom flex-col bg-[var(--chat-surface)] transition-[transform,opacity] motion-reduce:transition-none sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[650px] sm:max-h-[85vh] sm:w-[420px] sm:origin-bottom-right sm:overflow-hidden sm:rounded-3xl sm:border sm:border-[var(--arabut-line)] sm:shadow-2xl ${
                         isVisible
-                            ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-[280ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
-                            : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-[180ms] [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] sm:scale-[0.96]'
+                            ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 duration-fast [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]'
+                            : 'pointer-events-none translate-y-3 scale-[0.98] opacity-0 duration-quick [transition-timing-function:cubic-bezier(0.7,0,0.84,0)] sm:scale-[0.96]'
                     }`}
                 >
                     {isMobileDialog && (

@@ -353,7 +353,7 @@ export function getAdminCouponColumns({
                         {hasLimit ? (
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                 <div
-                                    className={`h-full transition-all duration-300 ${
+                                    className={`h-full transition-all duration-fast ${
                                         percent >= 100
                                             ? 'bg-status-danger'
                                             : percent >= 80

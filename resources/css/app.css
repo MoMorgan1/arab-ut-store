@@ -430,7 +430,7 @@ html.admin-document {
         /* The drag across the tabs is horizontal; without this the browser
            claims the gesture for a scroll and the lens never moves. */
         touch-action: pan-y;
-        transition: opacity 180ms ease;
+        transition: opacity var(--motion-quick) var(--motion-ease);
     }
 
     /* Gold top hairline plus a corner highlight: a convex slab, not a panel. */
@@ -623,9 +623,9 @@ html.admin-document {
            a `backdrop-filter` on every frame. That read as the animation
            sticking. Colour and opacity interpolate smoothly and stay cheap. */
         transition:
-            background-color 160ms ease-out,
-            color 160ms ease-out,
-            opacity 160ms ease-out;
+            background-color var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease),
+            opacity var(--motion-quick) var(--motion-ease);
     }
 
     .arabut-bottom-bar__item svg {
@@ -996,7 +996,7 @@ html.admin-document {
         display: flex;
         align-items: baseline;
         gap: 0.4rem;
-        transition: color 160ms ease;
+        transition: color var(--motion-quick) var(--motion-ease);
     }
 
     .auth-password-requirements li[data-met='true'] {
@@ -1019,7 +1019,7 @@ html.admin-document {
         border-radius: 0.55rem;
         color: var(--arabut-muted);
         font-weight: 700;
-        transition: 180ms var(--motion-ease);
+        transition: var(--motion-quick) var(--motion-ease);
     }
 
     .auth-login-method__tab-long {
@@ -1182,9 +1182,9 @@ html.admin-document {
         color: var(--arabut-ink);
         font-weight: 700;
         transition:
-            border-color 180ms var(--motion-ease),
-            background-color 180ms var(--motion-ease),
-            box-shadow 180ms var(--motion-ease);
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease);
     }
 
     .auth-google-action:hover {
@@ -1251,9 +1251,9 @@ html.admin-document {
         font-weight: 700;
         box-shadow: 0 0.6rem 1.5rem -0.9rem rgb(212 168 67 / 75%);
         transition:
-            background-color 180ms var(--motion-ease),
-            box-shadow 180ms var(--motion-ease),
-            transform 180ms var(--motion-ease);
+            background-color var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease),
+            transform var(--motion-quick) var(--motion-ease);
     }
 
     .auth-shell .auth-form__submit:hover:not(:disabled) {
@@ -1491,9 +1491,9 @@ html.admin-document {
         text-decoration: none;
         cursor: pointer;
         transition:
-            background-color 160ms var(--motion-ease),
-            color 160ms ease,
-            border-color 160ms ease;
+            background-color var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease),
+            border-color var(--motion-quick) var(--motion-ease);
     }
 
     .store-header__icon-link:hover,
@@ -1583,8 +1583,8 @@ html.admin-document {
         background: rgb(255 255 255 / 5%);
         color: var(--arabut-ink);
         transition:
-            border-color 180ms var(--motion-ease),
-            background 180ms var(--motion-ease);
+            border-color var(--motion-quick) var(--motion-ease),
+            background var(--motion-quick) var(--motion-ease);
     }
 
     .store-preferences__select:hover {
@@ -1711,8 +1711,8 @@ html.admin-document {
         padding-inline: 0.7rem;
         box-shadow: 0 2px 8px rgb(37 211 102 / 24%);
         transition:
-            filter 160ms var(--motion-ease),
-            box-shadow 160ms var(--motion-ease);
+            filter var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease);
     }
 
     .store-primary-nav__whatsapp a::after {
@@ -1946,10 +1946,10 @@ html.admin-document {
         text-decoration: none;
         box-shadow: 0 0.8rem 2rem -1.2rem rgb(212 168 67 / 78%);
         transition:
-            transform 180ms var(--motion-ease),
-            background-color 160ms ease,
-            border-color 160ms ease,
-            box-shadow 180ms var(--motion-ease);
+            transform var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease),
+            border-color var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease);
     }
 
     .store-hero__cta--primary {
@@ -2254,8 +2254,8 @@ html.admin-document {
             var(--arabut-navy-raised);
         color: var(--arabut-gold-bright);
         transition:
-            border-color 160ms ease,
-            box-shadow 160ms ease;
+            border-color var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease);
     }
 
     button.coins-progress__step:focus-visible .coins-progress__number {
@@ -2413,10 +2413,10 @@ html.admin-document {
         background: var(--arabut-navy-active);
         padding: 1.1rem;
         transition:
-            border-color 160ms ease,
-            background-color 160ms ease,
-            box-shadow 160ms ease,
-            transform 160ms var(--motion-ease);
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease),
+            transform var(--motion-quick) var(--motion-ease);
     }
 
     .coins-choice:hover {
@@ -2510,9 +2510,9 @@ html.admin-document {
         border-radius: 0.55rem;
         font-weight: 700;
         transition:
-            border-color 160ms ease,
-            background-color 160ms ease,
-            color 160ms ease;
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease);
     }
 
     .coins-primary-action,
@@ -2792,8 +2792,8 @@ html.admin-document {
             0 0 0 4px rgb(212 168 67 / 12%),
             0 3px 8px rgb(0 0 0 / 32%);
         transition:
-            box-shadow 160ms var(--motion-ease),
-            transform 160ms var(--motion-ease);
+            box-shadow var(--motion-quick) var(--motion-ease),
+            transform var(--motion-quick) var(--motion-ease);
     }
 
     .coins-amount-slider:hover::-webkit-slider-thumb {
@@ -2826,8 +2826,8 @@ html.admin-document {
             0 0 0 4px rgb(212 168 67 / 12%),
             0 3px 8px rgb(0 0 0 / 32%);
         transition:
-            box-shadow 160ms var(--motion-ease),
-            transform 160ms var(--motion-ease);
+            box-shadow var(--motion-quick) var(--motion-ease),
+            transform var(--motion-quick) var(--motion-ease);
     }
 
     .coins-amount-slider:hover::-moz-range-thumb {
@@ -3254,8 +3254,8 @@ html.admin-document {
         line-height: 1;
         place-items: center;
         transition:
-            background 0.2s ease,
-            color 0.2s ease;
+            background var(--motion-fast) var(--motion-ease),
+            color var(--motion-fast) var(--motion-ease);
     }
 
     .market-modal-close:hover {
@@ -3796,9 +3796,9 @@ html.admin-document {
         background: rgb(255 255 255 / 4%);
         color: var(--arabut-muted);
         transition:
-            border-color 160ms ease,
-            color 160ms ease,
-            background-color 160ms ease;
+            border-color var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-sheet__close:hover {
@@ -4335,9 +4335,9 @@ html.admin-document {
         color: var(--arabut-ink);
         text-decoration: none;
         transition:
-            border-color 180ms var(--motion-ease),
-            background-color 180ms var(--motion-ease),
-            transform 180ms var(--motion-ease);
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease),
+            transform var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-suggestions__service:hover {
@@ -4544,8 +4544,8 @@ html.admin-document {
         /* A base max-height so the collapse actually transitions. */
         max-height: 80rem;
         transition:
-            opacity 200ms var(--motion-ease),
-            max-height 200ms var(--motion-ease);
+            opacity var(--motion-fast) var(--motion-ease),
+            max-height var(--motion-fast) var(--motion-ease);
     }
 
     .store-cart-line--removing {
@@ -4582,9 +4582,9 @@ html.admin-document {
         font-weight: 700;
         text-decoration: none;
         transition:
-            color 160ms cubic-bezier(0.22, 1, 0.36, 1),
-            border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
-            background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+            color var(--motion-quick) var(--motion-ease),
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-line__edit svg {
@@ -4617,9 +4617,9 @@ html.admin-document {
         color: var(--arabut-muted);
         cursor: pointer;
         transition:
-            color 160ms cubic-bezier(0.22, 1, 0.36, 1),
-            border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
-            background-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+            color var(--motion-quick) var(--motion-ease),
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-line__remove-label {
@@ -4970,7 +4970,7 @@ html.admin-document {
         height: 1.15rem;
         flex: 0 0 auto;
         color: var(--arabut-muted);
-        transition: transform 180ms var(--motion-ease);
+        transition: transform var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-credentials__disclosure[aria-expanded='true'] svg {
@@ -5311,8 +5311,8 @@ html.admin-document {
         cursor: pointer;
         user-select: none;
         transition:
-            border-color 150ms ease,
-            background-color 150ms ease;
+            border-color var(--motion-quick) var(--motion-ease),
+            background-color var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-wallet-toggle:hover {
@@ -5485,8 +5485,8 @@ html.admin-document {
         font-weight: 800;
         text-decoration: none;
         transition:
-            transform 160ms ease,
-            box-shadow 160ms ease;
+            transform var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease);
     }
 
     .store-cart-checkout__action:hover:not(:disabled) {
@@ -5883,8 +5883,8 @@ html.admin-document {
         color: #090a0c;
         font-weight: 900;
         transition:
-            transform 160ms ease,
-            box-shadow 160ms ease;
+            transform var(--motion-quick) var(--motion-ease),
+            box-shadow var(--motion-quick) var(--motion-ease);
     }
 
     .store-order-payment button:hover:not(:disabled) {
@@ -6056,10 +6056,10 @@ html.admin-document {
         color: var(--arabut-muted);
         text-decoration: none;
         transition:
-            transform 180ms var(--motion-ease),
-            border-color 180ms var(--motion-ease),
-            background 180ms var(--motion-ease),
-            color 180ms var(--motion-ease);
+            transform var(--motion-quick) var(--motion-ease),
+            border-color var(--motion-quick) var(--motion-ease),
+            background var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease);
     }
 
     .store-footer__socials a:hover {
@@ -6101,8 +6101,8 @@ html.admin-document {
         line-height: 1.45;
         text-decoration: none;
         transition:
-            transform 180ms var(--motion-ease),
-            color 180ms var(--motion-ease);
+            transform var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease);
     }
 
     .store-footer__links a:hover {
@@ -6132,10 +6132,10 @@ html.admin-document {
         overflow-wrap: anywhere;
         text-decoration: none;
         transition:
-            transform 180ms var(--motion-ease),
-            border-color 180ms var(--motion-ease),
-            background 180ms var(--motion-ease),
-            color 180ms var(--motion-ease);
+            transform var(--motion-quick) var(--motion-ease),
+            border-color var(--motion-quick) var(--motion-ease),
+            background var(--motion-quick) var(--motion-ease),
+            color var(--motion-quick) var(--motion-ease);
     }
 
     .store-footer__contacts a:hover {
@@ -6533,8 +6533,8 @@ html.admin-document {
         font-weight: 700;
         text-decoration: none;
         transition:
-            background-color 180ms var(--motion-ease),
-            transform 180ms var(--motion-ease);
+            background-color var(--motion-quick) var(--motion-ease),
+            transform var(--motion-quick) var(--motion-ease);
     }
 
     .store-info-page__support a:hover {
@@ -7139,8 +7139,8 @@ html.admin-document {
     stroke-width: 1.5;
     stroke-linejoin: round;
     transition:
-        transform 120ms ease,
-        filter 120ms ease;
+        transform var(--motion-quick) var(--motion-ease),
+        filter var(--motion-quick) var(--motion-ease);
 }
 
 .account-order-review__star[data-filled='true'] {
@@ -7322,7 +7322,7 @@ html.admin-document {
 }
 
 .account-order-fulfillment__toggle > svg {
-    transition: transform 180ms var(--motion-ease);
+    transition: transform var(--motion-quick) var(--motion-ease);
 }
 
 .account-order-fulfillment__toggle[aria-expanded='true'] > svg {
@@ -8217,7 +8217,7 @@ html.admin-document {
 .account-invoice__item-more svg {
     width: 1rem;
     height: 1rem;
-    transition: transform 150ms ease;
+    transition: transform var(--motion-quick) var(--motion-ease);
 }
 
 .account-invoice__item-more[aria-expanded='true'] svg {
@@ -8626,9 +8626,9 @@ html.admin-document {
     font-weight: 750;
     cursor: pointer;
     transition:
-        border-color 160ms var(--motion-ease),
-        background-color 160ms var(--motion-ease),
-        color 160ms var(--motion-ease);
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease),
+        color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-tabs__tab:hover {
@@ -8829,10 +8829,10 @@ html.admin-document {
     user-select: none;
     text-align: center;
     transition:
-        border-color 160ms var(--motion-ease),
-        background-color 160ms var(--motion-ease),
-        color 160ms var(--motion-ease),
-        box-shadow 160ms var(--motion-ease);
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease),
+        color var(--motion-quick) var(--motion-ease),
+        box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .manual-segmented__item input {
@@ -9046,8 +9046,8 @@ html.admin-document {
         0 2px 8px rgb(0 0 0 / 40%);
     appearance: none;
     transition:
-        box-shadow 160ms var(--motion-ease),
-        transform 160ms var(--motion-ease);
+        box-shadow var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-slider input[type='range']::-moz-range-thumb {
@@ -9060,8 +9060,8 @@ html.admin-document {
         0 0 0 2px rgb(212 168 67 / 24%),
         0 2px 8px rgb(0 0 0 / 40%);
     transition:
-        box-shadow 160ms var(--motion-ease),
-        transform 160ms var(--motion-ease);
+        box-shadow var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-slider input[type='range']:hover::-webkit-slider-thumb,
@@ -9098,8 +9098,8 @@ html.admin-document {
     font-weight: 800;
     cursor: pointer;
     transition:
-        color 160ms var(--motion-ease),
-        background-color 160ms var(--motion-ease);
+        color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-slider__tick-btn:hover {
@@ -9119,9 +9119,9 @@ html.admin-document {
     border-radius: 50%;
     background: rgb(237 225 198 / 26%);
     transition:
-        background-color 160ms var(--motion-ease),
-        transform 160ms var(--motion-ease),
-        box-shadow 160ms var(--motion-ease);
+        background-color var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease),
+        box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-slider__tick-btn[data-passed='true']
@@ -9213,8 +9213,8 @@ html.admin-document {
     cursor: pointer;
     user-select: none;
     transition:
-        border-color 160ms var(--motion-ease),
-        background-color 160ms var(--motion-ease);
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-toggle-row input[type='checkbox'] {
@@ -9266,7 +9266,7 @@ html.admin-document {
     flex: 0 0 auto;
     border-radius: 999px;
     background: rgb(255 255 255 / 14%);
-    transition: background-color 180ms ease-out;
+    transition: background-color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-toggle-switch::after {
@@ -9278,7 +9278,7 @@ html.admin-document {
     height: 1.25rem;
     border-radius: 50%;
     background: #ffffff;
-    transition: transform 180ms ease-out;
+    transition: transform var(--motion-quick) var(--motion-ease);
 }
 
 .manual-toggle-row input:checked + .manual-toggle-switch {
@@ -9371,9 +9371,9 @@ html.admin-document {
     cursor: pointer;
     user-select: none;
     transition:
-        border-color 160ms var(--motion-ease),
-        background-color 160ms var(--motion-ease),
-        color 160ms var(--motion-ease);
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease),
+        color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-played-chip:hover {
@@ -9533,8 +9533,8 @@ html.admin-document {
     backdrop-filter: var(--manual-glass-blur);
     cursor: pointer;
     transition:
-        border-color 180ms ease-out,
-        background-color 180ms ease-out;
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-squad-dropzone:hover,
@@ -9624,8 +9624,8 @@ html.admin-document {
     font-weight: 750;
     cursor: pointer;
     transition:
-        border-color 160ms ease-out,
-        background-color 160ms ease-out;
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease);
 }
 
 .manual-squad-upload__preview button:hover {
@@ -9786,9 +9786,9 @@ html.admin-document {
     font-weight: 850;
     cursor: pointer;
     transition:
-        background-color 180ms ease-out,
-        border-color 180ms ease-out,
-        transform 180ms ease-out;
+        background-color var(--motion-quick) var(--motion-ease),
+        border-color var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease);
 }
 
 .manual-configurator__submit:hover:not(:disabled) {
@@ -9905,9 +9905,9 @@ html.admin-document {
         opacity: 0;
         visibility: hidden;
         transition:
-            transform 260ms var(--motion-ease),
-            opacity 200ms ease,
-            visibility 0s linear 260ms;
+            transform var(--motion-fast) var(--motion-ease),
+            opacity var(--motion-fast) var(--motion-ease),
+            visibility 0s linear var(--motion-fast);
     }
 
     .manual-service-dock.is-visible {
@@ -9961,7 +9961,7 @@ html.admin-document {
 
     body:has(.manual-service-dock.is-visible) .chat-widget-root {
         bottom: calc(5.75rem + env(safe-area-inset-bottom));
-        transition: bottom 180ms ease;
+        transition: bottom var(--motion-quick) var(--motion-ease);
     }
 }
 
@@ -10066,9 +10066,9 @@ html.admin-document {
     text-decoration: none;
     color: var(--arabut-ink);
     transition:
-        border-color 180ms var(--motion-ease),
-        background-color 180ms var(--motion-ease),
-        transform 180ms var(--motion-ease);
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-other__card:hover {
@@ -10303,9 +10303,9 @@ html.admin-document {
     color: var(--arabut-ink);
     text-decoration: none;
     transition:
-        border-color 180ms ease,
-        transform 180ms ease,
-        box-shadow 180ms ease;
+        border-color var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease),
+        box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .store-service-card:hover {
@@ -10744,9 +10744,9 @@ html.admin-document {
     background: rgb(255 255 255 / 4%);
     padding-inline: 0.8rem;
     transition:
-        border-color 160ms ease,
-        background-color 160ms ease,
-        transform 160ms ease;
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease);
 }
 
 .store-catalog-toolbar--premium
@@ -11038,10 +11038,10 @@ html.admin-document {
         ),
         linear-gradient(152deg, rgb(20 24 38 / 72%), rgb(8 10 17 / 78%));
     transition:
-        border-color 220ms var(--motion-ease),
-        transform 220ms var(--motion-ease),
-        box-shadow 220ms var(--motion-ease),
-        filter 220ms var(--motion-ease);
+        border-color var(--motion-fast) var(--motion-ease),
+        transform var(--motion-fast) var(--motion-ease),
+        box-shadow var(--motion-fast) var(--motion-ease),
+        filter var(--motion-fast) var(--motion-ease);
     animation: store-sbc-card-reveal var(--motion-emphasis) var(--motion-ease)
         backwards;
 }
@@ -11116,9 +11116,9 @@ html.admin-document {
     filter: blur(0.7rem);
     transform: translateX(-50%) scale(0.86) rotate(-8deg);
     transition:
-        opacity 320ms var(--motion-ease),
-        transform 420ms var(--motion-ease),
-        filter 320ms var(--motion-ease);
+        opacity var(--motion-medium) var(--motion-ease),
+        transform var(--motion-slow) var(--motion-ease),
+        filter var(--motion-medium) var(--motion-ease);
     animation: store-sbc-artwork-glow 5.2s ease-in-out infinite alternate;
 }
 
@@ -11256,8 +11256,8 @@ html.admin-document {
     filter: drop-shadow(0 0.8rem 1rem rgb(0 0 0 / 46%))
         drop-shadow(0 0 1rem rgb(217 171 58 / 13%));
     transition:
-        transform 320ms var(--motion-ease),
-        filter 320ms var(--motion-ease);
+        transform var(--motion-medium) var(--motion-ease),
+        filter var(--motion-medium) var(--motion-ease);
     transform: perspective(48rem) rotateX(var(--sbc-tilt-x, 0deg))
         rotateY(var(--sbc-tilt-y, 0deg));
     transform-style: preserve-3d;
@@ -11299,8 +11299,8 @@ html.admin-document {
         opacity: 1;
         transform: translateX(120%);
         transition:
-            transform 680ms var(--motion-ease),
-            opacity 180ms ease;
+            transform var(--motion-emphasis) var(--motion-ease),
+            opacity var(--motion-quick) var(--motion-ease);
     }
 
     .store-catalog-card--sbc:hover .store-catalog-card__image img {
@@ -12308,7 +12308,7 @@ html.admin-document {
 .store-faq__chevron {
     flex: 0 0 auto;
     color: var(--arabut-gold);
-    transition: transform 200ms var(--motion-ease);
+    transition: transform var(--motion-fast) var(--motion-ease);
 }
 
 .store-faq details[open] .store-faq__chevron {
@@ -12534,8 +12534,8 @@ html.admin-document {
     color: var(--arabut-gold);
     cursor: pointer;
     transition:
-        border-color 160ms var(--motion-ease),
-        background-color 160ms var(--motion-ease);
+        border-color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease);
 }
 
 .store-reviews__arrow:hover {
@@ -12563,8 +12563,8 @@ html.admin-document {
     border-radius: 999px;
     background: rgb(255 255 255 / 18%);
     transition:
-        width 200ms var(--motion-ease),
-        background-color 200ms var(--motion-ease);
+        width var(--motion-fast) var(--motion-ease),
+        background-color var(--motion-fast) var(--motion-ease);
 }
 
 .store-reviews__dots button.is-active {
@@ -12588,9 +12588,9 @@ html.admin-document {
     -webkit-backdrop-filter: var(--glass-surface-filter);
     backdrop-filter: var(--glass-surface-filter);
     transition:
-        transform 200ms var(--motion-ease),
-        border-color 200ms ease,
-        box-shadow 200ms ease;
+        transform var(--motion-fast) var(--motion-ease),
+        border-color var(--motion-fast) var(--motion-ease),
+        box-shadow var(--motion-fast) var(--motion-ease);
     /* `backwards`, not `both`: a finished animation whose fill holds a
        transform outranks every other declaration for that property, so the
        held translateY(0) was quietly cancelling the hover lift below. */
@@ -12738,7 +12738,7 @@ html.admin-document {
 }
 
 .store-reviews__more svg {
-    transition: transform 160ms var(--motion-ease);
+    transition: transform var(--motion-quick) var(--motion-ease);
 }
 
 .store-reviews__more:hover svg {
@@ -12776,8 +12776,8 @@ html.admin-document {
     font-weight: 700;
     text-decoration: none;
     transition:
-        background-color 160ms var(--motion-ease),
-        border-color 160ms var(--motion-ease);
+        background-color var(--motion-quick) var(--motion-ease),
+        border-color var(--motion-quick) var(--motion-ease);
 }
 
 .store-reviews__all {
@@ -12850,9 +12850,9 @@ html.admin-document {
     text-decoration: none;
     white-space: nowrap;
     transition:
-        background-color 160ms var(--motion-ease),
-        border-color 160ms var(--motion-ease),
-        color 160ms var(--motion-ease);
+        background-color var(--motion-quick) var(--motion-ease),
+        border-color var(--motion-quick) var(--motion-ease),
+        color var(--motion-quick) var(--motion-ease);
 }
 
 .store-reviews-chip:hover {
@@ -13929,8 +13929,8 @@ html.admin-document {
     font-weight: 750;
     text-decoration: none;
     transition:
-        color 150ms ease,
-        transform 150ms var(--motion-ease);
+        color var(--motion-quick) var(--motion-ease),
+        transform var(--motion-quick) var(--motion-ease);
 }
 
 .account-overview__loyalty-link:hover,
@@ -14147,7 +14147,7 @@ html.admin-document {
         var(--arabut-gold),
         var(--arabut-gold-bright)
     );
-    transition: inline-size 400ms var(--motion-ease);
+    transition: inline-size var(--motion-slow) var(--motion-ease);
 }
 
 .account-wallet-loyalty__remaining {
@@ -14185,8 +14185,8 @@ html.admin-document {
     gap: 0.25rem;
     min-width: 0;
     transition:
-        border-color 200ms ease,
-        background-color 200ms ease;
+        border-color var(--motion-fast) var(--motion-ease),
+        background-color var(--motion-fast) var(--motion-ease);
 }
 
 .account-wallet-loyalty__chip--current,
@@ -14661,8 +14661,8 @@ html.admin-document {
     font-weight: 800;
     cursor: pointer;
     transition:
-        background 140ms ease,
-        border-color 140ms ease;
+        background var(--motion-quick) var(--motion-ease),
+        border-color var(--motion-quick) var(--motion-ease);
     white-space: nowrap;
 }
 
@@ -14706,8 +14706,8 @@ html.admin-document {
     font-weight: 750;
     cursor: pointer;
     transition:
-        color 140ms ease,
-        background 140ms ease;
+        color var(--motion-quick) var(--motion-ease),
+        background var(--motion-quick) var(--motion-ease);
 }
 
 .account-profile-btn--ghost:hover {
@@ -15167,8 +15167,8 @@ html.admin-document {
        close transition so the sheet never snaps back up first. */
     .chat-widget-dialog--dismissing {
         transition:
-            transform 260ms cubic-bezier(0.32, 0.72, 0, 1),
-            opacity 220ms linear !important;
+            transform var(--motion-fast) cubic-bezier(0.32, 0.72, 0, 1),
+            opacity var(--motion-fast) linear !important;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -15182,10 +15182,10 @@ html.admin-document {
             .chat-widget-dialog--dragging
         ) {
             transition:
-                top 260ms cubic-bezier(0.16, 1, 0.3, 1),
-                height 260ms cubic-bezier(0.16, 1, 0.3, 1),
-                transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 280ms cubic-bezier(0.16, 1, 0.3, 1);
+                top var(--motion-fast) cubic-bezier(0.16, 1, 0.3, 1),
+                height var(--motion-fast) cubic-bezier(0.16, 1, 0.3, 1),
+                transform var(--motion-fast) cubic-bezier(0.16, 1, 0.3, 1),
+                opacity var(--motion-fast) cubic-bezier(0.16, 1, 0.3, 1);
         }
     }
 
@@ -15330,7 +15330,7 @@ html.admin-document {
 .chat-restart-tooltip {
     opacity: 0;
     transition-property: opacity;
-    transition-duration: 150ms;
+    transition-duration: var(--motion-quick);
 }
 
 .chat-restart-group:hover .chat-restart-tooltip,
@@ -15777,8 +15777,8 @@ html.admin-document {
         transition:
             transform var(--chat-dur-base) var(--chat-ease-out),
             box-shadow var(--chat-dur-base) var(--chat-ease-out),
-            background-color var(--chat-dur-fast) ease,
-            border-color var(--chat-dur-fast) ease;
+            background-color var(--chat-dur-fast) var(--chat-ease-out),
+            border-color var(--chat-dur-fast) var(--chat-ease-out);
     }
 
     .chat-lift:hover {
@@ -15915,8 +15915,8 @@ html.admin-document {
 
 .store-shell--reveal-ready [data-reveal].is-revealed {
     transition:
-        opacity 600ms var(--motion-ease),
-        transform 600ms var(--motion-ease);
+        opacity var(--motion-emphasis) var(--motion-ease),
+        transform var(--motion-emphasis) var(--motion-ease);
     transition-delay: var(--reveal-delay, 0ms);
 }
 
@@ -16080,12 +16080,12 @@ html.admin-document {
     -webkit-backdrop-filter: var(--btn-blur);
     backdrop-filter: var(--btn-blur);
     transition:
-        transform 180ms var(--btn-ease),
-        box-shadow 180ms var(--btn-ease),
-        background-color 160ms ease,
-        border-color 160ms ease,
-        color 160ms ease,
-        opacity 160ms ease;
+        transform var(--motion-quick) var(--btn-ease),
+        box-shadow var(--motion-quick) var(--btn-ease),
+        background-color var(--motion-quick) var(--btn-ease),
+        border-color var(--motion-quick) var(--btn-ease),
+        color var(--motion-quick) var(--btn-ease),
+        opacity var(--motion-quick) var(--btn-ease);
 }
 
 /* Primary: glass lit from within by gold. */
@@ -16291,8 +16291,8 @@ html.admin-document {
     -webkit-backdrop-filter: var(--field-blur);
     backdrop-filter: var(--field-blur);
     transition:
-        border-color 160ms ease,
-        box-shadow 160ms ease;
+        border-color var(--motion-quick) var(--motion-ease),
+        box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .coins-credential-field > input::placeholder,
@@ -16360,9 +16360,9 @@ html.admin-document {
     color: rgb(237 228 208 / 78%);
     font-weight: 700;
     transition:
-        color 160ms ease,
-        background-color 160ms ease,
-        box-shadow 160ms ease;
+        color var(--motion-quick) var(--motion-ease),
+        background-color var(--motion-quick) var(--motion-ease),
+        box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .manual-service-tabs__tab:hover,
@@ -16504,10 +16504,10 @@ html.admin-document {
     -webkit-backdrop-filter: var(--glass-control-filter);
     backdrop-filter: var(--glass-control-filter);
     transition:
-        transform 180ms var(--chat-ease-out),
-        box-shadow 180ms var(--chat-ease-out),
-        background-color 160ms ease,
-        border-color 160ms ease;
+        transform var(--chat-dur-fast) var(--chat-ease-out),
+        box-shadow var(--chat-dur-fast) var(--chat-ease-out),
+        background-color var(--chat-dur-fast) var(--chat-ease-out),
+        border-color var(--chat-dur-fast) var(--chat-ease-out);
 }
 
 .chat-widget-dialog .chat-btn--primary {
@@ -16740,8 +16740,8 @@ html.admin-document {
     -webkit-backdrop-filter: var(--field-blur);
     backdrop-filter: var(--field-blur);
     transition:
-        border-color 160ms ease,
-        box-shadow 160ms ease;
+        border-color var(--motion-quick) var(--motion-ease),
+        box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .auth-phone-field:has(:focus-visible) {
@@ -16777,8 +16777,8 @@ html.admin-document {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     transition:
-        background-color 160ms ease,
-        color 160ms ease;
+        background-color var(--motion-quick) var(--motion-ease),
+        color var(--motion-quick) var(--motion-ease);
 }
 
 .auth-phone-field__code svg {

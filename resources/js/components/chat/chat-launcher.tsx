@@ -129,7 +129,7 @@ export const ChatLauncher = React.forwardRef<
             aria-label={label}
             /* The surface, its edge and its shadow are the store's glass, in
                app.css; the utilities here carry only size and behaviour. */
-            className={`chat-launcher-button group relative flex h-14 w-14 cursor-pointer items-center justify-center overflow-visible rounded-full text-[var(--arabut-gold-bright)] transition-[transform,background-color,border-color,box-shadow,width,padding] duration-200 [transition-timing-function:cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arabut-focus)] active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none sm:h-[60px] sm:w-[60px] ${
+            className={`chat-launcher-button group relative flex h-14 w-14 cursor-pointer items-center justify-center overflow-visible rounded-full text-[var(--arabut-gold-bright)] transition-[transform,background-color,border-color,box-shadow,width,padding] duration-fast [transition-timing-function:cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--arabut-focus)] active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none sm:h-[60px] sm:w-[60px] ${
                 !isOpen ? 'sm:hover:w-auto sm:hover:px-4.5' : ''
             } ${isOpen ? 'chat-launcher-open' : ''}`}
         >
@@ -141,7 +141,7 @@ export const ChatLauncher = React.forwardRef<
                 aria-hidden="true"
             >
                 <span
-                    className={`absolute h-6 w-6 transition-[opacity,transform] duration-150 motion-reduce:transition-none ${
+                    className={`absolute h-6 w-6 transition-[opacity,transform] duration-quick motion-reduce:transition-none ${
                         isOpen
                             ? 'scale-75 rotate-45 opacity-0'
                             : 'scale-100 rotate-0 opacity-100'
@@ -150,7 +150,7 @@ export const ChatLauncher = React.forwardRef<
                     <MessageSquare className="h-6 w-6 stroke-2" />
                 </span>
                 <span
-                    className={`absolute h-6 w-6 transition-[opacity,transform] duration-150 motion-reduce:transition-none ${
+                    className={`absolute h-6 w-6 transition-[opacity,transform] duration-quick motion-reduce:transition-none ${
                         isOpen
                             ? 'scale-100 rotate-0 opacity-100'
                             : 'scale-75 -rotate-45 opacity-0'
@@ -162,7 +162,7 @@ export const ChatLauncher = React.forwardRef<
 
             {/* Desktop hover label (expands smoothly on desktop hover when closed) */}
             <span
-                className={`hidden items-center overflow-hidden text-sm font-bold whitespace-nowrap text-[var(--arabut-gold-bright)] transition-all duration-300 ease-out motion-reduce:transition-none sm:inline-flex ${
+                className={`hidden items-center overflow-hidden text-sm font-bold whitespace-nowrap text-[var(--arabut-gold-bright)] transition-all duration-fast ease-out motion-reduce:transition-none sm:inline-flex ${
                     isOpen
                         ? 'max-w-0 opacity-0'
                         : 'max-w-0 opacity-0 group-hover:ms-2 group-hover:max-w-[100px] group-hover:pe-1 group-hover:opacity-100'
@@ -222,12 +222,12 @@ export const ChatLauncher = React.forwardRef<
                     data-testid="chat-greeting-bubble"
                     role="status"
                     onClick={onToggle}
-                    className="chat-greeting-bubble absolute top-1/2 right-[calc(100%+14px)] z-10 hidden -translate-y-1/2 cursor-pointer items-center gap-2.5 rounded-2xl border border-[var(--arabut-gold)]/45 bg-[color:color-mix(in_srgb,var(--arabut-navy-raised)_92%,transparent)] px-3.5 py-2 text-xs font-medium text-[var(--arabut-ink)] shadow-[0_8px_24px_rgba(0,0,0,0.38)] backdrop-blur-md transition-all duration-200 hover:-translate-y-[calc(50%+1px)] hover:border-[var(--arabut-gold)]/75 hover:shadow-[0_10px_28px_rgba(0,0,0,0.45)] motion-reduce:transform-none motion-reduce:transition-none sm:flex sm:whitespace-nowrap"
+                    className="chat-greeting-bubble absolute top-1/2 right-[calc(100%+14px)] z-10 hidden -translate-y-1/2 cursor-pointer items-center gap-2.5 rounded-2xl border border-[var(--arabut-gold)]/45 bg-[color:color-mix(in_srgb,var(--arabut-navy-raised)_92%,transparent)] px-3.5 py-2 text-xs font-medium text-[var(--arabut-ink)] shadow-[0_8px_24px_rgba(0,0,0,0.38)] backdrop-blur-md transition-all duration-fast hover:-translate-y-[calc(50%+1px)] hover:border-[var(--arabut-gold)]/75 hover:shadow-[0_10px_28px_rgba(0,0,0,0.45)] motion-reduce:transform-none motion-reduce:transition-none sm:flex sm:whitespace-nowrap"
                 >
                     {/* Speech bubble pointer caret pointing toward launcher */}
                     <span
                         aria-hidden="true"
-                        className="chat-greeting-bubble__caret absolute top-1/2 -right-1.5 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--arabut-gold)]/45 bg-[var(--arabut-navy-raised)] transition-colors duration-200"
+                        className="chat-greeting-bubble__caret absolute top-1/2 -right-1.5 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-t border-r border-[var(--arabut-gold)]/45 bg-[var(--arabut-navy-raised)] transition-colors duration-fast"
                     />
 
                     <span className="font-medium text-[var(--arabut-ink)] select-none">
@@ -239,7 +239,7 @@ export const ChatLauncher = React.forwardRef<
                         data-testid="chat-greeting-dismiss"
                         onClick={handleDismissGreeting}
                         aria-label={isEn ? 'Dismiss greeting' : 'إغلاق التلميح'}
-                        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--arabut-muted)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--arabut-gold-bright)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--arabut-focus)]"
+                        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--arabut-muted)] transition-colors duration-quick hover:bg-white/10 hover:text-[var(--arabut-gold-bright)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--arabut-focus)]"
                     >
                         <X className="h-3 w-3 stroke-2" />
                     </button>
