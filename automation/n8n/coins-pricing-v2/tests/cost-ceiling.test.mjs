@@ -325,16 +325,16 @@ test('an ordinary move does not reach for the phone', async () => {
     );
     const assessed = await runAssess(second);
 
-    // Every price moved, and not one of them moved by a quarter of the million
-    // price - which under the old rule tripped the moment a 10K row crossed
-    // ten riyals.
+    // Every price moved, and not one of them moved by 40% of the million
+    // price - which under the pre-2026-09-18 rule tripped the moment a 10K row
+    // crossed ten riyals.
     assert.ok(assessed.priceMove.comparedCount > 0);
     assert.ok(assessed.priceMove.moves.every((move) => move.deltaSar > 0));
     assert.equal(assessed.priceMove.largeCount, 0);
     assert.equal(assessed.approvalRequired, false);
 });
 
-test('a move worth more than a quarter of a million asks first', async () => {
+test('the move that woke the owner on 2026-09-19 now passes in silence', async () => {
     const config = await runConfig();
     const caps = config.settings.tierCapsK;
 
@@ -352,11 +352,58 @@ test('a move worth more than a quarter of a million asks first', async () => {
         lastCyclePCUsdPerM: 200,
     };
 
-    // Coins nearly half again as dear: the million row alone moves by far more
-    // than a quarter of what a million costs.
+    // A drop big enough to clear a quarter of the million price and not 40% of
+    // it - the window the owner moved the line through. The run that prompted
+    // it sat here: a PC five-million row moving 163.92 SAR per million against
+    // a 144.68 yardstick, eighteen percent off a price nobody minded.
     const second = await runPrepare(
         config,
-        ...Object.values(marketAt(caps, 290)),
+        ...Object.values(marketAt(caps, 155)),
+        baseline,
+    );
+    const assessed = await runAssess(second);
+
+    // It really is inside the window: every move would have been large under
+    // the old quarter. A test that passed because nothing moved at all would
+    // prove nothing.
+    const wouldHaveAsked = assessed.priceMove.moves.filter(
+        (move) => move.deltaPerMillionSar > move.millionSar * 0.25,
+    );
+    assert.ok(wouldHaveAsked.length > 0);
+
+    assert.equal(assessed.priceMove.largeCount, 0);
+    assert.equal(assessed.approvalRequired, false);
+});
+
+test('a move worth more than 40% of a million asks first', async () => {
+    const config = await runConfig();
+    const caps = config.settings.tierCapsK;
+
+    const first = await runPrepare(config, ...Object.values(marketAt(caps, 200)), {});
+    const baseline = {
+        lastSuccessfulRates: {
+            console_normal:
+                first.snapshot.rules.console_normal.flat_rate_halalah_per_million,
+            console_fast: [
+                ...first.snapshot.rules.console_fast.tier_rates_halalah_per_million,
+            ],
+            pc: [...first.snapshot.rules.pc.tier_rates_halalah_per_million],
+        },
+        lastCyclePSUsdPerM: 200,
+        lastCyclePCUsdPerM: 200,
+    };
+
+    // A collapse, not a rise. The yardstick is 40% of what a million costs
+    // NOW, so the two directions do not cost the same: a rise has to clear 40%
+    // of the dearer price it just became, which needs the market to go up by
+    // two thirds - and the 300 USD ceiling from the same night takes the tier
+    // off the storefront long before that. A fall is measured against the
+    // cheaper price it landed on, so anything past about a third trips it.
+    // This is the shape of a real alarm: the book falling out from under a
+    // platform is what somebody needs to look at.
+    const second = await runPrepare(
+        config,
+        ...Object.values(marketAt(caps, 120)),
         baseline,
     );
     const assessed = await runAssess(second);
@@ -364,7 +411,10 @@ test('a move worth more than a quarter of a million asks first', async () => {
     assert.equal(assessed.approvalRequired, true);
     assert.ok(assessed.priceMove.largeCount > 0);
     assert.equal(assessed.priceMove.thresholdBasis, 'million_price');
-    assert.match(assessed.telegramMessage, /ربع سعر المليون الحالي/);
+    // The percentage is read off the constant, so the message and the rule
+    // cannot drift apart the way "a quarter" did.
+    assert.match(assessed.telegramMessage, /أكتر من 40% من سعر المليون الحالي/);
+    assert.equal(assessed.priceMove.thresholdFraction, 0.4);
 
     // The yardstick is recorded beside the move it judged.
     for (const move of assessed.priceMove.moves) {
